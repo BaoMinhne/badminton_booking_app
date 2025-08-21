@@ -1,13 +1,17 @@
+import 'package:badminton_booking_app/components/my_button.dart';
+import 'package:badminton_booking_app/components/my_text_field.dart';
 import 'package:flutter/material.dart';
 
 class HomePage extends StatelessWidget {
-  const HomePage({super.key});
+  HomePage({super.key});
+  final TextEditingController controller = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Badminton Booking App'),
+        title: const Text('Courtify Home'),
+        centerTitle: true,
       ),
       body: Center(
         child: Column(
@@ -16,12 +20,20 @@ class HomePage extends StatelessWidget {
             const Text(
               'Welcome to the Badminton Booking App!',
             ),
-            ElevatedButton(
-              onPressed: () {
-                // Navigate to booking page
-                Navigator.pushNamed(context, '/booking');
-              },
-              child: const Text('Book a Court'),
+            const SizedBox(height: 20),
+            MyTextfield(
+              hintText: "Email",
+              controller: controller,
+              prefixIcon: Icon(Icons.person),
+            ),
+            MyTextfield(
+              hintText: "Password",
+              controller: controller,
+              obscureText: true,
+              prefixIcon: Icon(Icons.password),
+            ),
+            MyButton(
+              text: "Đăng Nhập",
             ),
           ],
         ),

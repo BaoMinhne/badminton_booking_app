@@ -1,4 +1,5 @@
 import 'package:badminton_booking_app/pages/home_page.dart';
+import 'package:badminton_booking_app/pages/login_page.dart';
 import 'package:badminton_booking_app/themes/main_theme.dart';
 import 'package:flutter/material.dart';
 
@@ -13,7 +14,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: HomePage(),
+      home: LoginPage(),
       theme: mainTheme,
       routes: {},
     );

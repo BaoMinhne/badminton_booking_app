@@ -1,6 +1,7 @@
 import 'package:badminton_booking_app/components/my_button.dart';
 import 'package:badminton_booking_app/components/my_text_field.dart';
 import 'package:badminton_booking_app/pages/home_page.dart';
+import 'package:badminton_booking_app/pages/nav_bar_page.dart';
 import 'package:badminton_booking_app/pages/sign_up_page.dart';
 import 'package:flutter/material.dart';
 
@@ -14,7 +15,14 @@ class LoginPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('L O G I N'),
+        title: Text(
+          'L O G I N',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.onPrimary,
+          ),
+        ),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -27,7 +35,12 @@ class LoginPage extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
                 elevation: 2,
                 child: Container(
-                  padding: const EdgeInsets.all(30),
+                  padding: const EdgeInsets.only(
+                    top: 30,
+                    left: 15,
+                    right: 15,
+                    bottom: 30,
+                  ),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(10),
                     color: Colors.grey[100],
@@ -49,7 +62,7 @@ class LoginPage extends StatelessWidget {
                         style: TextStyle(
                             fontSize: 16, fontWeight: FontWeight.bold),
                       ),
-                      const SizedBox(height: 5),
+                      const SizedBox(height: 10),
                       MyTextfield(
                         hintText: "Enter your email...",
                         controller: emailController,
@@ -61,7 +74,7 @@ class LoginPage extends StatelessWidget {
                         style: TextStyle(
                             fontSize: 16, fontWeight: FontWeight.bold),
                       ),
-                      const SizedBox(height: 5),
+                      const SizedBox(height: 10),
                       MyTextfield(
                         hintText: "Enter your password...",
                         controller: passwdController,
@@ -74,7 +87,8 @@ class LoginPage extends StatelessWidget {
                         onTap: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => HomePage()),
+                            MaterialPageRoute(
+                                builder: (context) => NavBarPage()),
                           );
                         },
                       ),

@@ -16,26 +16,7 @@ class HomePage extends StatelessWidget {
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'Welcome to the Badminton Booking App!',
-            ),
-            const SizedBox(height: 20),
-            MyTextfield(
-              hintText: "Email",
-              controller: controller,
-              prefixIcon: Icon(Icons.person),
-            ),
-            MyTextfield(
-              hintText: "Password",
-              controller: controller,
-              obscureText: true,
-              prefixIcon: Icon(Icons.password),
-            ),
-            MyButton(
-              text: "Đăng Nhập",
-            ),
-          ],
+          children: <Widget>[],
         ),
       ),
     );

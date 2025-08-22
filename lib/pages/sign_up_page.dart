@@ -2,6 +2,7 @@ import 'package:badminton_booking_app/components/my_button.dart';
 import 'package:badminton_booking_app/components/my_text_field.dart';
 import 'package:badminton_booking_app/pages/home_page.dart';
 import 'package:badminton_booking_app/pages/login_page.dart';
+import 'package:badminton_booking_app/pages/nav_bar_page.dart';
 import 'package:flutter/material.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 
@@ -18,7 +19,14 @@ class SignUpPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('S I G N - U P'),
+        title: Text(
+          'S I G N - U P',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.onPrimary,
+          ),
+        ),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -31,7 +39,12 @@ class SignUpPage extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
                 elevation: 2,
                 child: Container(
-                  padding: const EdgeInsets.all(30),
+                  padding: const EdgeInsets.only(
+                    top: 30,
+                    left: 15,
+                    right: 15,
+                    bottom: 30,
+                  ),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(10),
                     color: Colors.grey[100],
@@ -74,7 +87,7 @@ class SignUpPage extends StatelessWidget {
                         style: TextStyle(
                             fontSize: 16, fontWeight: FontWeight.bold),
                       ),
-                      const SizedBox(height: 5),
+                      const SizedBox(height: 10),
                       MyTextfield(
                         hintText: "Enter your Email...",
                         controller: emailController,
@@ -86,7 +99,7 @@ class SignUpPage extends StatelessWidget {
                         style: TextStyle(
                             fontSize: 16, fontWeight: FontWeight.bold),
                       ),
-                      const SizedBox(height: 5),
+                      const SizedBox(height: 10),
                       MyTextfield(
                         hintText: "Enter your full name...",
                         controller: nameController,
@@ -98,7 +111,7 @@ class SignUpPage extends StatelessWidget {
                         style: TextStyle(
                             fontSize: 16, fontWeight: FontWeight.bold),
                       ),
-                      const SizedBox(height: 5),
+                      const SizedBox(height: 10),
                       MyTextfield(
                         hintText: "Enter your password...",
                         controller: passwdController,
@@ -111,7 +124,7 @@ class SignUpPage extends StatelessWidget {
                         style: TextStyle(
                             fontSize: 16, fontWeight: FontWeight.bold),
                       ),
-                      const SizedBox(height: 5),
+                      const SizedBox(height: 10),
                       MyTextfield(
                         hintText: "Confirm your password...",
                         controller: confirmPWController,
@@ -159,7 +172,8 @@ class SignUpPage extends StatelessWidget {
                         onTap: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => HomePage()),
+                            MaterialPageRoute(
+                                builder: (context) => NavBarPage()),
                           );
                         },
                       ),

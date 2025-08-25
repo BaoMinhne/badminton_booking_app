@@ -198,24 +198,6 @@ class ProfilePage extends StatelessWidget {
   }
 }
 
-Widget _buildMenuItem(
-    BuildContext context, IconData icon, String title, Color color) {
-  return Column(
-    children: [
-      CircleAvatar(
-          radius: 28,
-          backgroundColor: color,
-          child: Icon(
-            icon,
-            size: 28,
-            color: Colors.white,
-          )),
-      SizedBox(height: 8),
-      Text(title, style: TextStyle(fontSize: 14, color: Colors.black)),
-    ],
-  );
-}
-
 Widget _buildListItem(BuildContext context, IconData icon, String title) {
   return Container(
     decoration: BoxDecoration(

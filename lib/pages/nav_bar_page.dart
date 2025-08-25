@@ -1,3 +1,4 @@
+import 'package:badminton_booking_app/pages/court_page.dart';
 import 'package:badminton_booking_app/pages/home_page.dart';
 import 'package:badminton_booking_app/pages/norti_page.dart';
 import 'package:badminton_booking_app/pages/profile_page.dart';
@@ -15,28 +16,43 @@ class NavBarPage extends StatefulWidget {
 class _NavBarPageState extends State<NavBarPage> {
   int _index = 0;
 
-  final List<Widget> _pages = [
-    HomePage(),
-    const SearchPage(),
-    const NortiPage(),
-    const ProfilePage(),
-  ];
+  late final List<Widget> _pages;
+
+  @override
+  void initState() {
+    super.initState();
+    _pages = [
+      HomePage(),
+      CourtPage(),
+      SearchPage(),
+      NortiPage(),
+      ProfilePage(),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
+    final int safeIndex = _index.clamp(0, _pages.length - 1);
+
     return Scaffold(
       extendBody: true,
-      body: IndexedStack(index: _index, children: _pages),
+      body: IndexedStack(index: safeIndex, children: _pages),
       bottomNavigationBar: CurvedNavigationBar(
-        index: _index,
+        index: safeIndex,
         onTap: (i) => setState(() => _index = i),
         backgroundColor: Colors.transparent,
         color: Theme.of(context).colorScheme.primary,
+        height: 70, // Tăng chiều cao để hiển thị rõ hơn
         animationDuration: const Duration(milliseconds: 300),
-        items: [
-          Icon(Icons.home, size: 30, color: Colors.white),
-          Icon(Icons.search, size: 30, color: Colors.white),
-          Icon(Icons.notifications, size: 30, color: Colors.white),
-          Icon(Icons.person, size: 30, color: Colors.white),
+        items: const [
+          Icon(Icons.home, size: 30, color: Colors.white), // HomePage
+          Icon(Icons.sports_tennis_outlined,
+              size: 30,
+              color:
+                  Colors.white), // CourtPage (thay sports_tennis bằng sports)
+          Icon(Icons.search, size: 30, color: Colors.white), // SearchPage
+          Icon(Icons.notifications, size: 30, color: Colors.white), // NortiPage
+          Icon(Icons.person, size: 30, color: Colors.white), // ProfilePage
         ],
       ),
     );

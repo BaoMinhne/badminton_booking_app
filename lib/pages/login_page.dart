@@ -13,14 +13,16 @@ class LoginPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    ColorScheme colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
         title: Text(
           'L O G I N',
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
-            color: Theme.of(context).colorScheme.onPrimary,
+            color: colorScheme.onPrimary,
           ),
         ),
         centerTitle: true,
@@ -53,7 +55,7 @@ class LoginPage extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.primary,
+                          color: colorScheme.primary,
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -120,7 +122,7 @@ class LoginPage extends StatelessWidget {
                     children: [
                       Text("Sign Up Here",
                           style: TextStyle(
-                            color: Theme.of(context).colorScheme.primary,
+                            color: colorScheme.primary,
                             fontSize: 17,
                             fontWeight: FontWeight.bold,
                           )),

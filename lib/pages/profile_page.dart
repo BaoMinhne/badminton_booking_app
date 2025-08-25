@@ -1,3 +1,4 @@
+import 'package:badminton_booking_app/components/my_icon_button.dart';
 import 'package:flutter/material.dart';
 
 class ProfilePage extends StatelessWidget {
@@ -79,29 +80,25 @@ class ProfilePage extends StatelessWidget {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        _buildMenuItem(
-                          context,
-                          Icons.person,
-                          "Personal",
-                          Theme.of(context).colorScheme.primary,
+                        MyIconButton(
+                          icon: Icons.person,
+                          title: "Personal",
+                          color: Theme.of(context).colorScheme.primary,
                         ),
-                        _buildMenuItem(
-                          context,
-                          Icons.lock,
-                          "Password",
-                          Theme.of(context).colorScheme.primary,
+                        MyIconButton(
+                          icon: Icons.lock,
+                          title: "Password",
+                          color: Theme.of(context).colorScheme.primary,
                         ),
-                        _buildMenuItem(
-                          context,
-                          Icons.card_giftcard,
-                          "Voucher",
-                          Theme.of(context).colorScheme.primary,
+                        MyIconButton(
+                          icon: Icons.card_giftcard,
+                          title: "Voucher",
+                          color: Theme.of(context).colorScheme.primary,
                         ),
-                        _buildMenuItem(
-                          context,
-                          Icons.verified,
-                          "Membership",
-                          Theme.of(context).colorScheme.primary,
+                        MyIconButton(
+                          icon: Icons.verified,
+                          title: "Membership",
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                       ],
                     ),
@@ -158,11 +155,10 @@ class ProfilePage extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
                         SizedBox(width: 5),
-                        _buildMenuItem(
-                          context,
-                          Icons.notifications,
-                          "",
-                          Theme.of(context).colorScheme.primary,
+                        MyIconButton(
+                          icon: Icons.notifications,
+                          title: "",
+                          color: const Color.fromARGB(255, 63, 160, 113),
                         ),
                         CircleAvatar(
                           radius: 66,
@@ -174,11 +170,10 @@ class ProfilePage extends StatelessWidget {
                             ),
                           ),
                         ),
-                        _buildMenuItem(
-                          context,
-                          Icons.calendar_today,
-                          "",
-                          Theme.of(context).colorScheme.primary,
+                        MyIconButton(
+                          icon: Icons.calendar_today,
+                          title: "",
+                          color: const Color.fromARGB(255, 207, 162, 48),
                         ),
                         SizedBox(width: 5),
                       ],
@@ -209,7 +204,7 @@ Widget _buildMenuItem(
     children: [
       CircleAvatar(
           radius: 28,
-          backgroundColor: Theme.of(context).colorScheme.primary,
+          backgroundColor: color,
           child: Icon(
             icon,
             size: 28,

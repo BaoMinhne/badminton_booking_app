@@ -23,9 +23,9 @@ class _NavBarPageState extends State<NavBarPage> {
     super.initState();
     _pages = [
       HomePage(),
-      CourtPage(),
       SearchPage(),
       NortiPage(),
+      CourtPage(),
       ProfilePage(),
     ];
   }
@@ -46,12 +46,9 @@ class _NavBarPageState extends State<NavBarPage> {
         animationDuration: const Duration(milliseconds: 300),
         items: const [
           Icon(Icons.home, size: 30, color: Colors.white), // HomePage
-          Icon(Icons.sports_tennis_outlined,
-              size: 30,
-              color:
-                  Colors.white), // CourtPage (thay sports_tennis bằng sports)
           Icon(Icons.search, size: 30, color: Colors.white), // SearchPage
           Icon(Icons.notifications, size: 30, color: Colors.white), // NortiPage
+          Icon(Icons.sports_tennis_outlined, size: 30, color: Colors.white),
           Icon(Icons.person, size: 30, color: Colors.white), // ProfilePage
         ],
       ),

@@ -1,5 +1,4 @@
 import 'package:badminton_booking_app/components/my_court.dart';
-import 'package:badminton_booking_app/components/my_text_field.dart';
 import 'package:flutter/material.dart';
 
 class CourtPage extends StatelessWidget {
@@ -16,26 +15,101 @@ class CourtPage extends StatelessWidget {
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SingleChildScrollView(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.only(
-                  top: 20, left: 12, right: 20, bottom: 10),
-              child: MyTextfield(
-                hintText: "Find your Court....",
-                controller: controller,
-                prefixIcon: Icon(Icons.search),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Container(
+                  width: 5,
+                  height: 24,
+                  color: Theme.of(context).colorScheme.primary,
+                  margin: const EdgeInsets.only(
+                    left: 12,
+                    right: 8,
+                  ),
+                ),
+                Text(
+                  "Có Thể Bạn Sẽ Thích",
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  MyCourt(),
+                  MyCourt(),
+                  MyCourt(),
+                  MyCourt(),
+                  MyCourt(),
+                ],
               ),
             ),
-            MyCourt(),
-            const SizedBox(height: 20),
-            MyCourt(),
-            const SizedBox(height: 20),
-            MyCourt(),
-            const SizedBox(height: 20),
-            MyCourt(),
-            const SizedBox(height: 20),
-            MyCourt(),
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Container(
+                  width: 5,
+                  height: 24,
+                  color: Theme.of(context).colorScheme.primary,
+                  margin: const EdgeInsets.only(left: 12, right: 8),
+                ),
+                Text(
+                  "Sân Gần Bạn",
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  MyCourt(),
+                  MyCourt(),
+                  MyCourt(),
+                  MyCourt(),
+                  MyCourt(),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Container(
+                  width: 5,
+                  height: 24,
+                  color: Theme.of(context).colorScheme.primary,
+                  margin: const EdgeInsets.only(left: 12, right: 8),
+                ),
+                Text(
+                  "Sân Phổ Biến",
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  MyCourt(),
+                  MyCourt(),
+                  MyCourt(),
+                  MyCourt(),
+                  MyCourt(),
+                ],
+              ),
+            ),
             const SizedBox(height: 100),
           ],
         ),

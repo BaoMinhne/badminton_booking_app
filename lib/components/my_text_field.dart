@@ -24,19 +24,23 @@ class MyTextfield extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      obscureText: obscureText,
-      keyboardType: keyboardType,
-      enabled: enabled,
-      maxLines: obscureText ? 1 : maxLines,
-      decoration: InputDecoration(
-        hintText: hintText,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(5),
+    return Material(
+      elevation: 6,
+      borderRadius: BorderRadius.circular(14),
+      child: TextField(
+        controller: controller,
+        obscureText: obscureText,
+        keyboardType: keyboardType,
+        enabled: enabled,
+        maxLines: obscureText ? 1 : maxLines,
+        decoration: InputDecoration(
+          hintText: hintText,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(5),
+          ),
+          prefixIcon: prefixIcon,
+          suffixIcon: suffixIcon,
         ),
-        prefixIcon: prefixIcon,
-        suffixIcon: suffixIcon,
       ),
     );
   }

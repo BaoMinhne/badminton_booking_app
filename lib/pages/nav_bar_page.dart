@@ -3,6 +3,7 @@ import 'package:badminton_booking_app/pages/home_page.dart';
 import 'package:badminton_booking_app/pages/norti_page.dart';
 import 'package:badminton_booking_app/pages/profile_page.dart';
 import 'package:badminton_booking_app/pages/search_page.dart';
+import 'package:badminton_booking_app/pages/social_page.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:flutter/material.dart';
 
@@ -23,7 +24,7 @@ class _NavBarPageState extends State<NavBarPage> {
     super.initState();
     _pages = [
       HomePage(),
-      SearchPage(),
+      SocialPage(),
       NortiPage(),
       CourtPage(),
       ProfilePage(),
@@ -46,7 +47,8 @@ class _NavBarPageState extends State<NavBarPage> {
         animationDuration: const Duration(milliseconds: 300),
         items: const [
           Icon(Icons.home, size: 30, color: Colors.white), // HomePage
-          Icon(Icons.search, size: 30, color: Colors.white), // SearchPage
+          Icon(Icons.south_america,
+              size: 30, color: Colors.white), // SearchPage
           Icon(Icons.notifications, size: 30, color: Colors.white), // NortiPage
           Icon(Icons.sports_tennis_outlined, size: 30, color: Colors.white),
           Icon(Icons.person, size: 30, color: Colors.white), // ProfilePage

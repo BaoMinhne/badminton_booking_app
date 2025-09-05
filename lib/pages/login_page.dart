@@ -59,7 +59,7 @@ class LoginPage extends StatelessWidget {
                       ),
                       const SizedBox(height: 20),
                       const Text(
-                        'Enter Your Email ?',
+                        'Email',
                         style: TextStyle(
                             fontSize: 16, fontWeight: FontWeight.bold),
                       ),
@@ -71,7 +71,7 @@ class LoginPage extends StatelessWidget {
                       ),
                       const SizedBox(height: 20),
                       const Text(
-                        'Enter Your Password ?',
+                        'Password',
                         style: TextStyle(
                             fontSize: 16, fontWeight: FontWeight.bold),
                       ),
@@ -81,6 +81,7 @@ class LoginPage extends StatelessWidget {
                         controller: passwdController,
                         obscureText: true,
                         prefixIcon: const Icon(Icons.password),
+                        suffixIcon: Icon(Icons.remove_red_eye),
                       ),
                       const SizedBox(height: 40),
                       MyButton(

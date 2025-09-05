@@ -9,7 +9,14 @@ class CourtPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Court Page'),
+        title: Text(
+          'C O U R T',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.onPrimary,
+          ),
+        ),
         centerTitle: true,
       ),
       backgroundColor: Theme.of(context).colorScheme.surface,

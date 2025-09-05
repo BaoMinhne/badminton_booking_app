@@ -1,3 +1,4 @@
+import 'package:badminton_booking_app/utils/currency.dart';
 import 'package:flutter/material.dart';
 
 class ServicePrice {
@@ -200,16 +201,4 @@ class PricingTableMini extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Format VND không cần package ngoài (1.234.567đ)
-String formatVND(num value) {
-  final s = value.toStringAsFixed(0);
-  final rev = s.split('').reversed.toList();
-  final out = <String>[];
-  for (int i = 0; i < rev.length; i++) {
-    out.add(rev[i]);
-    if ((i + 1) % 3 == 0 && i + 1 != rev.length) out.add('.');
-  }
-  return out.reversed.join() + 'đ';
 }

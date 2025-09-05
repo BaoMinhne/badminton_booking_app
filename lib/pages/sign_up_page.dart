@@ -69,20 +69,24 @@ class SignUpPage extends StatelessWidget {
                       ),
                       const SizedBox(height: 20),
                       const SizedBox(height: 5),
-                      IntlPhoneField(
-                        controller: phoneController,
-                        disableLengthCheck: true,
-                        decoration: InputDecoration(
-                          labelText: 'Your phone number',
-                          border: OutlineInputBorder(
-                            borderSide: BorderSide(),
+                      Material(
+                        elevation: 6,
+                        borderRadius: BorderRadius.circular(14),
+                        child: IntlPhoneField(
+                          controller: phoneController,
+                          disableLengthCheck: true,
+                          decoration: InputDecoration(
+                            labelText: 'Your phone number',
+                            border: OutlineInputBorder(
+                              borderSide: BorderSide(),
+                            ),
                           ),
+                          initialCountryCode: 'VN', // mặc định Việt Nam
                         ),
-                        initialCountryCode: 'VN', // mặc định Việt Nam
                       ),
                       const SizedBox(height: 20),
                       const Text(
-                        'Your Email?',
+                        'Email',
                         style: TextStyle(
                             fontSize: 16, fontWeight: FontWeight.bold),
                       ),
@@ -94,19 +98,19 @@ class SignUpPage extends StatelessWidget {
                       ),
                       const SizedBox(height: 20),
                       const Text(
-                        'Your Full Name',
+                        'Username',
                         style: TextStyle(
                             fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 10),
                       MyTextfield(
-                        hintText: "Enter your full name...",
+                        hintText: "Enter your username...",
                         controller: nameController,
                         prefixIcon: const Icon(Icons.person),
                       ),
                       const SizedBox(height: 20),
                       const Text(
-                        'Your Password?',
+                        'Password',
                         style: TextStyle(
                             fontSize: 16, fontWeight: FontWeight.bold),
                       ),

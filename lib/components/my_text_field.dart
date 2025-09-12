@@ -11,6 +11,7 @@ class MyTextfield extends StatelessWidget {
   final int? maxLines;
   final VoidCallback? onTap;
   final bool isReadOnly;
+  final String? Function(String?)? validator;
 
   const MyTextfield({
     super.key,
@@ -24,6 +25,7 @@ class MyTextfield extends StatelessWidget {
     this.maxLines = 1,
     this.onTap,
     this.isReadOnly = false,
+    this.validator,
   });
 
   @override
@@ -31,7 +33,7 @@ class MyTextfield extends StatelessWidget {
     return Material(
       elevation: 6,
       borderRadius: BorderRadius.circular(14),
-      child: TextField(
+      child: TextFormField(
         onTap: onTap,
         controller: controller,
         obscureText: obscureText,
@@ -47,6 +49,7 @@ class MyTextfield extends StatelessWidget {
           prefixIcon: prefixIcon,
           suffixIcon: suffixIcon,
         ),
+        validator: validator,
       ),
     );
   }

@@ -1,4 +1,4 @@
-import 'package:badminton_booking_app/pages/court_detail.dart';
+import 'package:badminton_booking_app/pages/court/court_detail.dart';
 import 'package:flutter/material.dart';
 
 class MyCourt extends StatefulWidget {

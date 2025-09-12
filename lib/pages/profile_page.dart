@@ -1,5 +1,9 @@
 import 'package:badminton_booking_app/components/my_icon_button.dart';
+import 'package:badminton_booking_app/pages/auth/auth_manager.dart';
+import 'package:badminton_booking_app/pages/auth/login_page.dart';
+import 'package:badminton_booking_app/utils/dialog_utils.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -135,7 +139,37 @@ class ProfilePage extends StatelessWidget {
                           _buildListItem(context, Icons.info_outline_rounded,
                               "Version information: 1.0.0"),
                           SizedBox(height: 10),
-                          _buildListItem(context, Icons.logout, "Logout"),
+                          _buildListItem(
+                            context,
+                            Icons.logout,
+                            "Logout",
+                            onTap: () async {
+                              final confirm = await showConfirmDialog(
+                                context,
+                                'Bạn có chắc chắn muốn đăng xuất?',
+                                title: 'Đăng xuất',
+                              );
+
+                              if (!confirm) return;
+
+                              try {
+                                await context.read<AuthManager>().logout();
+
+                                if (!context.mounted) return;
+
+                                // Xoá toàn bộ stack và quay về LoginPage
+                                Navigator.of(context).pushAndRemoveUntil(
+                                  MaterialPageRoute(
+                                      builder: (_) => LoginPage()),
+                                  (route) => false,
+                                );
+                              } catch (e) {
+                                if (!context.mounted) return;
+                                await showErrorDialog(
+                                    context, 'Đăng xuất thất bại: $e');
+                              }
+                            },
+                          ),
                           SizedBox(height: 80),
                         ],
                       ),
@@ -198,7 +232,8 @@ class ProfilePage extends StatelessWidget {
   }
 }
 
-Widget _buildListItem(BuildContext context, IconData icon, String title) {
+Widget _buildListItem(BuildContext context, IconData icon, String title,
+    {VoidCallback? onTap}) {
   return Container(
     decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.onPrimary,
@@ -218,7 +253,7 @@ Widget _buildListItem(BuildContext context, IconData icon, String title) {
       leading: Icon(icon, color: Theme.of(context).colorScheme.secondary),
       title: Text(title),
       trailing: Icon(Icons.arrow_forward_ios, size: 20, color: Colors.grey),
-      onTap: () {},
+      onTap: onTap,
     ),
   );
 }

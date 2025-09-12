@@ -1,6 +1,6 @@
 import 'package:badminton_booking_app/components/my_button.dart';
 import 'package:badminton_booking_app/components/my_court_time.dart';
-import 'package:badminton_booking_app/pages/payment_page.dart';
+import 'package:badminton_booking_app/pages/court/payment_page.dart';
 import 'package:flutter/material.dart';
 
 class BookingPage extends StatefulWidget {

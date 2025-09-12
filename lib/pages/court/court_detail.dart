@@ -1,7 +1,7 @@
-import 'package:badminton_booking_app/pages/tabs/image_tab.dart';
-import 'package:badminton_booking_app/pages/tabs/review_tab.dart';
-import 'package:badminton_booking_app/pages/tabs/rule_tab.dart';
-import 'package:badminton_booking_app/pages/tabs/service_tab.dart';
+import 'package:badminton_booking_app/pages/court/tabs/image_tab.dart';
+import 'package:badminton_booking_app/pages/court/tabs/review_tab.dart';
+import 'package:badminton_booking_app/pages/court/tabs/rule_tab.dart';
+import 'package:badminton_booking_app/pages/court/tabs/service_tab.dart';
 import 'package:flutter/material.dart';
 
 class CourtDetail extends StatefulWidget {

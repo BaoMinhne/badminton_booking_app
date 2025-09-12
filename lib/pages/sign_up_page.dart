@@ -21,7 +21,7 @@ class SignUpPage extends StatelessWidget {
         title: Text(
           'S I G N - U P',
           style: TextStyle(
-            fontSize: 24,
+            fontSize: 22,
             fontWeight: FontWeight.bold,
             color: Theme.of(context).colorScheme.onPrimary,
           ),

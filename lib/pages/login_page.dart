@@ -19,7 +19,7 @@ class LoginPage extends StatelessWidget {
         title: Text(
           'L O G I N',
           style: TextStyle(
-            fontSize: 24,
+            fontSize: 22,
             fontWeight: FontWeight.bold,
             color: colorScheme.onPrimary,
           ),

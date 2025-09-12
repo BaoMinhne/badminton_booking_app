@@ -12,7 +12,7 @@ class CourtPage extends StatelessWidget {
         title: Text(
           'C O U R T',
           style: TextStyle(
-            fontSize: 24,
+            fontSize: 22,
             fontWeight: FontWeight.bold,
             color: Theme.of(context).colorScheme.onPrimary,
           ),

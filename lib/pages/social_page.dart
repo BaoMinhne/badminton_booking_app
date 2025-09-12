@@ -60,7 +60,7 @@ class SocialPage extends StatelessWidget {
                 child: Text(
                   'W A L L',
                   style: TextStyle(
-                    fontSize: 24,
+                    fontSize: 22,
                     fontWeight: FontWeight.bold,
                     color: Theme.of(context).colorScheme.onPrimary,
                   ),

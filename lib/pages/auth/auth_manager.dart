@@ -38,12 +38,14 @@ class AuthManager with ChangeNotifier {
     return _authService.login(email, password);
   }
 
-  Future<void> tryAutoLogin() async {
+  Future<bool> tryAutoLogin() async {
     final user = await _authService.getUserFromStore();
-    if (_loggedInUser != null) {
+    if (user != null) {
       _loggedInUser = user;
       notifyListeners();
+      return true;
     }
+    return false;
   }
 
   Future<void> logout() async {

@@ -1,4 +1,4 @@
-import 'package:badminton_booking_app/components/home/my_carousel.dart';
+import 'package:badminton_booking_app/components/my_carousel.dart';
 import 'package:badminton_booking_app/components/my_text_field.dart';
 import 'package:badminton_booking_app/pages/home/search_page.dart';
 import 'package:badminton_booking_app/utils/currency.dart';
@@ -192,7 +192,7 @@ class _QuickAction extends StatelessWidget {
       child: Material(
         color: cs.surface,
         borderRadius: BorderRadius.circular(12),
-        elevation: 1,
+        elevation: 5,
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(12),

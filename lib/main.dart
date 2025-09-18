@@ -1,3 +1,5 @@
+import 'package:badminton_booking_app/pages/nav_bar_page.dart';
+import 'package:badminton_booking_app/pages/user/user_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
@@ -9,24 +11,9 @@ import 'package:badminton_booking_app/themes/main_theme.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Load biến môi trường trước khi khởi tạo Provider/AuthService
   await dotenv.load(fileName: ".env");
 
-  runApp(const AppRoot());
-}
-
-class AppRoot extends StatelessWidget {
-  const AppRoot({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => AuthManager()),
-      ],
-      child: const MyApp(),
-    );
-  }
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -34,10 +21,38 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: mainTheme,
-      home: LoginPage(), // các màn khác đều thấy được AuthManager
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (ctx) => AuthManager(),
+        ),
+        ChangeNotifierProvider(
+          create: (ctx) => UserManager(),
+        ),
+      ],
+      child: Consumer<AuthManager>(
+        builder: (ctx, authManager, child) {
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            theme: mainTheme,
+            home: authManager.isAuth
+                ? NavBarPage()
+                : FutureBuilder<bool>(
+                    future: authManager.tryAutoLogin(),
+                    builder: (ctx, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Scaffold(
+                          body: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+                      return snapshot.data == true
+                          ? NavBarPage()
+                          : const LoginPage();
+                    },
+                  ),
+          );
+        },
+      ),
     );
   }
 }

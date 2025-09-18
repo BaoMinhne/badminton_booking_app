@@ -28,16 +28,25 @@ class AuthService {
     final pb = await getPocketbaseInstance();
 
     try {
-      final record = await pb.collection('users').create(body: {
+      // 1) Tạo user auth
+      final userRec = await pb.collection('users').create(body: {
         'email': email,
         'password': password,
+        'passwordConfirm': password,
         'phone': phone,
         'username': username,
-        'passwordConfirm': password,
         'role': 'user',
       });
 
-      return User.fromJson(record.toJson());
+      await pb.collection('users').authWithPassword(email, password);
+
+      await pb.collection('user_details').create(body: {
+        'user_id': pb.authStore.model.id,
+      });
+
+      await pb.collection('users').requestVerification(email);
+
+      return User.fromJson(userRec.toJson());
     } catch (error) {
       if (error is ClientException) {
         throw Exception(error.response['message']);

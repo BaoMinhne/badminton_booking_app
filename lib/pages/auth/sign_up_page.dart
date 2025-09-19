@@ -23,6 +23,7 @@ class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController confirmPWController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
+  String? _completePhoneNumber;
   final GlobalKey<FormState> _formKey = GlobalKey();
 
   @override
@@ -53,7 +54,8 @@ class _SignUpPageState extends State<SignUpPage> {
     try {
       final email = emailController.text.trim();
       final password = passwdController.text;
-      final phone = phoneController.text.trim();
+      final rawPhone = _completePhoneNumber ?? phoneController.text;
+      final phone = rawPhone.replaceAll(RegExp(r'\s+'), '');
       final username = nameController.text.trim();
 
       // Sign user up
@@ -151,6 +153,13 @@ class _SignUpPageState extends State<SignUpPage> {
                               ),
                             ),
                             initialCountryCode: 'VN',
+                            onChanged: (phone) =>
+                                _completePhoneNumber = phone.completeNumber,
+                            onSaved: (phone) {
+                              if (phone != null) {
+                                _completePhoneNumber = phone.completeNumber;
+                              }
+                            },
                             validator: (v) {
                               final value = v?.completeNumber ?? '';
                               if (value.trim().isEmpty) {

@@ -57,7 +57,7 @@ class _LoginPageState extends State<LoginPage> {
         MaterialPageRoute(builder: (_) => const NavBarPage()),
       );
     } catch (e, st) {
-      log('signup error: $e', stackTrace: st);
+      log('login error: $e', stackTrace: st);
       if (!mounted) return;
       showErrorDialog(context, e.toString());
     } finally {

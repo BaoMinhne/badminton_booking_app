@@ -19,6 +19,21 @@ class AuthService {
     }
   }
 
+  Future<void> _ensureUserDetailsRecord(PocketBase pb, String userId) async {
+    try {
+      await pb.collection('user_details').getFirstListItem("user_id='$userId'");
+    } on ClientException catch (error) {
+      final response = error.response;
+      final code =
+          response is Map<String, dynamic> ? response['code'] as int? : null;
+      if (code == 404) {
+        await pb.collection('user_details').create(body: {'user_id': userId});
+      } else {
+        rethrow;
+      }
+    }
+  }
+
   Future<User> signup(
     String email,
     String password,
@@ -29,7 +44,7 @@ class AuthService {
 
     try {
       // 1) Tạo user auth
-      final userRec = await pb.collection('users').create(body: {
+      await pb.collection('users').create(body: {
         'email': email,
         'password': password,
         'passwordConfirm': password,
@@ -38,15 +53,15 @@ class AuthService {
         'role': 'user',
       });
 
-      await pb.collection('users').authWithPassword(email, password);
+      final authResult =
+          await pb.collection('users').authWithPassword(email, password);
+      final userRecord = authResult.record;
 
-      await pb.collection('user_details').create(body: {
-        'user_id': pb.authStore.model.id,
-      });
+      await _ensureUserDetailsRecord(pb, userRecord.id);
 
       await pb.collection('users').requestVerification(email);
 
-      return User.fromJson(userRec.toJson());
+      return User.fromJson(userRecord.toJson());
     } catch (error) {
       if (error is ClientException) {
         throw Exception(error.response['message']);
@@ -79,7 +94,7 @@ class AuthService {
     final pb = await getPocketbaseInstance();
     final model = pb.authStore.record;
 
-    if (model == null) {
+    if (model == null || !pb.authStore.isValid) {
       return null;
     }
 

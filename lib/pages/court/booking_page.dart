@@ -1,4 +1,3 @@
-import 'package:badminton_booking_app/components/my_button.dart';
 import 'package:badminton_booking_app/components/my_court_time.dart';
 import 'package:badminton_booking_app/pages/court/payment_page.dart';
 import 'package:flutter/material.dart';
@@ -36,21 +35,7 @@ class _BookingPageState extends State<BookingPage> {
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
-// somewhere in your page:
-    final start = DateTime(
-      _selectedDate.year,
-      _selectedDate.month,
-      _selectedDate.day,
-      7,
-      0,
-    );
-    final end = DateTime(
-      _selectedDate.year,
-      _selectedDate.month,
-      _selectedDate.day,
-      22,
-      0,
-    );
+
     final cs = Theme.of(context).colorScheme;
     final headerH = screenHeight / 4;
 

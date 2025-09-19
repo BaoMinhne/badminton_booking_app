@@ -48,9 +48,14 @@ class UserDetailsService {
       final rec = await pb.collection(collection).getFirstListItem(
             "user_id='$userId'",
           );
-      return UserDetails.fromJson(rec.toJson());
-    } catch (_) {
-      return null;
+      final data = rec.toJson();
+      final avatarName = (data['avatar'] as String?) ?? '';
+      final avatarUrl = avatarName.isEmpty
+          ? null
+          : pb.files.getUrl(rec, avatarName).toString();
+      return UserDetails.fromJson(data, avatarUrl: avatarUrl);
+    } catch (e) {
+      throw Exception('getByUserId error: $e');
     }
   }
 
@@ -83,7 +88,6 @@ class UserDetailsService {
         files: [multipart],
       );
 
-      // lấy tên file và build URL hiển thị
       final avatarName = updated.getStringValue('avatar');
       if (avatarName.isEmpty) return null;
 

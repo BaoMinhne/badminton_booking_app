@@ -11,7 +11,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final _searchCtrl = TextEditingController();
+  final TextEditingController searchController = TextEditingController();
   final _banner = [
     'assets/images/court_cover.jpg',
     'https://picsum.photos/seed/promo1/1200/600',
@@ -21,11 +21,10 @@ class _HomePageState extends State<HomePage> {
     'https://picsum.photos/seed/promo5/1200/600',
   ];
   int _bannerIndex = 0;
-  final TextEditingController searchController = TextEditingController();
 
   @override
   void dispose() {
-    _searchCtrl.dispose();
+    searchController.dispose();
     super.dispose();
   }
 

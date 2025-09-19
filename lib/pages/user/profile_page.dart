@@ -31,7 +31,6 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _isUploading = false;
   UserDetails? _details;
   String? _avatarUrl;
-  String? _error;
   String? _username;
 
   @override
@@ -49,7 +48,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
       if (userID == null) {
         setState(() {
-          _error = 'Người dùng chưa đăng nhập.';
           _isLoading = false;
         });
         return;
@@ -60,14 +58,12 @@ class _ProfilePageState extends State<ProfilePage> {
       setState(() {
         _details = details;
         _avatarUrl = details?.avatarUrl;
-        _error = null;
         _isLoading = false;
         _username = user?.username ?? 'User';
       });
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _error = 'Không thể tải thông tin người dùng. Vui lòng thử lại.';
         _isLoading = false;
       });
     }

@@ -1,3 +1,5 @@
+import 'package:flutter/services.dart';
+import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import 'package:pocketbase/pocketbase.dart';
 
 import '../models/user.dart';
@@ -5,6 +7,9 @@ import '../models/user.dart';
 import 'pocketbase_client.dart';
 
 class AuthService {
+  static const _googleCallbackScheme = 'com.example.badminton_booking_app';
+  static const _googleRedirectUrl = '$_googleCallbackScheme://oauth-callback';
+
   void Function(User? user)? onAuthChange;
 
   AuthService({this.onAuthChange}) {
@@ -82,6 +87,50 @@ class AuthService {
         throw Exception(error.response['message']);
       }
       throw Exception('An error occurred');
+    }
+  }
+
+  Future<User> loginWithGoogle() async {
+    final pb = await getPocketbaseInstance();
+
+    try {
+      final authData = await pb.collection('users').authWithOAuth2(
+            'google',
+            (url) async {
+          final result = await FlutterWebAuth2.authenticate(
+            url: url.toString(),
+            callbackUrlScheme: _googleCallbackScheme,
+          );
+          return Uri.parse(result);
+        },
+        redirectUrl: _googleRedirectUrl,
+      );
+
+      final record = authData.record;
+      if (record == null) {
+        throw Exception('Không thể lấy thông tin người dùng từ Google.');
+      }
+
+      await _ensureUserDetailsRecord(pb, record.id);
+
+      return User.fromJson(record.toJson());
+    } on PlatformException catch (error) {
+      if (error.code == 'CANCELED' || error.code == 'CANCELLED') {
+        throw Exception('Đăng nhập Google đã bị hủy.');
+      }
+      throw Exception(error.message ?? 'Không thể đăng nhập bằng Google.');
+    } catch (error) {
+      if (error is ClientException) {
+        final response = error.response;
+        if (response is Map<String, dynamic>) {
+          final message = response['message']?.toString();
+          if (message != null && message.isNotEmpty) {
+            throw Exception(message);
+          }
+        }
+        throw Exception(error.message ?? 'Không thể đăng nhập bằng Google.');
+      }
+      throw Exception('Không thể đăng nhập bằng Google.');
     }
   }
 

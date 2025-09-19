@@ -38,6 +38,10 @@ class AuthManager with ChangeNotifier {
     return _authService.login(email, password);
   }
 
+  Future<User> loginWithGoogle() {
+    return _authService.loginWithGoogle();
+  }
+
   Future<bool> tryAutoLogin() async {
     final user = await _authService.getUserFromStore();
     if (user != null) {

@@ -21,15 +21,18 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController passwdController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey();
 
+  final ValueNotifier<bool> _isSubmitting = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> _isGoogleSubmitting = ValueNotifier<bool>(false);
+
   @override
   void dispose() {
     emailController.dispose();
     passwdController.dispose();
+    _isSubmitting.dispose();
+    _isGoogleSubmitting.dispose();
 
     super.dispose();
   }
-
-  final _isSubmitting = ValueNotifier<bool>(false);
 
   Future<void> _submit(BuildContext context) async {
     if (!_formKey.currentState!.validate()) {
@@ -62,6 +65,34 @@ class _LoginPageState extends State<LoginPage> {
       showErrorDialog(context, e.toString());
     } finally {
       _isSubmitting.value = false;
+    }
+  }
+
+  Future<void> _loginWithGoogle(BuildContext context) async {
+    _isGoogleSubmitting.value = true;
+
+    try {
+      await context.read<AuthManager>().loginWithGoogle();
+
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const NavBarPage()),
+      );
+    } catch (e, st) {
+      log('google login error: $e', stackTrace: st);
+      final message = e.toString();
+
+      if (!mounted) return;
+
+      if (message.contains('đã bị hủy') || message.contains('đã bị huỷ')) {
+        return;
+      }
+
+      showErrorDialog(context, message);
+    } finally {
+      _isGoogleSubmitting.value = false;
     }
   }
 
@@ -160,10 +191,21 @@ class _LoginPageState extends State<LoginPage> {
                         const SizedBox(height: 40),
                         ValueListenableBuilder<bool>(
                           valueListenable: _isSubmitting,
-                          builder: (_, loading, __) => MyButton(
-                            text: loading ? "Wait a second..." : "Login",
-                            onTap: loading ? null : () => _submit(context),
-                          ),
+                          builder: (_, loading, __) {
+                            return ValueListenableBuilder<bool>(
+                              valueListenable: _isGoogleSubmitting,
+                              builder: (_, googleLoading, __) {
+                                final isBusy = loading || googleLoading;
+                                return MyButton(
+                                  text: isBusy
+                                      ? "Wait a second..."
+                                      : "Login",
+                                  onTap:
+                                      isBusy ? null : () => _submit(context),
+                                );
+                              },
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -204,45 +246,74 @@ class _LoginPageState extends State<LoginPage> {
               ],
             ),
             const SizedBox(height: 40),
-            GestureDetector(
-              onTap: () {},
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 30),
-                child: Material(
-                  elevation: 2,
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 12),
-                    width: MediaQuery.of(context).size.width,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Image.asset(
-                          "assets/images/google_logo.png",
-                          height: 30,
-                          width: 30,
-                        ),
-                        const SizedBox(width: 12),
-                        const Text(
-                          'Sign in with Google',
-                          style: TextStyle(
-                            color: Colors.black54,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
+            ValueListenableBuilder<bool>(
+              valueListenable: _isGoogleSubmitting,
+              builder: (_, googleLoading, __) {
+                return ValueListenableBuilder<bool>(
+                  valueListenable: _isSubmitting,
+                  builder: (_, loading, __) {
+                    final isBusy = googleLoading || loading;
+                    return GestureDetector(
+                      onTap: isBusy ? null : () => _loginWithGoogle(context),
+                      child: Opacity(
+                        opacity: isBusy ? 0.8 : 1,
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 30),
+                          child: Material(
+                            elevation: 2,
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 12),
+                              width: MediaQuery.of(context).size.width,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                border:
+                                    Border.all(color: Colors.grey.shade300),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  if (googleLoading)
+                                    const SizedBox(
+                                      height: 26,
+                                      width: 26,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.5,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                                Colors.black54),
+                                      ),
+                                    )
+                                  else
+                                    Image.asset(
+                                      "assets/images/google_logo.png",
+                                      height: 30,
+                                      width: 30,
+                                    ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    googleLoading
+                                        ? 'Đang đăng nhập...'
+                                        : 'Sign in with Google',
+                                    style: const TextStyle(
+                                      color: Colors.black54,
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+                      ),
+                    );
+                  },
+                );
+              },
             )
           ],
         ),

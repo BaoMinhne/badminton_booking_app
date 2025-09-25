@@ -1,8 +1,11 @@
+import 'package:badminton_booking_app/models/court.dart';
 import 'package:badminton_booking_app/pages/court/court_detail.dart';
 import 'package:flutter/material.dart';
 
 class MyCourt extends StatefulWidget {
-  const MyCourt({super.key});
+  const MyCourt({super.key, required this.court});
+
+  final Court court;
 
   @override
   State<MyCourt> createState() => _MyCourtState();
@@ -21,6 +24,19 @@ class _MyCourtState extends State<MyCourt> {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final colorSchema = Theme.of(context).colorScheme;
+    final court = widget.court;
+    final courtName = court.name.isNotEmpty
+        ? court.name
+        : 'Sân không tên';
+    final location = court.location.isNotEmpty
+        ? court.location
+        : 'Địa chỉ chưa cập nhật';
+    final quantityText = court.courtQuantity > 0
+        ? '${court.courtQuantity} sân'
+        : 'Chưa rõ số sân';
+    final courtCode = court.code.isNotEmpty
+        ? court.code
+        : 'Chưa có mã';
 
     return GestureDetector(
       onTap: () {
@@ -49,12 +65,7 @@ class _MyCourtState extends State<MyCourt> {
                         topLeft: Radius.circular(20),
                         topRight: Radius.circular(20),
                       ),
-                      child: Image.asset(
-                        'assets/images/court_cover.jpg',
-                        width: screenWidth,
-                        height: 150,
-                        fit: BoxFit.cover,
-                      ),
+                      child: _buildCoverImage(screenWidth),
                     ),
                     Positioned(
                       top: 12,
@@ -88,10 +99,14 @@ class _MyCourtState extends State<MyCourt> {
                         height: 56,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(50),
-                          image: const DecorationImage(
-                            image:
-                                AssetImage("assets/images/badminton_logo.jpg"),
-                            fit: BoxFit.contain,
+                          image: DecorationImage(
+                            image: court.coverImageUrl != null
+                                ? NetworkImage(court.coverImageUrl!)
+                                    as ImageProvider
+                                : const AssetImage(
+                                    "assets/images/badminton_logo.jpg",
+                                  ),
+                            fit: BoxFit.cover,
                           ),
                         ),
                       ),
@@ -100,9 +115,9 @@ class _MyCourtState extends State<MyCourt> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              "CÂU LẠC BỘ PICKLEBALL C-CLUB",
-                              style: TextStyle(
+                            Text(
+                              courtName,
+                              style: const TextStyle(
                                 color: Color(0xFF0E5A3A),
                                 fontWeight: FontWeight.w800,
                                 fontSize: 16,
@@ -112,21 +127,11 @@ class _MyCourtState extends State<MyCourt> {
                               overflow: TextOverflow.ellipsis,
                             ),
                             Row(
-                              children: const [
-                                Text(
-                                  "(606.8m)",
-                                  style: TextStyle(
-                                    color: Color(0xFFE76E37),
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 14,
-                                    height: 1.2,
-                                  ),
-                                ),
-                                SizedBox(width: 6),
+                              children: [
                                 Expanded(
                                   child: Text(
-                                    "146H1 đường Trần Văn Hoài, P. Xuân Khánh, TP. Nha Trang",
-                                    style: TextStyle(
+                                    location,
+                                    style: const TextStyle(
                                       color: Colors.black54,
                                       fontWeight: FontWeight.w600,
                                       fontSize: 14,
@@ -140,23 +145,23 @@ class _MyCourtState extends State<MyCourt> {
                             ),
                             Row(
                               children: [
-                                const Icon(Icons.schedule,
+                                const Icon(Icons.sports_tennis,
                                     size: 16, color: Colors.black87),
                                 const SizedBox(width: 6),
-                                const Text(
-                                  "05:00 - 22:00",
-                                  style: TextStyle(
+                                Text(
+                                  quantityText,
+                                  style: const TextStyle(
                                     color: Colors.black87,
                                     fontWeight: FontWeight.w700,
                                     fontSize: 14,
                                   ),
                                 ),
                                 const SizedBox(width: 14),
-                                const Icon(Icons.call, size: 16),
+                                const Icon(Icons.qr_code, size: 16),
                                 const SizedBox(width: 6),
                                 Expanded(
                                   child: Text(
-                                    "0292 2246 777",
+                                    courtCode,
                                     style: TextStyle(
                                       color: colorSchema.primary,
                                       fontWeight: FontWeight.w700,
@@ -199,6 +204,41 @@ class _MyCourtState extends State<MyCourt> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildCoverImage(double screenWidth) {
+    final court = widget.court;
+    final placeholder = Image.asset(
+      'assets/images/court_cover.jpg',
+      width: screenWidth,
+      height: 150,
+      fit: BoxFit.cover,
+    );
+
+    final coverImageUrl = court.coverImageUrl;
+    if (coverImageUrl == null || coverImageUrl.isEmpty) {
+      return placeholder;
+    }
+
+    return Image.network(
+      coverImageUrl,
+      width: screenWidth,
+      height: 150,
+      fit: BoxFit.cover,
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return SizedBox(
+          width: screenWidth,
+          height: 150,
+          child: const Center(
+            child: CircularProgressIndicator(),
+          ),
+        );
+      },
+      errorBuilder: (context, error, stackTrace) {
+        return placeholder;
+      },
     );
   }
 }

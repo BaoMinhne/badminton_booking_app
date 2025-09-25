@@ -13,7 +13,6 @@ class UserDetail extends StatefulWidget {
 }
 
 class _UserDetailState extends State<UserDetail> {
-  final TextEditingController _userIdController = TextEditingController();
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _levelController = TextEditingController();
@@ -45,7 +44,8 @@ class _UserDetailState extends State<UserDetail> {
 
       if (userId == null) {
         setState(() {
-          _error = 'Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại.';
+          _error =
+              'Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại.';
           _isLoading = false;
         });
         return;
@@ -60,7 +60,7 @@ class _UserDetailState extends State<UserDetail> {
 
       if (!mounted) return;
 
-      _applyData(userId: userId, user: user, details: details);
+      _applyData(user: user, details: details);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -71,11 +71,9 @@ class _UserDetailState extends State<UserDetail> {
   }
 
   void _applyData({
-    required String userId,
     User? user,
     UserDetails? details,
   }) {
-    _userIdController.text = userId;
     _usernameController.text = user?.username ?? '';
     _fullNameController.text = details?.fullname ?? '';
     _levelController.text = details?.level ?? '';
@@ -85,7 +83,8 @@ class _UserDetailState extends State<UserDetail> {
     _genderController.text = details?.gender ?? '';
 
     if (details?.birthday != null) {
-      _birthdayController.text = DateFormat('dd/MM/yyyy').format(details!.birthday!);
+      _birthdayController.text =
+          DateFormat('dd/MM/yyyy').format(details!.birthday!);
     } else {
       _birthdayController.clear();
     }
@@ -98,7 +97,6 @@ class _UserDetailState extends State<UserDetail> {
 
   @override
   void dispose() {
-    _userIdController.dispose();
     _usernameController.dispose();
     _fullNameController.dispose();
     _levelController.dispose();
@@ -112,7 +110,8 @@ class _UserDetailState extends State<UserDetail> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Thông tin người dùng'),
+        title: const Text('D E T A I L'),
+        centerTitle: true,
         actions: [
           IconButton(
             onPressed: _isLoading ? null : _loadDetails,
@@ -167,8 +166,6 @@ class _UserDetailState extends State<UserDetail> {
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 24),
-          _buildField('ID người dùng', _userIdController,
-              helperText: 'ID hệ thống - không nên thay đổi.'),
           _buildField('Tên đăng nhập', _usernameController,
               helperText: 'Tên tài khoản PocketBase.'),
           _buildField('Họ và tên', _fullNameController,
@@ -181,6 +178,17 @@ class _UserDetailState extends State<UserDetail> {
               hintText: 'Ví dụ: male, female'),
           _buildField('Ngày sinh', _birthdayController,
               hintText: 'Định dạng dd/MM/yyyy'),
+          const SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: () {
+              // Chức năng lưu chưa được triển khai
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                    content: Text('Chức năng lưu chưa được hỗ trợ.')),
+              );
+            },
+            child: const Text('LƯU THAY ĐỔI'),
+          ),
         ],
       ),
     );

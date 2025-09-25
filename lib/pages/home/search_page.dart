@@ -20,14 +20,7 @@ class SearchPage extends StatelessWidget {
               margin: EdgeInsets.only(top: screenHeight / 13),
               padding: const EdgeInsets.only(top: 50, bottom: 40),
               child: ListView(
-                children: [
-                  MyCourt(),
-                  MyCourt(),
-                  MyCourt(),
-                  MyCourt(),
-                  MyCourt(),
-                  MyCourt(),
-                ],
+                children: [],
               )),
 
           // Title

@@ -29,4 +29,22 @@ class UserManager with ChangeNotifier {
   Future<String?> uploadAvatar(File file) {
     return _userService.uploadAvatar(file);
   }
+
+  Future<UserDetails> updateMyDetails({
+    String? fullname,
+    String? level,
+    List<String>? playStyles,
+    String? gender,
+    DateTime? birthday,
+  }) async {
+    final updated = await _userService.updateMyDetails(
+      fullname: fullname,
+      level: level,
+      playStyles: playStyles,
+      gender: gender,
+      birthday: birthday,
+    );
+    notifyListeners();
+    return updated;
+  }
 }

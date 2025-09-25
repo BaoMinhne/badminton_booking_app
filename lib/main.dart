@@ -1,3 +1,4 @@
+import 'package:badminton_booking_app/pages/court/court_manager.dart';
 import 'package:badminton_booking_app/pages/nav_bar_page.dart';
 import 'package:badminton_booking_app/pages/user/user_manager.dart';
 import 'package:flutter/material.dart';
@@ -28,6 +29,9 @@ class MyApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (ctx) => UserManager(),
+        ),
+        ChangeNotifierProvider(
+          create: (ctx) => CourtManager(),
         ),
       ],
       child: Consumer<AuthManager>(

@@ -106,4 +106,55 @@ class UserDetailsService {
     if (myId == null) return null;
     return getByUserId(myId);
   }
+
+  Future<UserDetails> updateMyDetails({
+    String? fullname,
+    String? level,
+    List<String>? playStyles,
+    String? gender,
+    DateTime? birthday,
+  }) async {
+    final pb = await getPocketbaseInstance();
+    final userId = pb.authStore.record?.id;
+
+    if (userId == null) {
+      throw Exception('Bạn chưa đăng nhập.');
+    }
+
+    final record = await _ensureUserDetails(pb, userId);
+
+    final String? sanitizedFullname =
+        fullname != null && fullname.trim().isNotEmpty
+            ? fullname.trim()
+            : null;
+    final String? sanitizedLevel =
+        level != null && level.trim().isNotEmpty ? level.trim() : null;
+    final String? sanitizedGender =
+        gender != null && gender.trim().isNotEmpty ? gender.trim() : null;
+    final List<String> sanitizedPlayStyles =
+        (playStyles ?? const <String>[])
+            .where((style) => style.trim().isNotEmpty)
+            .map((style) => style.trim())
+            .toList();
+
+    final updated = await pb.collection(collection).update(
+      record.id,
+      body: {
+        'user_id': userId,
+        'fullname': sanitizedFullname,
+        'level': sanitizedLevel,
+        'play_style': sanitizedPlayStyles,
+        'gender': sanitizedGender,
+        'birthday': birthday?.toIso8601String(),
+      },
+    );
+
+    final data = updated.toJson();
+    final avatarName = (data['avatar'] as String?) ?? '';
+    final avatarUrl = avatarName.isEmpty
+        ? null
+        : pb.files.getUrl(updated, avatarName).toString();
+
+    return UserDetails.fromJson(data, avatarUrl: avatarUrl);
+  }
 }

@@ -15,13 +15,34 @@ class UserDetail extends StatefulWidget {
 class _UserDetailState extends State<UserDetail> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _fullNameController = TextEditingController();
-  final TextEditingController _levelController = TextEditingController();
-  final TextEditingController _playStyleController = TextEditingController();
-  final TextEditingController _genderController = TextEditingController();
   final TextEditingController _birthdayController = TextEditingController();
 
+  static const List<String> _levelOptions = <String>[
+    'Beginner',
+    'Lower Intermediate',
+    'Intermediate',
+    'Upper Intermediate',
+    'Advanced',
+  ];
+
+  static const List<String> _playStyleOptions = <String>[
+    'singles',
+    'doubles',
+    'mixed',
+  ];
+
+  static const List<String> _genderOptions = <String>[
+    'male',
+    'female',
+  ];
+
   bool _isLoading = true;
+  bool _isSaving = false;
   String? _error;
+  String? _selectedLevel;
+  String? _selectedGender;
+  List<String> _selectedPlayStyles = <String>[];
+  DateTime? _selectedBirthday;
 
   @override
   void initState() {
@@ -74,22 +95,39 @@ class _UserDetailState extends State<UserDetail> {
     User? user,
     UserDetails? details,
   }) {
-    _usernameController.text = user?.username ?? '';
-    _fullNameController.text = details?.fullname ?? '';
-    _levelController.text = details?.level ?? '';
-    _playStyleController.text = (details?.playStyle ?? const [])
-        .where((style) => style.trim().isNotEmpty)
-        .join(', ');
-    _genderController.text = details?.gender ?? '';
+    if (user != null) {
+      _usernameController.text = user.username;
+    }
 
-    if (details?.birthday != null) {
-      _birthdayController.text =
-          DateFormat('dd/MM/yyyy').format(details!.birthday!);
+    final String? level =
+        (details?.level != null && details!.level!.trim().isNotEmpty)
+            ? details.level!.trim()
+            : null;
+    final String? gender =
+        (details?.gender != null && details!.gender!.trim().isNotEmpty)
+            ? details.gender!.trim()
+            : null;
+
+    final List<String> playStyles =
+        List<String>.from(details?.playStyle ?? const <String>[])
+            .where((style) => style.trim().isNotEmpty)
+            .toList();
+
+    final DateTime? birthday = details?.birthday;
+
+    _fullNameController.text = details?.fullname ?? '';
+
+    if (birthday != null) {
+      _birthdayController.text = DateFormat('dd/MM/yyyy').format(birthday);
     } else {
       _birthdayController.clear();
     }
 
     setState(() {
+      _selectedLevel = level;
+      _selectedGender = gender;
+      _selectedPlayStyles = List<String>.from(playStyles);
+      _selectedBirthday = birthday;
       _isLoading = false;
       _error = null;
     });
@@ -99,9 +137,6 @@ class _UserDetailState extends State<UserDetail> {
   void dispose() {
     _usernameController.dispose();
     _fullNameController.dispose();
-    _levelController.dispose();
-    _playStyleController.dispose();
-    _genderController.dispose();
     _birthdayController.dispose();
     super.dispose();
   }
@@ -166,28 +201,60 @@ class _UserDetailState extends State<UserDetail> {
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 24),
-          _buildField('Tên đăng nhập', _usernameController,
-              helperText: 'Tên tài khoản PocketBase.'),
-          _buildField('Họ và tên', _fullNameController,
-              hintText: 'Nhập họ tên của bạn'),
-          _buildField('Trình độ', _levelController,
-              hintText: 'Ví dụ: Beginner, Intermediate...'),
-          _buildField('Lối chơi yêu thích', _playStyleController,
-              hintText: 'Ví dụ: singles, doubles'),
-          _buildField('Giới tính', _genderController,
-              hintText: 'Ví dụ: male, female'),
-          _buildField('Ngày sinh', _birthdayController,
-              hintText: 'Định dạng dd/MM/yyyy'),
-          const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: () {
-              // Chức năng lưu chưa được triển khai
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content: Text('Chức năng lưu chưa được hỗ trợ.')),
-              );
+          _buildField(
+            'Tên đăng nhập',
+            _usernameController,
+            helperText: 'Tên tài khoản PocketBase.',
+            readOnly: true,
+          ),
+          _buildField(
+            'Họ và tên',
+            _fullNameController,
+            hintText: 'Nhập họ tên của bạn',
+          ),
+          _buildDropdownField(
+            label: 'Trình độ',
+            value: _selectedLevel,
+            options: _levelOptions,
+            hintText: 'Vui lòng chọn trình độ',
+            onChanged: (String? value) {
+              setState(() {
+                _selectedLevel = value;
+              });
             },
-            child: const Text('LƯU THAY ĐỔI'),
+          ),
+          _buildMultiSelectField(),
+          _buildDropdownField(
+            label: 'Giới tính',
+            value: _selectedGender,
+            options: _genderOptions,
+            hintText: 'Vui lòng chọn giới tính',
+            onChanged: (String? value) {
+              setState(() {
+                _selectedGender = value;
+              });
+            },
+          ),
+          _buildField(
+            'Ngày sinh',
+            _birthdayController,
+            hintText: 'Định dạng dd/MM/yyyy',
+            readOnly: true,
+            onTap: _pickBirthday,
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _isSaving ? null : _saveDetails,
+              child: _isSaving
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('LƯU THAY ĐỔI'),
+            ),
           ),
         ],
       ),
@@ -199,6 +266,8 @@ class _UserDetailState extends State<UserDetail> {
     TextEditingController controller, {
     String? hintText,
     String? helperText,
+    bool readOnly = false,
+    VoidCallback? onTap,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
@@ -215,6 +284,8 @@ class _UserDetailState extends State<UserDetail> {
           const SizedBox(height: 8),
           TextField(
             controller: controller,
+            readOnly: readOnly,
+            onTap: onTap,
             decoration: InputDecoration(
               hintText: hintText,
               helperText: helperText,
@@ -235,5 +306,194 @@ class _UserDetailState extends State<UserDetail> {
         ],
       ),
     );
+  }
+
+  Widget _buildDropdownField({
+    required String label,
+    required String? value,
+    required List<String> options,
+    required String hintText,
+    required ValueChanged<String?> onChanged,
+  }) {
+    final List<String> dropdownOptions = List<String>.from(options);
+    if (value != null && value.isNotEmpty && !dropdownOptions.contains(value)) {
+      dropdownOptions.insert(0, value);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: Theme.of(context)
+                .textTheme
+                .titleSmall
+                ?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<String>(
+            value:
+                value != null && dropdownOptions.contains(value) ? value : null,
+            decoration: InputDecoration(
+              hintText: hintText,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            ),
+            hint: Text(hintText),
+            items: dropdownOptions
+                .map(
+                  (String option) => DropdownMenuItem<String>(
+                    value: option,
+                    child: Text(_beautify(option)),
+                  ),
+                )
+                .toList(),
+            onChanged: (String? selected) {
+              onChanged(selected);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMultiSelectField() {
+    final List<String> options = List<String>.from(_playStyleOptions);
+    for (final String selected in _selectedPlayStyles) {
+      if (!options.contains(selected)) {
+        options.add(selected);
+      }
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: 'Lối chơi yêu thích',
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (_selectedPlayStyles.isEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  'Vui lòng chọn một hoặc nhiều lựa chọn bên dưới.',
+                  style: TextStyle(color: Theme.of(context).hintColor),
+                ),
+              ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: options.map((String option) {
+                final bool isSelected = _selectedPlayStyles.contains(option);
+                return FilterChip(
+                  label: Text(_beautify(option)),
+                  selected: isSelected,
+                  onSelected: (bool selected) {
+                    setState(() {
+                      if (selected) {
+                        if (!_selectedPlayStyles.contains(option)) {
+                          _selectedPlayStyles =
+                              List<String>.from(_selectedPlayStyles)
+                                ..add(option);
+                        }
+                      } else {
+                        _selectedPlayStyles = _selectedPlayStyles
+                            .where((String item) => item != option)
+                            .toList();
+                      }
+                    });
+                  },
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _beautify(String value) {
+    if (value.isEmpty) return value;
+    final List<String> parts = value.split(' ');
+    return parts
+        .map((String part) =>
+            part.isEmpty ? part : part[0].toUpperCase() + part.substring(1))
+        .join(' ');
+  }
+
+  Future<void> _pickBirthday() async {
+    FocusScope.of(context).unfocus();
+    final DateTime initialDate = _selectedBirthday ??
+        DateTime(DateTime.now().year - 18, DateTime.now().month,
+            DateTime.now().day);
+
+    final DateTime firstDate = DateTime(1900);
+    final DateTime lastDate = DateTime.now();
+
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate.isBefore(firstDate) ? firstDate : initialDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
+    );
+
+    if (picked != null) {
+      setState(() {
+        _selectedBirthday = picked;
+        _birthdayController.text = DateFormat('dd/MM/yyyy').format(picked);
+      });
+    }
+  }
+
+  Future<void> _saveDetails() async {
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      final userManager = context.read<UserManager>();
+      final updatedDetails = await userManager.updateMyDetails(
+        fullname: _fullNameController.text.trim(),
+        level: _selectedLevel,
+        playStyles: _selectedPlayStyles,
+        gender: _selectedGender,
+        birthday: _selectedBirthday,
+      );
+
+      if (!mounted) return;
+
+      _applyData(details: updatedDetails);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã cập nhật thông tin thành công.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content:
+              Text('Không thể lưu thông tin. Vui lòng thử lại sau. ($e)'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
   }
 }

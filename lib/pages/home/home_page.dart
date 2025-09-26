@@ -46,10 +46,20 @@ class _HomePageState extends State<HomePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  _GreetingHeader(
+                    onNotificationTap: () =>
+                        _toast(context, 'Thông báo sẽ sớm có mặt!'),
+                  ),
+                  const SizedBox(height: 18),
                   MyTextfield(
                     hintText: "Search for courts...",
                     controller: searchController,
-                    prefixIcon: Icon(Icons.search),
+                    prefixIcon: const Icon(Icons.search_rounded),
+                    suffixIcon: IconButton(
+                      onPressed: () => _toast(
+                          context, 'Bộ lọc nâng cao đang được hoàn thiện'),
+                      icon: const Icon(Icons.tune_rounded),
+                    ),
                     isReadOnly: true,
                     onTap: () {
                       Navigator.push(
@@ -74,13 +84,13 @@ class _HomePageState extends State<HomePage> {
                     label: 'Đặt sân',
                     onTap: () => _toast(context, 'Đi tới màn đặt sân (demo)'),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 12),
                   _QuickAction(
                     icon: Icons.history,
                     label: 'Lịch sử',
                     onTap: () => _toast(context, 'Mở Lịch sử đặt sân'),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 12),
                   _QuickAction(
                     icon: Icons.favorite_border,
                     label: 'Yêu thích',
@@ -155,6 +165,70 @@ class _SearchBar extends StatelessWidget {
   }
 }
 
+class _GreetingHeader extends StatelessWidget {
+  final VoidCallback onNotificationTap;
+  const _GreetingHeader({required this.onNotificationTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: cs.primary.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Icon(Icons.location_on_rounded, color: cs.primary),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Xin chào!',
+                style: textTheme.labelLarge?.copyWith(
+                  color: cs.onSurface.withOpacity(0.7),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Row(
+                children: [
+                  Icon(Icons.place_outlined,
+                      size: 18, color: cs.primary.withOpacity(0.9)),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      'Cần Thơ, Việt Nam',
+                      style: textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: cs.onSurface,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        IconButton(
+          onPressed: onNotificationTap,
+          icon: Icon(Icons.notifications_none_rounded,
+              color: cs.onSurface.withOpacity(0.7)),
+          splashRadius: 22,
+        ),
+      ],
+    );
+  }
+}
+
 class _ChipBtn extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -188,21 +262,52 @@ class _QuickAction extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Expanded(
-      child: Material(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(12),
-        elevation: 5,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                cs.primary.withOpacity(0.95),
+                cs.primary.withOpacity(0.75),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: cs.primary.withOpacity(0.2),
+                blurRadius: 18,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 14),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, size: 22, color: cs.primary),
-                const SizedBox(height: 6),
-                Text(label,
-                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: cs.onPrimary.withOpacity(0.16),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(icon, size: 20, color: cs.onPrimary),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: cs.onPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
               ],
             ),
           ),
@@ -220,17 +325,45 @@ class _SectionHeaderSliver extends StatelessWidget {
       {required this.title, this.actionText, this.onTap});
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
         child: Row(
           children: [
-            Text(title,
-                style:
-                    const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+            Container(
+              width: 4,
+              height: 24,
+              decoration: BoxDecoration(
+                color: cs.primary,
+                borderRadius: BorderRadius.circular(40),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              title,
+              style: const TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+              ),
+            ),
             const Spacer(),
             if (actionText != null)
-              TextButton(onPressed: onTap, child: Text(actionText!)),
+              TextButton(
+                onPressed: onTap,
+                style: TextButton.styleFrom(
+                  foregroundColor: cs.primary,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(actionText!),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.chevron_right, size: 18),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
@@ -371,28 +504,86 @@ class _UpcomingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Material(
-      color: cs.surface,
-      elevation: 1,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: hasBooking ? onTap : null,
-        borderRadius: BorderRadius.circular(12),
+    final highlight = hasBooking;
+    final textColor = highlight ? cs.onPrimary : cs.onSurface;
+    final subtitleColor =
+        highlight ? cs.onPrimary.withOpacity(0.8) : cs.onSurface.withOpacity(0.7);
+
+    return InkWell(
+      onTap: hasBooking ? onTap : null,
+      borderRadius: BorderRadius.circular(18),
+      child: Ink(
+        decoration: BoxDecoration(
+          gradient: highlight
+              ? LinearGradient(
+                  colors: [
+                    cs.primary,
+                    cs.primary.withOpacity(0.7),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : null,
+          color: highlight
+              ? null
+              : cs.surfaceVariant.withOpacity(0.65),
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            if (highlight)
+              BoxShadow(
+                color: cs.primary.withOpacity(0.18),
+                blurRadius: 24,
+                offset: const Offset(0, 12),
+              ),
+          ],
+        ),
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(18),
           child: Row(
             children: [
-              Icon(Icons.event_available, color: cs.primary),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  hasBooking
-                      ? 'Bạn có lịch Minh Nghĩa Badminton • 19:00–21:00 hôm nay'
-                      : 'Bạn chưa có lịch sắp tới. Đặt sân ngay!',
-                  style: const TextStyle(fontWeight: FontWeight.w600),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: highlight
+                      ? cs.onPrimary.withOpacity(0.18)
+                      : cs.primary.withOpacity(0.14),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(
+                  highlight ? Icons.event_available : Icons.event_busy,
+                  color: highlight ? cs.onPrimary : cs.primary,
+                  size: 24,
                 ),
               ),
-              const Icon(Icons.chevron_right),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      highlight ? 'Lịch chơi sắp tới' : 'Chưa có lịch chơi',
+                      style: TextStyle(
+                        color: textColor,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      highlight
+                          ? 'Bạn có lịch Minh Nghĩa Badminton • 19:00–21:00 hôm nay'
+                          : 'Đặt sân ngay để không bỏ lỡ khung giờ đẹp.',
+                      style: TextStyle(
+                        color: subtitleColor,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Icon(Icons.chevron_right, color: textColor),
             ],
           ),
         ),

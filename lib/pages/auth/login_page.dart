@@ -3,7 +3,6 @@ import 'dart:developer';
 import 'package:badminton_booking_app/components/my_button.dart';
 import 'package:badminton_booking_app/components/my_text_field.dart';
 import 'package:badminton_booking_app/pages/auth/auth_manager.dart';
-import 'package:badminton_booking_app/pages/nav_bar_page.dart';
 import 'package:badminton_booking_app/pages/auth/sign_up_page.dart';
 import 'package:badminton_booking_app/utils/dialog_utils.dart';
 import 'package:flutter/material.dart';
@@ -52,10 +51,7 @@ class _LoginPageState extends State<LoginPage> {
 
       if (!mounted) return;
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const NavBarPage()),
-      );
+      Navigator.of(context).popUntil((route) => route.isFirst);
     } catch (e, st) {
       log('login error: $e', stackTrace: st);
       if (!mounted) return;

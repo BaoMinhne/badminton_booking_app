@@ -54,6 +54,11 @@ class UserDetailsService {
           ? null
           : pb.files.getUrl(rec, avatarName).toString();
       return UserDetails.fromJson(data, avatarUrl: avatarUrl);
+    } on ClientException catch (e) {
+      if (e.statusCode == 404) {
+        return null;
+      }
+      rethrow;
     } catch (e) {
       throw Exception('getByUserId error: $e');
     }

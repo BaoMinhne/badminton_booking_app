@@ -26,6 +26,35 @@ class UserManager with ChangeNotifier {
     return _userService.getByUserId(userId);
   }
 
+  Future<UserDetails?> getMyDetails() {
+    return _userService.getMyDetails();
+  }
+
+  Future<bool> hasCompletedOnboarding() async {
+    final userId = await getCurrentUserId();
+    if (userId == null) {
+      return false;
+    }
+
+    final details = await getByUserId(userId);
+    if (details == null) {
+      return false;
+    }
+
+    return _isProfileComplete(details);
+  }
+
+  bool _isProfileComplete(UserDetails details) {
+    final hasFullname = details.fullname != null &&
+        details.fullname!.trim().isNotEmpty;
+    final hasLevel = details.level != null && details.level!.trim().isNotEmpty;
+    final hasGender =
+        details.gender != null && details.gender!.trim().isNotEmpty;
+    final hasPlayStyles = details.playStyle.isNotEmpty;
+
+    return hasFullname && hasLevel && hasGender && hasPlayStyles;
+  }
+
   Future<String?> uploadAvatar(File file) {
     return _userService.uploadAvatar(file);
   }

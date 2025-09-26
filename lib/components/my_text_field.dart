@@ -30,27 +30,39 @@ class MyTextfield extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      elevation: 6,
-      borderRadius: BorderRadius.circular(14),
-      child: TextFormField(
-        onTap: onTap,
-        controller: controller,
-        obscureText: obscureText,
-        keyboardType: keyboardType,
-        enabled: enabled,
-        readOnly: isReadOnly,
-        maxLines: obscureText ? 1 : maxLines,
-        decoration: InputDecoration(
-          hintText: hintText,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(5),
-          ),
-          prefixIcon: prefixIcon,
-          suffixIcon: suffixIcon,
+    final cs = Theme.of(context).colorScheme;
+    final radius = BorderRadius.circular(18);
+
+    return TextFormField(
+      onTap: onTap,
+      controller: controller,
+      obscureText: obscureText,
+      keyboardType: keyboardType,
+      enabled: enabled,
+      readOnly: isReadOnly,
+      maxLines: obscureText ? 1 : maxLines,
+      decoration: InputDecoration(
+        hintText: hintText,
+        prefixIcon: prefixIcon,
+        suffixIcon: suffixIcon,
+        filled: true,
+        fillColor: cs.surfaceVariant.withOpacity(0.6),
+        contentPadding:
+            const EdgeInsets.symmetric(vertical: 18, horizontal: 18),
+        border: OutlineInputBorder(
+          borderRadius: radius,
+          borderSide: BorderSide(color: cs.outline.withOpacity(0.15)),
         ),
-        validator: validator,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: radius,
+          borderSide: BorderSide(color: cs.outline.withOpacity(0.12)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: radius,
+          borderSide: BorderSide(color: cs.primary, width: 1.6),
+        ),
       ),
+      validator: validator,
     );
   }
 }

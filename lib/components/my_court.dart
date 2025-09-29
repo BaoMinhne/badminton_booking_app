@@ -42,7 +42,12 @@ class _MyCourtState extends State<MyCourt> {
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => CourtDetail()),
+          MaterialPageRoute(
+            builder: (context) => CourtDetail(
+              courtId: court.id,
+              initialCourt: court,
+            ),
+          ),
         );
       },
       child: Padding(

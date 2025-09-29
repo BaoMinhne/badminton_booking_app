@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 class ServicePrice {
   final String name; // Tên dịch vụ: "Thuê sân đơn"
   final String unit; // Đơn vị: "giờ", "buổi", "set", ...
-  final int price; // Giá: 120000
+  final int? price; // Giá: 120000
   final bool isPeak; // Có phải giờ cao điểm?
   final String? note; // Ghi chú (tuỳ chọn)
 
@@ -20,11 +20,13 @@ class ServicePrice {
 class PricingTableMini extends StatelessWidget {
   final String title;
   final List<ServicePrice> items;
+  final List<String> units;
 
   const PricingTableMini({
     super.key,
     this.title = "Bảng giá dịch vụ",
     required this.items,
+    this.units = const [],
   });
 
   @override
@@ -44,6 +46,29 @@ class PricingTableMini extends StatelessWidget {
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         const SizedBox(height: 12),
 
+        if (units.isNotEmpty) ...[
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: units
+                  .map(
+                    (unit) => Chip(
+                      label: Text(unit),
+                      backgroundColor: cs.primary.withOpacity(0.12),
+                      labelStyle: TextStyle(
+                        color: cs.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+
         // Khung bảng
         Container(
           decoration: BoxDecoration(
@@ -57,7 +82,29 @@ class PricingTableMini extends StatelessWidget {
               _headerRow(context),
 
               // Dòng dữ liệu
-              for (final sp in sorted) _priceRow(context, sp),
+              if (sorted.isEmpty)
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline,
+                          size: 18, color: cs.onSurface.withOpacity(0.6)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Sân chưa cập nhật bảng giá.',
+                          style: TextStyle(
+                            color: cs.onSurface.withOpacity(0.75),
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                for (final sp in sorted) _priceRow(context, sp),
             ],
           ),
         ),
@@ -149,7 +196,7 @@ class PricingTableMini extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                formatVND(sp.price),
+                sp.price != null ? formatVND(sp.price!) : 'Liên hệ',
                 style: TextStyle(
                   fontWeight: FontWeight.w700,
                   color: cs.primary,

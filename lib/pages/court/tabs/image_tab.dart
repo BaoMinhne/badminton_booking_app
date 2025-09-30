@@ -4,21 +4,46 @@ class CourtImageGallery extends StatelessWidget {
   final List<String> images;
   final double spacing;
   final int crossAxisCount;
+  final bool isLoading;
+  final String? errorMessage;
+  final VoidCallback? onRetry;
+  final String emptyMessage;
 
   const CourtImageGallery({
     super.key,
     required this.images,
     this.spacing = 8,
     this.crossAxisCount = 3,
+    this.isLoading = false,
+    this.errorMessage,
+    this.onRetry,
+    this.emptyMessage = 'Chưa có hình ảnh',
   });
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
+    if (errorMessage != null) {
+      return _MessageView(
+        icon: Icons.error_outline,
+        color: Colors.redAccent,
+        message: 'Không thể tải hình ảnh.\n$errorMessage',
+        action: onRetry,
+      );
+    }
+
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     if (images.isEmpty) {
-      return Center(
-        child: Text('Chưa có hình ảnh', style: TextStyle(color: cs.primary)),
+      return _MessageView(
+        icon: Icons.photo_library_outlined,
+        color: cs.primary,
+        message: emptyMessage,
+        action: onRetry,
+        actionLabel: 'Tải lại',
       );
     }
 
@@ -52,6 +77,53 @@ class CourtImageGallery extends StatelessWidget {
             },
           );
         },
+      ),
+    );
+  }
+}
+
+class _MessageView extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String message;
+  final VoidCallback? action;
+  final String actionLabel;
+
+  const _MessageView({
+    required this.icon,
+    required this.color,
+    required this.message,
+    this.action,
+    this.actionLabel = 'Thử lại',
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 44),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(color: color),
+              textAlign: TextAlign.center,
+            ),
+            if (action != null) ...[
+              const SizedBox(height: 12),
+              FilledButton(
+                onPressed: action,
+                child: Text(actionLabel),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

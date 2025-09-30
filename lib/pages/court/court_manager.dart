@@ -18,6 +18,7 @@ class CourtManager with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   List<Court> get courts => List.unmodifiable(_courts);
+  CourtService get courtService => _courtService;
 
   Future<void> loadCourts({bool forceRefresh = false}) async {
     if (_isLoading) return;

@@ -71,7 +71,10 @@ class _CourtDetailState extends State<CourtDetail>
     } catch (error) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = error.toString();
+        _errorMessage = _describeError(
+          error,
+          fallback: 'Không thể tải thông tin sân. Vui lòng thử lại.',
+        );
         _isLoading = false;
       });
     }
@@ -392,6 +395,26 @@ class _CourtDetailState extends State<CourtDetail>
         Container(color: Colors.black.withOpacity(0.15)),
       ],
     );
+  }
+
+  String _describeError(Object error, {required String fallback}) {
+    if (error is CourtServiceException) {
+      return error.message;
+    }
+
+    final message = error.toString();
+    if (message.startsWith('Exception:')) {
+      final trimmed = message.substring('Exception:'.length).trim();
+      if (trimmed.isNotEmpty) {
+        return trimmed;
+      }
+    }
+
+    if (message.isNotEmpty) {
+      return message;
+    }
+
+    return fallback;
   }
 
   List<String> _buildDefaultRules() {

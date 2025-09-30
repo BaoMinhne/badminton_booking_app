@@ -125,159 +125,155 @@ class _ReviewTabState extends State<ReviewTab> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    return Column(
-      children: [
-        // ===== Header: Tổng quan điểm & phân bố sao =====
-        Container(
-          margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: cs.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: cs.outline.withOpacity(0.6)),
+    final header = Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: cs.outline.withOpacity(0.6)),
+      ),
+      child: Row(
+        children: [
+          // Tổng điểm
+          Expanded(
+            flex: 4,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(_avg.toStringAsFixed(1),
+                    style: const TextStyle(
+                        fontSize: 32, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 4),
+                StarRow(rating: _avg, size: 20),
+                const SizedBox(height: 4),
+                Text('${_reviews.length} đánh giá',
+                    style: TextStyle(color: cs.onSurface.withOpacity(0.7))),
+              ],
+            ),
           ),
-          child: Row(
-            children: [
-              // Tổng điểm
-              Expanded(
-                flex: 4,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(_avg.toStringAsFixed(1),
-                        style: const TextStyle(
-                            fontSize: 32, fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 4),
-                    StarRow(rating: _avg, size: 20),
-                    const SizedBox(height: 4),
-                    Text('${_reviews.length} đánh giá',
-                        style: TextStyle(
-                          color: cs.onSurface.withOpacity(0.7),
-                        )),
-                  ],
-                ),
-              ),
-              // Phân bố sao
-              Expanded(
-                flex: 6,
-                child: Column(
-                  children: List.generate(5, (i) {
-                    final star = 5 - i;
-                    final total = _reviews.isEmpty ? 1 : _reviews.length;
-                    final count = _dist[star];
-                    final ratio = count / total;
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 3),
-                      child: Row(
-                        children: [
-                          SizedBox(
-                              width: 42,
-                              child: Text('$star sao',
-                                  style: const TextStyle(fontSize: 12))),
-                          Expanded(
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(20),
-                              child: LinearProgressIndicator(
-                                value: ratio,
-                                minHeight: 8,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          SizedBox(
-                              width: 28,
-                              child: Text('$count',
-                                  textAlign: TextAlign.right,
-                                  style: const TextStyle(fontSize: 12))),
-                        ],
+          // Phân bố sao
+          Expanded(
+            flex: 6,
+            child: Column(
+              children: List.generate(5, (i) {
+                final star = 5 - i;
+                final total = _reviews.isEmpty ? 1 : _reviews.length;
+                final count = _dist[star];
+                final ratio = count / total;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 3),
+                  child: Row(
+                    children: [
+                      const SizedBox(
+                          width: 42, child: Text('')), // giữ layout gọn
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: LinearProgressIndicator(
+                              value: ratio, minHeight: 8),
+                        ),
                       ),
-                    );
-                  }),
-                ),
-              ),
+                      const SizedBox(width: 8),
+                      SizedBox(
+                          width: 28,
+                          child: Text('$count', textAlign: TextAlign.right)),
+                    ],
+                  ),
+                );
+              }),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    final filters = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          PopupMenuButton<int>(
+            tooltip: 'Lọc theo số sao',
+            position: PopupMenuPosition.under,
+            onSelected: (v) => setState(() => _filterStars = v),
+            itemBuilder: (_) => [
+              const PopupMenuItem(value: 0, child: Text('Tất cả')),
+              for (int s = 5; s >= 1; s--)
+                PopupMenuItem(value: s, child: Text('$s sao')),
+            ],
+            child: _FilterChipLike(
+                label: _filterStars == 0 ? 'Tất cả' : '${_filterStars} sao'),
+          ),
+          const SizedBox(width: 8),
+          DropdownButton<_SortBy>(
+            value: _sortBy,
+            onChanged: (v) => setState(() => _sortBy = v ?? _SortBy.newest),
+            items: const [
+              DropdownMenuItem(value: _SortBy.newest, child: Text('Mới nhất')),
+              DropdownMenuItem(
+                  value: _SortBy.highest, child: Text('Sao cao nhất')),
+              DropdownMenuItem(
+                  value: _SortBy.lowest, child: Text('Sao thấp nhất')),
+              DropdownMenuItem(
+                  value: _SortBy.mostLiked, child: Text('Được thích nhiều')),
             ],
           ),
-        ),
-
-        // ===== Bộ lọc & sắp xếp + nút viết đánh giá =====
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: [
-              // Filter theo sao
-              PopupMenuButton<int>(
-                tooltip: 'Lọc theo số sao',
-                position: PopupMenuPosition.under,
-                onSelected: (v) => setState(() => _filterStars = v),
-                itemBuilder: (_) => [
-                  const PopupMenuItem(value: 0, child: Text('Tất cả')),
-                  for (int s = 5; s >= 1; s--)
-                    PopupMenuItem(value: s, child: Text('$s sao')),
-                ],
-                child: _FilterChipLike(
-                  label: _filterStars == 0 ? 'Tất cả' : '${_filterStars} sao',
-                ),
-              ),
-              const SizedBox(width: 8),
-              // Sort
-              DropdownButton<_SortBy>(
-                value: _sortBy,
-                onChanged: (v) => setState(() => _sortBy = v ?? _SortBy.newest),
-                items: const [
-                  DropdownMenuItem(
-                    value: _SortBy.newest,
-                    child: Text('Mới nhất'),
-                  ),
-                  DropdownMenuItem(
-                    value: _SortBy.highest,
-                    child: Text('Sao cao nhất'),
-                  ),
-                  DropdownMenuItem(
-                    value: _SortBy.lowest,
-                    child: Text('Sao thấp nhất'),
-                  ),
-                  DropdownMenuItem(
-                    value: _SortBy.mostLiked,
-                    child: Text('Được thích nhiều'),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              TextButton.icon(
-                onPressed: () => _openWriteReview(context),
-                icon: const Icon(Icons.edit_outlined),
-                label: const Text('Viết đánh giá'),
-              ),
-            ],
+          const Spacer(),
+          TextButton.icon(
+            onPressed: () => _openWriteReview(context),
+            icon: const Icon(Icons.edit_outlined),
+            label: const Text('Viết đánh giá'),
           ),
-        ),
+        ],
+      ),
+    );
 
-        const SizedBox(height: 8),
+    final visible = _visible;
 
-        // ===== Danh sách đánh giá =====
-        Expanded(
-          child: _visible.isEmpty
-              ? _EmptyState(
-                  message: _reviews.isEmpty
-                      ? 'Chưa có đánh giá. Hãy là người đầu tiên!'
-                      : 'Không có mục nào khớp bộ lọc.')
-              : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                  itemBuilder: (_, i) => ReviewCard(
-                    review: _visible[i],
-                    onLike: () => _toggleLike(_visible[i].id),
-                    onReport: () => _report(_visible[i]),
+    return CustomScrollView(
+      // để NestedScrollView điều phối cuộn mượt
+      slivers: [
+        SliverToBoxAdapter(child: header),
+        SliverToBoxAdapter(child: const SizedBox(height: 8)),
+        SliverToBoxAdapter(child: filters),
+        SliverToBoxAdapter(child: const SizedBox(height: 8)),
+        if (visible.isEmpty)
+          // Lấp phần còn lại, không cuộn thêm → không overflow
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: _EmptyState(
+              message: _reviews.isEmpty
+                  ? 'Chưa có đánh giá. Hãy là người đầu tiên!'
+                  : 'Không có mục nào khớp bộ lọc.',
+            ),
+          )
+        else
+          // Danh sách đánh giá (có ngăn cách)
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                if (index.isOdd) {
+                  return Divider(
+                      height: 16, color: cs.outline.withOpacity(0.2));
+                }
+                final i = index ~/ 2;
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                  child: ReviewCard(
+                    review: visible[i],
+                    onLike: () => _toggleLike(visible[i].id),
+                    onReport: () => _report(visible[i]),
                   ),
-                  separatorBuilder: (_, __) => Divider(
-                    height: 16,
-                    color: cs.outline.withOpacity(0.2),
-                  ),
-                  itemCount: _visible.length,
-                ),
-        ),
+                );
+              },
+              childCount: visible.length * 2 - 1,
+            ),
+          ),
+        const SliverToBoxAdapter(child: SizedBox(height: 16)),
       ],
     );
   }

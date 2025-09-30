@@ -42,7 +42,7 @@ class _CourtDetailState extends State<CourtDetail>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final manager = Provider.maybeOf<CourtManager>(context);
+    final manager = Provider.of<CourtManager>(context);
     if (manager == null) return;
 
     final updatedCourt = _findCourtById(manager);
@@ -207,9 +207,8 @@ class _CourtDetailState extends State<CourtDetail>
   Widget _infoCard(BuildContext context, ColorScheme cs) {
     final court = _detailData.court;
     final textTheme = Theme.of(context).textTheme;
-    final location = court.location.isNotEmpty
-        ? court.location
-        : 'Địa chỉ đang cập nhật';
+    final location =
+        court.location.isNotEmpty ? court.location : 'Địa chỉ đang cập nhật';
     final code = court.code.isNotEmpty ? court.code : 'Đang cập nhật';
     final description = court.description?.trim();
     final openingText = _buildOpeningHoursText(_detailData.openingHours);
@@ -218,7 +217,8 @@ class _CourtDetailState extends State<CourtDetail>
         .map((unit) => unit.label.trim())
         .toList(growable: false);
 
-    final avatarImage = court.coverImageUrl != null && court.coverImageUrl!.isNotEmpty
+    final avatarImage = court.coverImageUrl != null &&
+            court.coverImageUrl!.isNotEmpty
         ? NetworkImage(court.coverImageUrl!)
         : const AssetImage('assets/images/badminton_logo.jpg') as ImageProvider;
 

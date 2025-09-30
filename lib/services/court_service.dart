@@ -41,7 +41,9 @@ class CourtService {
 
     final futures = <Future<ResultList<RecordModel>>>[
       pb.collection('court_images').getList(filter: filter, perPage: 100),
-      pb.collection('court_opening_hours').getList(filter: filter, perPage: 100),
+      pb
+          .collection('court_opening_hours')
+          .getList(filter: filter, perPage: 100),
       pb.collection('court_pricing').getList(filter: filter, perPage: 100),
       pb.collection('court_units').getList(filter: filter, perPage: 100),
     ];
@@ -65,9 +67,8 @@ class CourtService {
         .map(CourtPricing.fromRecord)
         .toList(growable: false);
 
-    final units = unitsResult.items
-        .map(CourtUnit.fromRecord)
-        .toList(growable: false);
+    final units =
+        unitsResult.items.map(CourtUnit.fromRecord).toList(growable: false);
 
     return CourtDetailData(
       court: court,

@@ -4,6 +4,15 @@ import '../models/court.dart';
 import '../models/court_detail.dart';
 import 'pocketbase_client.dart';
 
+class CourtServiceException implements Exception {
+  CourtServiceException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 class CourtService {
   static const collection = 'courts';
 
@@ -13,70 +22,112 @@ class CourtService {
     String? filter,
   }) async {
     final pb = await getPocketbaseInstance();
-    final result = await pb.collection(collection).getList(
-          page: page,
-          perPage: perPage,
-          filter: filter,
-        );
 
-    return result.items
-        .map((record) => _mapRecordToCourt(pb, record))
-        .toList(growable: false);
+    try {
+      final result = await pb.collection(collection).getList(
+            page: page,
+            perPage: perPage,
+            filter: filter,
+          );
+
+      return result.items
+          .map((record) => _mapRecordToCourt(pb, record))
+          .toList(growable: false);
+    } on ClientException catch (error) {
+      throw CourtServiceException(
+        _mapClientException(
+          error,
+          fallback: 'Không thể tải danh sách sân. Vui lòng thử lại sau.',
+        ),
+      );
+    } catch (_) {
+      throw CourtServiceException(
+        'Có lỗi xảy ra khi tải danh sách sân. Vui lòng thử lại.',
+      );
+    }
   }
 
   Future<Court> getCourt(String id) async {
     final pb = await getPocketbaseInstance();
-    final record = await pb.collection(collection).getOne(id);
-    return _mapRecordToCourt(pb, record);
+
+    try {
+      final record = await pb.collection(collection).getOne(id);
+      return _mapRecordToCourt(pb, record);
+    } on ClientException catch (error) {
+      throw CourtServiceException(
+        _mapClientException(
+          error,
+          fallback: 'Không thể tải thông tin sân. Vui lòng thử lại.',
+        ),
+      );
+    } catch (_) {
+      throw CourtServiceException(
+        'Đã xảy ra lỗi khi lấy thông tin sân. Vui lòng thử lại.',
+      );
+    }
   }
 
   Future<CourtDetailData> getCourtDetail(String id) async {
     final pb = await getPocketbaseInstance();
     final escapedId = _escapeFilterValue(id);
 
-    final courtRecord = await pb.collection(collection).getOne(id);
-    final court = _mapRecordToCourt(pb, courtRecord);
+    try {
+      final courtRecord = await pb.collection(collection).getOne(id);
+      final court = _mapRecordToCourt(pb, courtRecord);
 
-    final filter = "court_id='$escapedId'";
+      final filter = "court_id='$escapedId'";
 
-    final futures = <Future<ResultList<RecordModel>>>[
-      pb.collection('court_images').getList(filter: filter, perPage: 100),
-      pb
-          .collection('court_opening_hours')
-          .getList(filter: filter, perPage: 100),
-      pb.collection('court_pricing').getList(filter: filter, perPage: 100),
-      pb.collection('court_units').getList(filter: filter, perPage: 100),
-    ];
+      final futures = <Future<ResultList<RecordModel>>>[
+        pb.collection('court_images').getList(filter: filter, perPage: 100),
+        pb
+            .collection('court_opening_hours')
+            .getList(filter: filter, perPage: 100),
+        pb.collection('court_pricing').getList(filter: filter, perPage: 100),
+        pb.collection('court_units').getList(filter: filter, perPage: 100),
+      ];
 
-    final results = await Future.wait(futures);
+      final results = await Future.wait(futures);
 
-    final imageResult = results[0];
-    final openingHourResult = results[1];
-    final pricingResult = results[2];
-    final unitsResult = results[3];
+      final imageResult = results[0];
+      final openingHourResult = results[1];
+      final pricingResult = results[2];
+      final unitsResult = results[3];
 
-    final images = imageResult.items
-        .expand((record) => _extractFileUrls(pb, record, 'image'))
-        .toList(growable: false);
+      final images = imageResult.items
+          .expand((record) => _extractFileUrls(pb, record, 'image'))
+          .toList(growable: false);
 
-    final openingHours = openingHourResult.items
-        .map(CourtOpeningHour.fromRecord)
-        .toList(growable: false);
+      final openingHours = openingHourResult.items
+          .map(CourtOpeningHour.fromRecord)
+          .toList(growable: false);
 
-    final pricing = pricingResult.items
-        .map(CourtPricing.fromRecord)
-        .toList(growable: false);
+      final pricing = pricingResult.items
+          .map(CourtPricing.fromRecord)
+          .toList(growable: false);
 
-    final units =
-        unitsResult.items.map(CourtUnit.fromRecord).toList(growable: false);
+      final units =
+          unitsResult.items.map(CourtUnit.fromRecord).toList(growable: false);
 
-    return CourtDetailData(
-      court: court,
-      images: images,
-      openingHours: openingHours,
-      pricing: pricing,
-      units: units,
-    );
+      return CourtDetailData(
+        court: court,
+        images: images,
+        openingHours: openingHours,
+        pricing: pricing,
+        units: units,
+      );
+    } on ClientException catch (error) {
+      throw CourtServiceException(
+        _mapClientException(
+          error,
+          fallback:
+              'Không thể tải thông tin chi tiết của sân. Vui lòng thử lại sau.',
+        ),
+      );
+    } catch (_) {
+      throw CourtServiceException(
+        'Có lỗi xảy ra khi tải thông tin chi tiết của sân. Vui lòng thử lại.',
+      );
+    }
   }
 
   Court _mapRecordToCourt(PocketBase pb, RecordModel record) {
@@ -128,5 +179,52 @@ class CourtService {
 
   String _escapeFilterValue(String value) {
     return value.replaceAll("'", "\\'");
+  }
+
+  String _mapClientException(
+    ClientException error, {
+    required String fallback,
+  }) {
+    if (error.statusCode == 401 || error.statusCode == 403) {
+      return 'Phiên đăng nhập đã hết hạn hoặc bạn không có quyền truy cập dữ liệu này. '
+          'Vui lòng đăng nhập lại để tiếp tục.';
+    }
+
+    final response = error.response;
+    if (response is Map<String, dynamic>) {
+      final message = response['message'];
+      if (message is String && message.trim().isNotEmpty) {
+        return message.trim();
+      }
+
+      final data = response['data'];
+      if (data is Map<String, dynamic>) {
+        final buffer = StringBuffer();
+        data.forEach((key, value) {
+          if (value is Map<String, dynamic>) {
+            final detail = value['message'];
+            if (detail is String && detail.trim().isNotEmpty) {
+              if (buffer.isNotEmpty) buffer.writeln();
+              buffer.write(detail.trim());
+            }
+          }
+        });
+
+        if (buffer.isNotEmpty) {
+          return buffer.toString();
+        }
+      }
+    }
+
+    final rawMessage = error.toString();
+    final colonIndex = rawMessage.indexOf(':');
+    if (colonIndex != -1 && colonIndex + 1 < rawMessage.length) {
+      final candidate = rawMessage.substring(colonIndex + 1).trim();
+      if (candidate.isNotEmpty) {
+        return candidate;
+      }
+    }
+
+    return fallback;
   }
 }

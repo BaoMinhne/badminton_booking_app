@@ -25,18 +25,13 @@ class _MyCourtState extends State<MyCourt> {
     final screenWidth = MediaQuery.of(context).size.width;
     final colorSchema = Theme.of(context).colorScheme;
     final court = widget.court;
-    final courtName = court.name.isNotEmpty
-        ? court.name
-        : 'Sân không tên';
-    final location = court.location.isNotEmpty
-        ? court.location
-        : 'Địa chỉ chưa cập nhật';
+    final courtName = court.name.isNotEmpty ? court.name : 'Sân không tên';
+    final location =
+        court.location.isNotEmpty ? court.location : 'Địa chỉ chưa cập nhật';
     final quantityText = court.courtQuantity > 0
         ? '${court.courtQuantity} sân'
         : 'Chưa rõ số sân';
-    final courtCode = court.code.isNotEmpty
-        ? court.code
-        : 'Chưa có mã';
+    final courtPhone = court.phone.isNotEmpty ? court.phone : 'Chưa có số ĐT';
 
     return GestureDetector(
       onTap: () {
@@ -158,12 +153,21 @@ class _MyCourtState extends State<MyCourt> {
                                     fontSize: 14,
                                   ),
                                 ),
-                                const SizedBox(width: 14),
-                                const Icon(Icons.qr_code, size: 16),
+                                const SizedBox(width: 7),
+                                Text(
+                                  '-',
+                                  style: const TextStyle(
+                                    color: Colors.black87,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                const SizedBox(width: 7),
+                                const Icon(Icons.phone, size: 15),
                                 const SizedBox(width: 6),
                                 Expanded(
                                   child: Text(
-                                    courtCode,
+                                    courtPhone,
                                     style: TextStyle(
                                       color: colorSchema.primary,
                                       fontWeight: FontWeight.w700,

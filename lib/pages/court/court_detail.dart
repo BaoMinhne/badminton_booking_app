@@ -195,13 +195,6 @@ class _CourtDetailState extends State<CourtDetail>
         ),
       ],
       flexibleSpace: FlexibleSpaceBar(
-        title: Text(
-          _detailData.court.name.isNotEmpty
-              ? _detailData.court.name
-              : 'Thông tin sân',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
         background: _buildHeaderImage(coverUrl),
       ),
     );

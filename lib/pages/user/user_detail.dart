@@ -436,8 +436,8 @@ class _UserDetailState extends State<UserDetail> {
   Future<void> _pickBirthday() async {
     FocusScope.of(context).unfocus();
     final DateTime initialDate = _selectedBirthday ??
-        DateTime(DateTime.now().year - 18, DateTime.now().month,
-            DateTime.now().day);
+        DateTime(
+            DateTime.now().year - 18, DateTime.now().month, DateTime.now().day);
 
     final DateTime firstDate = DateTime(1900);
     final DateTime lastDate = DateTime.now();
@@ -484,8 +484,7 @@ class _UserDetailState extends State<UserDetail> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content:
-              Text('Không thể lưu thông tin. Vui lòng thử lại sau. ($e)'),
+          content: Text('Không thể lưu thông tin. Vui lòng thử lại sau. ($e)'),
         ),
       );
     } finally {

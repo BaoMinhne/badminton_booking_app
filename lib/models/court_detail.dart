@@ -16,6 +16,22 @@ class CourtDetailData {
     this.pricing = const [],
     this.units = const [],
   });
+
+  CourtDetailData copyWith({
+    Court? court,
+    List<String>? images,
+    List<CourtOpeningHour>? openingHours,
+    List<CourtPricing>? pricing,
+    List<CourtUnit>? units,
+  }) {
+    return CourtDetailData(
+      court: court ?? this.court,
+      images: images ?? this.images,
+      openingHours: openingHours ?? this.openingHours,
+      pricing: pricing ?? this.pricing,
+      units: units ?? this.units,
+    );
+  }
 }
 
 class CourtOpeningHour {

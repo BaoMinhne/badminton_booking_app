@@ -5,6 +5,11 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+typedef CourtTimelineTapCallback = void Function(
+  String resourceId,
+  DateTime start,
+);
+
 /// Header kiểu “timeline” với vạch giờ & vạch 30’:
 /// - Mỗi ô (grid) = 1 giờ.
 /// - Header có LEADING INSET bên trái để label mốc đầu không bị cắt.
@@ -53,6 +58,8 @@ class CourtTimeline extends StatefulWidget {
     this.leftColumnWidth = 90, // cột tên sân (cố định)
     this.headerHeight = 56.0,
     this.headerLeadingInset = 24.0, // khoảng trống trái của HEADER
+    this.onSlotTap,
+    this.selectionStepMinutes = 30,
     DateTime? baseDate,
   }) : baseDate = baseDate ?? DateTime.now();
 
@@ -66,6 +73,8 @@ class CourtTimeline extends StatefulWidget {
   final double headerHeight;
   final double headerLeadingInset;
   final DateTime baseDate;
+  final CourtTimelineTapCallback? onSlotTap;
+  final int selectionStepMinutes;
 
   @override
   State<CourtTimeline> createState() => _CourtTimelineState();
@@ -82,6 +91,12 @@ class _CourtTimelineState extends State<CourtTimeline> {
   int get _slotCount {
     final diff = widget.endHour - widget.startHour;
     return diff <= 0 ? 1 : diff;
+  }
+
+  int get _selectionStep {
+    final step = widget.selectionStepMinutes;
+    if (step <= 0) return 30;
+    return step;
   }
 
   // tổng bề rộng phần NỘI DUNG (lưới)
@@ -245,21 +260,52 @@ class _CourtTimelineState extends State<CourtTimeline> {
                             height: widget.rowHeight,
                             child: LayoutBuilder(
                               builder: (context, constraints) {
-                                return Stack(
-                                  fit: StackFit.expand,
-                                  children: [
-                                    CustomPaint(
-                                      painter: _GridRowPainter(
-                                        totalSlots: _slotCount,
-                                        slotWidth: widget.slotWidth,
-                                        lineColor: const Color(0x33000000),
-                                        background: Colors.white,
+                                final totalMinutes = _timelineEnd
+                                    .difference(_timelineStart)
+                                    .inMinutes;
+                                return GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onTapUp: widget.onSlotTap == null
+                                      ? null
+                                      : (details) {
+                                          if (totalMinutes <= 0) return;
+                                          final dx = details.localPosition.dx;
+                                          final width = constraints.maxWidth;
+                                          if (width <= 0) return;
+                                          final clampedDx = dx.clamp(0.0, width);
+                                          final minutesFromStart =
+                                              (clampedDx / widget.slotWidth) * 60.0;
+                                          final minutesInt = minutesFromStart.floor();
+                                          final step = _selectionStep;
+                                          var snapped = (minutesInt ~/ step) * step;
+                                          final maxMinute = math.max(0, totalMinutes - step);
+                                          if (snapped > maxMinute) {
+                                            snapped = maxMinute;
+                                          }
+                                          if (snapped < 0) snapped = 0;
+                                          final tappedStart =
+                                              _timelineStart.add(Duration(minutes: snapped));
+                                          widget.onSlotTap!(
+                                            widget.rows[row].id,
+                                            tappedStart,
+                                          );
+                                        },
+                                  child: Stack(
+                                    fit: StackFit.expand,
+                                    children: [
+                                      CustomPaint(
+                                        painter: _GridRowPainter(
+                                          totalSlots: _slotCount,
+                                          slotWidth: widget.slotWidth,
+                                          lineColor: const Color(0x33000000),
+                                          background: Colors.white,
+                                        ),
                                       ),
-                                    ),
-                                    ..._buildRowEvents(
-                                      widget.rows[row].id,
-                                    ),
-                                  ],
+                                      ..._buildRowEvents(
+                                        widget.rows[row].id,
+                                      ),
+                                    ],
+                                  ),
                                 );
                               },
                             ),

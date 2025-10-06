@@ -23,9 +23,11 @@ class BookingService {
     final pb = await getPocketbaseInstance();
     final startOfDay = DateTime(day.year, day.month, day.day);
     final endOfDay = startOfDay.add(const Duration(days: 1));
+    final nowIso = DateTime.now().toUtc().toIso8601String();
     final filter = "court_id='${_escapeFilterValue(courtId)}' && "
         "end_time>'${startOfDay.toUtc().toIso8601String()}' && "
-        "start_time<'${endOfDay.toUtc().toIso8601String()}'";
+        "start_time<'${endOfDay.toUtc().toIso8601String()}' && "
+        "(status!='locked' || locked_until = null || locked_until>'$nowIso')";
 
     try {
       final result = await pb.collection(collection).getList(
@@ -58,13 +60,8 @@ class BookingService {
     String? note,
   }) async {
     final pb = await getPocketbaseInstance();
-
-    final model = pb.authStore.record;
-    if (!pb.authStore.isValid || model == null) {
-      throw BookingServiceException('Bạn cần đăng nhập để đặt sân.');
-    }
-
-    final userId = model.id;
+    final user = _requireAuth(pb, message: 'Bạn cần đăng nhập để đặt sân.');
+    final userId = user.id;
 
     try {
       final record = await pb.collection(collection).create(body: {
@@ -90,6 +87,109 @@ class BookingService {
         'Đã xảy ra lỗi khi tạo đặt sân. Vui lòng thử lại.',
       );
     }
+  }
+
+  Future<CourtBooking> lockSlot({
+    String? bookingId,
+    required String courtId,
+    required String courtUnitId,
+    required DateTime startTime,
+    required DateTime endTime,
+    Duration holdDuration = const Duration(minutes: 15),
+  }) async {
+    final pb = await getPocketbaseInstance();
+    final user = _requireAuth(pb, message: 'Bạn cần đăng nhập để giữ chỗ.');
+
+    final lockUntil = DateTime.now().toUtc().add(holdDuration);
+    final body = {
+      'court_id': courtId,
+      'court_unit_id': courtUnitId,
+      'user_id': user.id,
+      'start_time': startTime.toUtc().toIso8601String(),
+      'end_time': endTime.toUtc().toIso8601String(),
+      'status': 'locked',
+      'locked_until': lockUntil.toIso8601String(),
+    };
+
+    try {
+      final collectionApi = pb.collection(collection);
+      final record = bookingId == null
+          ? await collectionApi.create(body: body)
+          : await collectionApi.update(bookingId, body: body);
+      return CourtBooking.fromRecord(record);
+    } on ClientException catch (error) {
+      throw BookingServiceException(
+        _mapClientException(
+          error,
+          fallback:
+              'Không thể giữ chỗ cho khung giờ đã chọn. Vui lòng thử lại.',
+        ),
+      );
+    } catch (_) {
+      throw BookingServiceException(
+        'Đã xảy ra lỗi khi giữ chỗ. Vui lòng thử lại.',
+      );
+    }
+  }
+
+  Future<CourtBooking> confirmBooking({
+    required String bookingId,
+    String? note,
+  }) async {
+    final pb = await getPocketbaseInstance();
+    _requireAuth(pb, message: 'Phiên đăng nhập đã hết hạn.');
+
+    try {
+      final record = await pb.collection(collection).update(bookingId, body: {
+        'status': 'pending',
+        'locked_until': null,
+        if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+      });
+      return CourtBooking.fromRecord(record);
+    } on ClientException catch (error) {
+      throw BookingServiceException(
+        _mapClientException(
+          error,
+          fallback: 'Không thể gửi yêu cầu đặt sân. Vui lòng thử lại sau.',
+        ),
+      );
+    } catch (_) {
+      throw BookingServiceException(
+        'Đã xảy ra lỗi khi gửi yêu cầu đặt sân. Vui lòng thử lại.',
+      );
+    }
+  }
+
+  Future<void> cancelBooking(String bookingId) async {
+    final pb = await getPocketbaseInstance();
+
+    try {
+      await pb.collection(collection).update(bookingId, body: {
+        'status': 'cancelled',
+        'locked_until': null,
+      });
+    } on ClientException catch (error) {
+      throw BookingServiceException(
+        _mapClientException(
+          error,
+          fallback: 'Không thể huỷ giữ chỗ. Vui lòng thử lại.',
+        ),
+      );
+    } catch (_) {
+      throw BookingServiceException(
+        'Đã xảy ra lỗi khi huỷ giữ chỗ. Vui lòng thử lại.',
+      );
+    }
+  }
+
+  RecordModel _requireAuth(PocketBase pb, {String? message}) {
+    final record = pb.authStore.record;
+    if (!pb.authStore.isValid || record == null) {
+      throw BookingServiceException(
+        message ?? 'Bạn cần đăng nhập để thực hiện thao tác này.',
+      );
+    }
+    return record;
   }
 
   String _escapeFilterValue(String value) {

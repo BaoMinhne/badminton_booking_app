@@ -101,6 +101,17 @@
       ]
     },
     {
+      "hidden": false,
+      "id": "date7203948576",
+      "max": "",
+      "min": "",
+      "name": "locked_until",
+      "presentable": false,
+      "required": false,
+      "system": false,
+      "type": "date"
+    },
+    {
       "autogeneratePattern": "",
       "hidden": false,
       "id": "text7203948576",
@@ -139,6 +150,7 @@
     "CREATE INDEX `idx_court_bookings_court` ON `court_bookings` (`court_id`)",
     "CREATE INDEX `idx_court_bookings_court_unit` ON `court_bookings` (`court_unit_id`)",
     "CREATE INDEX `idx_court_bookings_user` ON `court_bookings` (`user_id`)",
-    "CREATE INDEX `idx_court_bookings_time` ON `court_bookings` (`start_time`, `end_time`)"
+    "CREATE INDEX `idx_court_bookings_time` ON `court_bookings` (`start_time`, `end_time`)",
+    "CREATE INDEX `idx_court_bookings_locked_until` ON `court_bookings` (`locked_until`)"
   ]
 }

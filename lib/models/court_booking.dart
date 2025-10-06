@@ -13,9 +13,9 @@ extension CourtBookingStatusX on CourtBookingStatus {
     switch (this) {
       case CourtBookingStatus.pending:
       case CourtBookingStatus.confirmed:
-      case CourtBookingStatus.locked:
         return true;
       case CourtBookingStatus.cancelled:
+      case CourtBookingStatus.locked:
       case CourtBookingStatus.unknown:
         return false;
     }
@@ -51,6 +51,7 @@ class CourtBooking {
   final String? note;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final DateTime? lockedUntil;
 
   const CourtBooking({
     required this.id,
@@ -63,10 +64,25 @@ class CourtBooking {
     this.note,
     this.createdAt,
     this.updatedAt,
+    this.lockedUntil,
   });
 
-  bool get blocksTime => status.blocksTime;
-  bool get isLocked => status.isLocked;
+  bool get isLocked => status.isLocked &&
+      (lockedUntil == null || lockedUntil!.isAfter(DateTime.now()));
+
+  bool get blocksTime {
+    if (status.isLocked) {
+      if (lockedUntil == null) return true;
+      return lockedUntil!.isAfter(DateTime.now());
+    }
+    return status.blocksTime;
+  }
+
+  Duration? get lockRemaining {
+    if (!status.isLocked || lockedUntil == null) return null;
+    final diff = lockedUntil!.difference(DateTime.now());
+    return diff.isNegative ? null : diff;
+  }
 
   factory CourtBooking.fromRecord(RecordModel record) {
     final data = record.data;
@@ -90,6 +106,7 @@ class CourtBooking {
       note: _parseOptionalText(data['note']),
       createdAt: _parseDateTime(data['created']),
       updatedAt: _parseDateTime(data['updated']),
+      lockedUntil: _parseDateTime(data['locked_until'])?.toLocal(),
     );
   }
 
@@ -104,6 +121,7 @@ class CourtBooking {
         'note': note,
         'created': createdAt?.toIso8601String(),
         'updated': updatedAt?.toIso8601String(),
+        'locked_until': lockedUntil?.toIso8601String(),
       };
 }
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -41,6 +43,10 @@ class _BookingPageState extends State<BookingPage> {
   TimeOfDay? _startTime;
   TimeOfDay? _endTime;
   final TextEditingController _noteController = TextEditingController();
+  CourtBooking? _activeLock;
+  Duration? _lockRemaining;
+  Timer? _lockTimer;
+  bool _isLockingSlot = false;
 
   @override
   void initState() {
@@ -52,12 +58,296 @@ class _BookingPageState extends State<BookingPage> {
 
   @override
   void dispose() {
+    _cancelLockTimer();
+    final lock = _activeLock;
+    if (lock != null && lock.status == CourtBookingStatus.locked) {
+      _bookingService.cancelBooking(lock.id).catchError((_) {});
+    }
     _noteController.dispose();
     super.dispose();
   }
 
   static DateTime _normalizeDate(DateTime date) =>
       DateTime(date.year, date.month, date.day);
+
+  static const Duration _defaultSelectionDuration = Duration(hours: 1);
+  static const Duration _minimumBookingDuration = Duration(minutes: 30);
+
+  Duration get _currentSelectionDuration {
+    if (_startTime == null || _endTime == null) {
+      return _defaultSelectionDuration;
+    }
+    final start = _combine(_selectedDate, _startTime!);
+    final end = _combine(_selectedDate, _endTime!);
+    final diff = end.difference(start);
+    if (diff < _minimumBookingDuration) {
+      return _defaultSelectionDuration;
+    }
+    return diff;
+  }
+
+  void _cancelLockTimer() {
+    _lockTimer?.cancel();
+    _lockTimer = null;
+  }
+
+  Future<void> _releaseActiveLock({
+    bool notifyServer = false,
+    bool clearSelection = false,
+  }) async {
+    final lock = _activeLock;
+    if (lock == null) return;
+    _cancelLockTimer();
+    if (notifyServer && lock.status.isLocked) {
+      try {
+        await _bookingService.cancelBooking(lock.id);
+      } catch (_) {}
+    }
+    if (!mounted) return;
+    setState(() {
+      if (_activeLock?.id == lock.id) {
+        _activeLock = null;
+        _lockRemaining = null;
+        if (clearSelection) {
+          _startTime = null;
+          _endTime = null;
+        }
+      }
+    });
+  }
+
+  void _startLockCountdown(CourtBooking lock) {
+    if (!lock.status.isLocked) {
+      _cancelLockTimer();
+      if (mounted) {
+        setState(() => _lockRemaining = null);
+      }
+      return;
+    }
+
+    _cancelLockTimer();
+    _updateLockRemaining(lock);
+    _lockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      _updateLockRemaining(lock);
+    });
+  }
+
+  void _updateLockRemaining(CourtBooking lock) {
+    if (!mounted || _activeLock?.id != lock.id) return;
+    final remaining = lock.lockRemaining;
+    if (remaining == null) {
+      _handleLockExpired(lock);
+      return;
+    }
+
+    setState(() => _lockRemaining = remaining);
+
+    if (remaining <= Duration.zero) {
+      _handleLockExpired(lock);
+    }
+  }
+
+  void _handleLockExpired(CourtBooking lock) {
+    if (!mounted || _activeLock?.id != lock.id) return;
+
+    _cancelLockTimer();
+
+    setState(() {
+      _activeLock = null;
+      _lockRemaining = null;
+      _startTime = null;
+      _endTime = null;
+    });
+
+    _showSnackBar(
+      'Phiên giữ chỗ đã hết hạn. Vui lòng chọn lại khung giờ.',
+      isError: true,
+    );
+
+    () async {
+      try {
+        await _bookingService.cancelBooking(lock.id);
+      } catch (_) {}
+      await _loadBookings();
+    }();
+  }
+
+  void _refreshActiveLockAfterReload(List<CourtBooking> bookings) {
+    final lock = _activeLock;
+    if (!mounted || lock == null) return;
+
+    CourtBooking? updated;
+    for (final booking in bookings) {
+      if (booking.id == lock.id) {
+        updated = booking;
+        break;
+      }
+    }
+
+    if (updated == null) {
+      _cancelLockTimer();
+      setState(() {
+        if (_activeLock?.id == lock.id) {
+          _activeLock = null;
+          _lockRemaining = null;
+          _startTime = null;
+          _endTime = null;
+        }
+      });
+      return;
+    }
+
+    setState(() {
+      _activeLock = updated;
+      _selectedUnitId = updated.courtUnitId;
+      _startTime = TimeOfDay.fromDateTime(updated.startTime);
+      _endTime = TimeOfDay.fromDateTime(updated.endTime);
+    });
+
+    if (updated.status.isLocked && updated.isLocked) {
+      _startLockCountdown(updated);
+    } else {
+      _cancelLockTimer();
+      setState(() => _lockRemaining = null);
+    }
+  }
+
+  void _handleTimelineTap(String unitId, DateTime start) {
+    if (_isLockingSlot || _isSubmitting) return;
+    _lockSlotForSelection(unitId, start);
+  }
+
+  Future<void> _lockSlotForSelection(String unitId, DateTime start) async {
+    if (_isLockingSlot) return;
+
+    var end = start.add(_currentSelectionDuration);
+    final close = _closingTime;
+    if (close != null) {
+      final closeDate = _combine(_selectedDate, close);
+      if (end.isAfter(closeDate)) {
+        end = closeDate;
+      }
+    }
+
+    if (!end.isAfter(start)) {
+      end = start.add(_minimumBookingDuration);
+    }
+
+    if (!end.isAfter(start)) {
+      _showSnackBar('Không thể giữ chỗ với thời gian quá ngắn.', isError: true);
+      return;
+    }
+
+    final overlaps = _bookings.any((booking) {
+      if (!booking.blocksTime) return false;
+      if (booking.courtUnitId != unitId) return false;
+      if (_activeLock != null && booking.id == _activeLock!.id) return false;
+      return start.isBefore(booking.endTime) && end.isAfter(booking.startTime);
+    });
+
+    if (overlaps) {
+      _showSnackBar(
+        'Khung giờ đã được giữ hoặc đặt. Vui lòng chọn khung giờ khác.',
+        isError: true,
+      );
+      return;
+    }
+
+    setState(() => _isLockingSlot = true);
+
+    try {
+      final lock = await _bookingService.lockSlot(
+        bookingId: _activeLock?.id,
+        courtId: widget.court.id,
+        courtUnitId: unitId,
+        startTime: start,
+        endTime: end,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _activeLock = lock;
+        _selectedUnitId = lock.courtUnitId;
+        _startTime = TimeOfDay.fromDateTime(lock.startTime);
+        _endTime = TimeOfDay.fromDateTime(lock.endTime);
+      });
+
+      _startLockCountdown(lock);
+      await _loadBookings();
+    } catch (error) {
+      if (!mounted) return;
+      _showSnackBar(
+        _describeError(
+          error,
+          fallback: 'Không thể giữ chỗ. Vui lòng thử lại.',
+        ),
+        isError: true,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLockingSlot = false);
+      }
+    }
+  }
+
+  Future<void> _cancelHold() async {
+    final lock = _activeLock;
+    if (lock == null) return;
+
+    setState(() => _isLockingSlot = true);
+
+    try {
+      await _bookingService.cancelBooking(lock.id);
+      if (!mounted) return;
+
+      _cancelLockTimer();
+      setState(() {
+        if (_activeLock?.id == lock.id) {
+          _activeLock = null;
+          _lockRemaining = null;
+          _startTime = null;
+          _endTime = null;
+        }
+      });
+
+      await _loadBookings();
+      if (mounted) {
+        _showSnackBar('Đã huỷ giữ chỗ.');
+      }
+    } catch (error) {
+      if (!mounted) return;
+      _showSnackBar(
+        _describeError(
+          error,
+          fallback: 'Không thể huỷ giữ chỗ. Vui lòng thử lại.',
+        ),
+        isError: true,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLockingSlot = false);
+      }
+    }
+  }
+
+  String _formatCountdown(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    final seconds = duration.inSeconds.remainder(60);
+    final buffer = StringBuffer();
+    if (hours > 0) {
+      buffer
+        ..write(hours.toString().padLeft(2, '0'))
+        ..write(':');
+    }
+    buffer
+      ..write(minutes.toString().padLeft(2, '0'))
+      ..write(':')
+      ..write(seconds.toString().padLeft(2, '0'));
+    return buffer.toString();
+  }
 
   Future<void> _loadDetail() async {
     setState(() {
@@ -115,6 +405,7 @@ class _BookingPageState extends State<BookingPage> {
           ..addAll(bookings);
         _isLoadingBookings = false;
       });
+      _refreshActiveLockAfterReload(bookings);
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -148,6 +439,7 @@ class _BookingPageState extends State<BookingPage> {
     );
 
     if (picked != null && picked != _selectedDate) {
+      await _releaseActiveLock(notifyServer: true, clearSelection: true);
       setState(() => _selectedDate = _normalizeDate(picked));
       await _loadBookings();
     }
@@ -182,29 +474,44 @@ class _BookingPageState extends State<BookingPage> {
 
     final start = _combine(_selectedDate, _startTime!);
     final end = _combine(_selectedDate, _endTime!);
+    final note = _noteController.text.trim();
 
     setState(() => _isSubmitting = true);
     FocusScope.of(context).unfocus();
 
     try {
-      await _bookingService.createBooking(
-        courtId: widget.court.id,
-        courtUnitId: _selectedUnitId!,
-        startTime: start,
-        endTime: end,
-        note: _noteController.text.trim().isEmpty
-            ? null
-            : _noteController.text.trim(),
-      );
+      CourtBooking booking;
+      final lock = _activeLock;
+      if (lock != null && lock.status.isLocked && lock.isLocked) {
+        booking = await _bookingService.confirmBooking(
+          bookingId: lock.id,
+          note: note.isEmpty ? null : note,
+        );
+      } else {
+        booking = await _bookingService.createBooking(
+          courtId: widget.court.id,
+          courtUnitId: _selectedUnitId!,
+          startTime: start,
+          endTime: end,
+          note: note.isEmpty ? null : note,
+        );
+      }
 
       if (!mounted) return;
 
-      _showSnackBar('Đặt sân thành công!');
+      _cancelLockTimer();
       setState(() {
+        _activeLock = null;
+        _lockRemaining = null;
         _startTime = null;
         _endTime = null;
         _noteController.clear();
       });
+
+      final message = booking.status == CourtBookingStatus.confirmed
+          ? 'Đặt sân đã được xác nhận.'
+          : 'Đã gửi yêu cầu đặt sân. Bạn có thể thanh toán trong lúc chờ quản trị viên duyệt.';
+      _showSnackBar(message);
 
       await _loadBookings();
     } catch (error) {
@@ -212,7 +519,7 @@ class _BookingPageState extends State<BookingPage> {
       _showSnackBar(
         _describeError(
           error,
-          fallback: 'Không thể đặt sân. Vui lòng thử lại.',
+          fallback: 'Không thể gửi yêu cầu đặt sân. Vui lòng thử lại.',
         ),
         isError: true,
       );
@@ -270,6 +577,7 @@ class _BookingPageState extends State<BookingPage> {
     final overlaps = _bookings.any((booking) {
       if (!booking.blocksTime) return false;
       if (booking.courtUnitId != unitId) return false;
+      if (_activeLock != null && booking.id == _activeLock!.id) return false;
       return start.isBefore(booking.endTime) && end.isAfter(booking.startTime);
     });
 
@@ -360,7 +668,7 @@ class _BookingPageState extends State<BookingPage> {
       if (!booking.blocksTime) continue;
       final isLocked = booking.isLocked;
       final label =
-          '${isLocked ? 'Khóa' : 'Đã đặt'} ${_formatTimeRange(booking.startTime, booking.endTime)}';
+          '${isLocked ? 'Giữ chỗ' : 'Đã đặt'} ${_formatTimeRange(booking.startTime, booking.endTime)}';
       events.add(
         CourtTimelineEvent(
           resourceId: booking.courtUnitId,
@@ -526,7 +834,7 @@ class _BookingPageState extends State<BookingPage> {
         const SizedBox(width: 12),
         _legendTile(color: cs.error, text: 'Đã đặt'),
         const SizedBox(width: 12),
-        _legendTile(color: Colors.grey, text: 'Khóa'),
+        _legendTile(color: Colors.grey, text: 'Giữ chỗ'),
         const SizedBox(width: 12),
         _legendTile(
           color: cs.secondary.withOpacity(0.5),
@@ -595,8 +903,20 @@ class _BookingPageState extends State<BookingPage> {
                     events: events,
                     slotWidth: 80,
                     rowHeight: 64,
+                    onSlotTap:
+                        (_isLoadingBookings || _isLockingSlot) ? null : _handleTimelineTap,
+                    selectionStepMinutes: 30,
                   ),
                   if (_isLoadingBookings)
+                    Positioned.fill(
+                      child: Container(
+                        color: Colors.black26,
+                        child: const Center(
+                          child: CircularProgressIndicator(),
+                        ),
+                      ),
+                    ),
+                  if (_isLockingSlot)
                     Positioned.fill(
                       child: Container(
                         color: Colors.black26,
@@ -636,6 +956,9 @@ class _BookingPageState extends State<BookingPage> {
 
   Widget _buildBookingForm(ColorScheme cs, List<CourtUnit> units) {
     final isDisabled = _isLoadingDetail || units.isEmpty;
+    final activeLock = _activeLock;
+    final hasActiveLock =
+        activeLock != null && activeLock.status.isLocked && activeLock.isLocked;
     if (units.isEmpty) {
       return Card(
         elevation: 2,
@@ -677,12 +1000,18 @@ class _BookingPageState extends State<BookingPage> {
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 12),
+            if (hasActiveLock && activeLock != null) ...[
+              _buildActiveLockBanner(cs, activeLock, units),
+              const SizedBox(height: 12),
+            ],
             DropdownButtonFormField<String>(
               value: dropdownItems.any((item) => item.value == _selectedUnitId)
                   ? _selectedUnitId
                   : (dropdownItems.isNotEmpty ? dropdownItems.first.value : null),
               items: dropdownItems,
-              onChanged: isDisabled ? null : (value) => setState(() => _selectedUnitId = value),
+              onChanged: (isDisabled || hasActiveLock)
+                  ? null
+                  : (value) => setState(() => _selectedUnitId = value),
               decoration: const InputDecoration(
                 labelText: 'Chọn sân',
                 border: OutlineInputBorder(),
@@ -695,7 +1024,8 @@ class _BookingPageState extends State<BookingPage> {
                   child: _timePickerField(
                     label: 'Giờ bắt đầu',
                     value: _startTime == null ? null : _formatTimeOfDay(_startTime!),
-                    onTap: isDisabled ? null : _pickStartTime,
+                    onTap:
+                        (isDisabled || hasActiveLock) ? null : () => _pickStartTime(),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -703,7 +1033,8 @@ class _BookingPageState extends State<BookingPage> {
                   child: _timePickerField(
                     label: 'Giờ kết thúc',
                     value: _endTime == null ? null : _formatTimeOfDay(_endTime!),
-                    onTap: isDisabled ? null : _pickEndTime,
+                    onTap:
+                        (isDisabled || hasActiveLock) ? null : () => _pickEndTime(),
                   ),
                 ),
               ],
@@ -723,8 +1054,9 @@ class _BookingPageState extends State<BookingPage> {
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
-                onPressed:
-                    isDisabled || _isSubmitting ? null : () => _submitBooking(),
+                onPressed: (isDisabled || _isSubmitting || _isLockingSlot)
+                    ? null
+                    : () => _submitBooking(),
                 icon: _isSubmitting
                     ? SizedBox(
                         height: 18,
@@ -758,6 +1090,79 @@ class _BookingPageState extends State<BookingPage> {
           enabled: onTap != null,
         ),
         child: Text(value ?? 'Chọn giờ'),
+      ),
+    );
+  }
+
+  Widget _buildActiveLockBanner(
+    ColorScheme cs,
+    CourtBooking lock,
+    List<CourtUnit> units,
+  ) {
+    String unitLabel = 'Sân đã chọn';
+    for (final unit in units) {
+      if (unit.id == lock.courtUnitId) {
+        unitLabel = unit.label.isNotEmpty ? unit.label : unitLabel;
+        break;
+      }
+    }
+
+    final range = _formatTimeRange(lock.startTime, lock.endTime);
+    final remaining = _lockRemaining ?? lock.lockRemaining;
+    final countdown = remaining == null
+        ? 'Đang cập nhật...'
+        : _formatCountdown(remaining);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: cs.surfaceVariant.withOpacity(0.6),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: cs.primary.withOpacity(0.6)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.lock_clock, color: cs.primary),
+              const SizedBox(width: 8),
+              Text(
+                'Đang giữ chỗ',
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(color: cs.primary, fontWeight: FontWeight.w700),
+              ),
+              const Spacer(),
+              Text(
+                countdown,
+                style: Theme.of(context)
+                    .textTheme
+                    .labelLarge
+                    ?.copyWith(color: cs.primary, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text('$unitLabel • $range'),
+          const SizedBox(height: 4),
+          Text(
+            'Nếu muốn đổi khung giờ, chạm lại vào lưới thời gian.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed:
+                  (_isLockingSlot || _isSubmitting) ? null : () => _cancelHold(),
+              icon: const Icon(Icons.close),
+              label: const Text('Huỷ giữ chỗ'),
+            ),
+          ),
+        ],
       ),
     );
   }

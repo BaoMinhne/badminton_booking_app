@@ -56,7 +56,7 @@ class ServicePrice {
       price != null || (priceLabel?.trim().isNotEmpty ?? false);
 }
 
-class PricingTableMini extends StatelessWidget {
+class PricingTableMini extends StatefulWidget {
   final String title;
   final List<ServicePrice> items;
   final bool isLoading;
@@ -67,6 +67,7 @@ class PricingTableMini extends StatelessWidget {
   final bool shrinkWrap;
   final ScrollPhysics? physics;
   final String? hintText;
+  final int? initialVisibleCount;
 
   const PricingTableMini({
     super.key,
@@ -81,54 +82,137 @@ class PricingTableMini extends StatelessWidget {
     this.physics,
     this.hintText =
         'Giờ cao điểm ví dụ: 17:00–21:00 các ngày trong tuần.\nGiá đã bao gồm VAT (nếu có). Vui lòng đặt trước để giữ sân.',
+    this.initialVisibleCount,
   });
+
+  @override
+  State<PricingTableMini> createState() => _PricingTableMiniState();
+
+  static Widget _messageView(
+    BuildContext context, {
+    required IconData icon,
+    required Color color,
+    required String message,
+    VoidCallback? action,
+    String actionLabel = 'Thử lại',
+  }) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 40),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(color: color),
+              textAlign: TextAlign.center,
+            ),
+            if (action != null) ...[
+              const SizedBox(height: 12),
+              FilledButton(
+                onPressed: action,
+                child: Text(actionLabel),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PricingTableMiniState extends State<PricingTableMini> {
+  late bool _isExpanded;
+
+  @override
+  void initState() {
+    super.initState();
+    _isExpanded = !_shouldShowToggle(widget);
+  }
+
+  @override
+  void didUpdateWidget(covariant PricingTableMini oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final hadToggle = _shouldShowToggle(oldWidget);
+    final hasToggle = _shouldShowToggle(widget);
+
+    bool newExpanded = _isExpanded;
+    if (!hasToggle) {
+      newExpanded = true;
+    } else if (!hadToggle && hasToggle) {
+      newExpanded = false;
+    }
+
+    if (newExpanded != _isExpanded) {
+      _isExpanded = newExpanded;
+    }
+  }
+
+  bool _shouldShowToggle(PricingTableMini widget) {
+    final initialCount = widget.initialVisibleCount;
+    if (initialCount == null) return false;
+    return widget.items.length > initialCount;
+  }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    if (errorMessage != null) {
-      return _messageView(
+    if (widget.errorMessage != null) {
+      return PricingTableMini._messageView(
         context,
         icon: Icons.error_outline,
         color: Colors.redAccent,
-        message: 'Không thể tải bảng giá.\n$errorMessage',
-        action: onRetry,
+        message: 'Không thể tải bảng giá.\n${widget.errorMessage}',
+        action: widget.onRetry,
         actionLabel: 'Thử lại',
       );
     }
 
-    if (isLoading) {
+    if (widget.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
     // (tuỳ chọn) Sắp xếp: giờ thường trước, cao điểm sau
-    final sorted = [...items]..sort((a, b) {
+    final sorted = [...widget.items]..sort((a, b) {
         if (a.isPeak == b.isPeak) return a.name.compareTo(b.name);
         return a.isPeak ? 1 : -1;
       });
 
     if (sorted.isEmpty) {
-      return _messageView(
+      return PricingTableMini._messageView(
         context,
         icon: Icons.info_outline,
         color: cs.primary,
-        message: emptyLabel,
-        action: onRetry,
+        message: widget.emptyLabel,
+        action: widget.onRetry,
         actionLabel: 'Tải lại',
       );
     }
 
-    final effectivePadding = padding ?? const EdgeInsets.all(16);
+    final hasToggle = _shouldShowToggle(widget);
+    final int initialCount = widget.initialVisibleCount ?? sorted.length;
+    final int collapsedCount = initialCount.clamp(0, sorted.length);
+    final visibleCount = hasToggle && !_isExpanded
+        ? collapsedCount
+        : sorted.length;
+    final visibleItems = sorted.take(visibleCount).toList();
+
+    final effectivePadding = widget.padding ?? const EdgeInsets.all(16);
     final effectivePhysics =
-        physics ?? (shrinkWrap ? const NeverScrollableScrollPhysics() : null);
+        widget.physics ?? (widget.shrinkWrap ? const NeverScrollableScrollPhysics() : null);
 
     return ListView(
       padding: effectivePadding,
-      shrinkWrap: shrinkWrap,
+      shrinkWrap: widget.shrinkWrap,
       physics: effectivePhysics,
       children: [
-        Text(title,
+        Text(widget.title,
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         const SizedBox(height: 12),
 
@@ -145,15 +229,28 @@ class PricingTableMini extends StatelessWidget {
               _headerRow(context),
 
               // Dòng dữ liệu
-              for (final sp in sorted) _priceRow(context, sp),
+              for (final sp in visibleItems) _priceRow(context, sp),
+
+              if (hasToggle)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _isExpanded = !_isExpanded;
+                      });
+                    },
+                    child: Text(_isExpanded ? 'Thu gọn' : 'Xem thêm'),
+                  ),
+                ),
             ],
           ),
         ),
 
         // Gợi ý chú thích
-        if (hintText != null && hintText!.trim().isNotEmpty) ...[
+        if (widget.hintText != null && widget.hintText!.trim().isNotEmpty) ...[
           const SizedBox(height: 12),
-          _hint(context, hintText!),
+          _hint(context, widget.hintText!),
         ],
       ],
     );
@@ -294,42 +391,6 @@ class PricingTableMini extends StatelessWidget {
     );
   }
 
-  static Widget _messageView(
-    BuildContext context, {
-    required IconData icon,
-    required Color color,
-    required String message,
-    VoidCallback? action,
-    String actionLabel = 'Thử lại',
-  }) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: color, size: 40),
-            const SizedBox(height: 12),
-            Text(
-              message,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
-                  ?.copyWith(color: color),
-              textAlign: TextAlign.center,
-            ),
-            if (action != null) ...[
-              const SizedBox(height: 12),
-              FilledButton(
-                onPressed: action,
-                child: Text(actionLabel),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class CourtServicesTab extends StatelessWidget {
@@ -396,6 +457,7 @@ class CourtServicesTab extends StatelessWidget {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             padding: EdgeInsets.zero,
+            initialVisibleCount: 4,
           ),
         if (pricingItems.isNotEmpty && serviceItems.isNotEmpty)
           const SizedBox(height: 24),
@@ -409,6 +471,7 @@ class CourtServicesTab extends StatelessWidget {
             emptyLabel: 'Sân chưa cập nhật dịch vụ.',
             hintText:
                 'Giá dịch vụ có thể thay đổi tùy thời điểm. Vui lòng liên hệ quầy lễ tân để biết thêm chi tiết.',
+            initialVisibleCount: 3,
           ),
       ],
     );

@@ -163,11 +163,11 @@ class CourtService {
     final expanded = expand['service_id'];
 
     if (expanded is RecordModel) {
-      return ServiceCatalogItem.fromRecord(expanded);
+      return ServiceCatalogItem.fromRecord(expanded as RecordModel);
     }
 
     if (expanded is List) {
-      for (final item in expanded) {
+      for (final item in expanded!) {
         if (item is RecordModel) {
           if (item.id == serviceId || expanded.length == 1) {
             return ServiceCatalogItem.fromRecord(item);

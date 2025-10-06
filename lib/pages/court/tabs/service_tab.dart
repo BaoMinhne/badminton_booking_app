@@ -52,7 +52,8 @@ class ServicePrice {
     );
   }
 
-  bool get hasPrice => price != null || (priceLabel?.trim().isNotEmpty ?? false);
+  bool get hasPrice =>
+      price != null || (priceLabel?.trim().isNotEmpty ?? false);
 }
 
 class PricingTableMini extends StatelessWidget {
@@ -119,8 +120,8 @@ class PricingTableMini extends StatelessWidget {
     }
 
     final effectivePadding = padding ?? const EdgeInsets.all(16);
-    final effectivePhysics = physics ??
-        (shrinkWrap ? const NeverScrollableScrollPhysics() : null);
+    final effectivePhysics =
+        physics ?? (shrinkWrap ? const NeverScrollableScrollPhysics() : null);
 
     return ListView(
       padding: effectivePadding,

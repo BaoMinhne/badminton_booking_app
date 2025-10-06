@@ -206,6 +206,17 @@ class _BookingPageState extends State<BookingPage> {
               ),
             ),
           ),
+          Positioned(
+            top: MediaQuery.of(context).padding.top - 20,
+            left: 8,
+            child: SafeArea(
+              child: IconButton(
+                icon: Icon(Icons.arrow_back,
+                    color: Theme.of(context).colorScheme.onPrimary, size: 28),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ),
+          ),
         ],
       ),
     );

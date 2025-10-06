@@ -1,4 +1,5 @@
 import 'package:badminton_booking_app/models/court.dart';
+import 'package:badminton_booking_app/pages/court/booking_page.dart';
 import 'package:badminton_booking_app/pages/court/court_detail.dart';
 import 'package:flutter/material.dart';
 
@@ -183,7 +184,12 @@ class _MyCourtState extends State<MyCourt> {
                       ),
                       const SizedBox(width: 12),
                       ElevatedButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => BookingPage()));
+                        },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: colorSchema.primary,
                           foregroundColor: Colors.white,

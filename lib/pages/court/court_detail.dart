@@ -1,5 +1,6 @@
 import 'package:badminton_booking_app/models/court.dart';
 import 'package:badminton_booking_app/models/court_detail.dart';
+import 'package:badminton_booking_app/pages/court/booking_page.dart';
 import 'package:badminton_booking_app/pages/court/court_manager.dart';
 import 'package:badminton_booking_app/pages/court/tabs/image_tab.dart';
 import 'package:badminton_booking_app/pages/court/tabs/review_tab.dart';
@@ -186,7 +187,10 @@ class _CourtDetailState extends State<CourtDetail>
         Padding(
           padding: const EdgeInsets.only(right: 12),
           child: FilledButton(
-            onPressed: () {},
+            onPressed: () {
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (context) => BookingPage()));
+            },
             child: const Text('Đặt lịch'),
           ),
         ),

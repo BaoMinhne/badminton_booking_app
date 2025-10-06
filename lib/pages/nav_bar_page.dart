@@ -24,7 +24,6 @@ class _NavBarPageState extends State<NavBarPage> {
     _pages = [
       HomePage(),
       SocialPage(),
-      BookingPage(),
       CourtPage(),
       ProfilePage(),
     ];
@@ -48,9 +47,8 @@ class _NavBarPageState extends State<NavBarPage> {
           Icon(Icons.home, size: 30, color: Colors.white), // HomePage
           Icon(Icons.south_america,
               size: 30, color: Colors.white), // SearchPage
-          Icon(Icons.book_online_rounded,
-              size: 30, color: Colors.white), // NortiPage
-          Icon(Icons.sports_tennis_outlined, size: 30, color: Colors.white),
+          // NortiPage
+          Icon(Icons.book_online_outlined, size: 30, color: Colors.white),
           Icon(Icons.person, size: 30, color: Colors.white), // ProfilePage
         ],
       ),

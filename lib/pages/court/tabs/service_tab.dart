@@ -42,6 +42,16 @@ class ServicePrice {
     );
   }
 
+  factory ServicePrice.fromCourtService(CourtServiceItem service) {
+    return ServicePrice(
+      name: service.name,
+      unit: service.unit,
+      price: service.price,
+      priceLabel: service.priceLabel,
+      note: service.note,
+    );
+  }
+
   bool get hasPrice => price != null || (priceLabel?.trim().isNotEmpty ?? false);
 }
 
@@ -52,6 +62,10 @@ class PricingTableMini extends StatelessWidget {
   final String? errorMessage;
   final VoidCallback? onRetry;
   final String emptyLabel;
+  final EdgeInsetsGeometry? padding;
+  final bool shrinkWrap;
+  final ScrollPhysics? physics;
+  final String? hintText;
 
   const PricingTableMini({
     super.key,
@@ -61,6 +75,11 @@ class PricingTableMini extends StatelessWidget {
     this.errorMessage,
     this.onRetry,
     this.emptyLabel = 'Chưa có dữ liệu giá cho sân này.',
+    this.padding,
+    this.shrinkWrap = false,
+    this.physics,
+    this.hintText =
+        'Giờ cao điểm ví dụ: 17:00–21:00 các ngày trong tuần.\nGiá đã bao gồm VAT (nếu có). Vui lòng đặt trước để giữ sân.',
   });
 
   @override
@@ -99,8 +118,14 @@ class PricingTableMini extends StatelessWidget {
       );
     }
 
+    final effectivePadding = padding ?? const EdgeInsets.all(16);
+    final effectivePhysics = physics ??
+        (shrinkWrap ? const NeverScrollableScrollPhysics() : null);
+
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: effectivePadding,
+      shrinkWrap: shrinkWrap,
+      physics: effectivePhysics,
       children: [
         Text(title,
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
@@ -125,12 +150,10 @@ class PricingTableMini extends StatelessWidget {
         ),
 
         // Gợi ý chú thích
-        const SizedBox(height: 12),
-        _hint(
-          context,
-          'Giờ cao điểm ví dụ: 17:00–21:00 các ngày trong tuần.\n'
-          'Giá đã bao gồm VAT (nếu có). Vui lòng đặt trước để giữ sân.',
-        ),
+        if (hintText != null && hintText!.trim().isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _hint(context, hintText!),
+        ],
       ],
     );
   }
@@ -304,6 +327,89 @@ class PricingTableMini extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class CourtServicesTab extends StatelessWidget {
+  const CourtServicesTab({
+    super.key,
+    required this.pricing,
+    required this.services,
+    required this.isLoading,
+    required this.errorMessage,
+    required this.onRetry,
+  });
+
+  final List<CourtPricing> pricing;
+  final List<CourtServiceItem> services;
+  final bool isLoading;
+  final String? errorMessage;
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    if (errorMessage != null) {
+      return PricingTableMini._messageView(
+        context,
+        icon: Icons.error_outline,
+        color: Colors.redAccent,
+        message: 'Không thể tải thông tin dịch vụ.\n$errorMessage',
+        action: onRetry,
+        actionLabel: 'Thử lại',
+      );
+    }
+
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final pricingItems = pricing
+        .map(ServicePrice.fromCourtPricing)
+        .where((item) => item.hasPrice)
+        .toList(growable: false);
+
+    final serviceItems = services
+        .map(ServicePrice.fromCourtService)
+        .where((item) => item.name.trim().isNotEmpty)
+        .toList(growable: false);
+
+    if (pricingItems.isEmpty && serviceItems.isEmpty) {
+      return PricingTableMini._messageView(
+        context,
+        icon: Icons.info_outline,
+        color: Theme.of(context).colorScheme.primary,
+        message: 'Sân chưa cập nhật bảng giá hoặc dịch vụ.',
+        action: onRetry,
+        actionLabel: 'Tải lại',
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        if (pricingItems.isNotEmpty)
+          PricingTableMini(
+            title: 'Bảng giá theo khung giờ',
+            items: pricingItems,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            padding: EdgeInsets.zero,
+          ),
+        if (pricingItems.isNotEmpty && serviceItems.isNotEmpty)
+          const SizedBox(height: 24),
+        if (serviceItems.isNotEmpty)
+          PricingTableMini(
+            title: 'Dịch vụ tại sân',
+            items: serviceItems,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            padding: EdgeInsets.zero,
+            emptyLabel: 'Sân chưa cập nhật dịch vụ.',
+            hintText:
+                'Giá dịch vụ có thể thay đổi tùy thời điểm. Vui lòng liên hệ quầy lễ tân để biết thêm chi tiết.',
+          ),
+      ],
     );
   }
 }

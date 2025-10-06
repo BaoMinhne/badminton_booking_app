@@ -84,6 +84,11 @@ class CourtService {
             .getList(filter: filter, perPage: 100),
         pb.collection('court_pricing').getList(filter: filter, perPage: 100),
         pb.collection('court_units').getList(filter: filter, perPage: 100),
+        pb.collection('court_services').getList(
+              filter: filter,
+              perPage: 200,
+              expand: 'service_id',
+            ),
       ];
 
       final results = await Future.wait(futures);
@@ -92,6 +97,7 @@ class CourtService {
       final openingHourResult = results[1];
       final pricingResult = results[2];
       final unitsResult = results[3];
+      final servicesResult = results[4];
 
       final images = imageResult.items
           .expand((record) => _extractFileUrls(pb, record, 'image'))
@@ -108,12 +114,27 @@ class CourtService {
       final units =
           unitsResult.items.map(CourtUnit.fromRecord).toList(growable: false);
 
+      final services = servicesResult.items
+          .map((record) {
+            final serviceId = (record.data['service_id'] as String?)?.trim();
+            if (serviceId == null || serviceId.isEmpty) {
+              return null;
+            }
+            final catalog = _extractExpandedCatalog(record, serviceId);
+            final item = CourtServiceItem.fromRecord(record, catalog: catalog);
+            return item.name.trim().isEmpty ? null : item;
+          })
+          .whereType<CourtServiceItem>()
+          .where((item) => item.isActive)
+          .toList(growable: false);
+
       return CourtDetailData(
         court: court,
         images: images,
         openingHours: openingHours,
         pricing: pricing,
         units: units,
+        services: services,
       );
     } on ClientException catch (error) {
       throw CourtServiceException(
@@ -128,6 +149,34 @@ class CourtService {
         'Có lỗi xảy ra khi tải thông tin chi tiết của sân. Vui lòng thử lại.',
       );
     }
+  }
+
+  ServiceCatalogItem? _extractExpandedCatalog(
+    RecordModel record,
+    String serviceId,
+  ) {
+    final expand = record.expand;
+    if (expand == null || expand.isEmpty) {
+      return null;
+    }
+
+    final expanded = expand['service_id'];
+
+    if (expanded is RecordModel) {
+      return ServiceCatalogItem.fromRecord(expanded);
+    }
+
+    if (expanded is List) {
+      for (final item in expanded) {
+        if (item is RecordModel) {
+          if (item.id == serviceId || expanded.length == 1) {
+            return ServiceCatalogItem.fromRecord(item);
+          }
+        }
+      }
+    }
+
+    return null;
   }
 
   Court _mapRecordToCourt(PocketBase pb, RecordModel record) {

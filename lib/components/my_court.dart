@@ -186,9 +186,13 @@ class _MyCourtState extends State<MyCourt> {
                       ElevatedButton(
                         onPressed: () {
                           Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => BookingPage()));
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => BookingPage(
+                                court: widget.court,
+                              ),
+                            ),
+                          );
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: colorSchema.primary,

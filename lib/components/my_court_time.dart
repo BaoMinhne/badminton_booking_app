@@ -1,12 +1,46 @@
 // lib/components/my_court_time.dart
+import 'dart:math' as math;
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'dart:ui' as ui;
 
 /// Header kiểu “timeline” với vạch giờ & vạch 30’:
 /// - Mỗi ô (grid) = 1 giờ.
 /// - Header có LEADING INSET bên trái để label mốc đầu không bị cắt.
 /// - Scroll đồng bộ: header = grid + inset.
+class CourtTimelineRow {
+  const CourtTimelineRow({
+    required this.id,
+    required this.label,
+  });
+
+  final String id;
+  final String label;
+}
+
+class CourtTimelineEvent {
+  const CourtTimelineEvent({
+    required this.resourceId,
+    required this.start,
+    required this.end,
+    required this.color,
+    this.label,
+    this.textColor,
+    this.borderColor,
+    this.opacity,
+  });
+
+  final String resourceId;
+  final DateTime start;
+  final DateTime end;
+  final Color color;
+  final String? label;
+  final Color? textColor;
+  final Color? borderColor;
+  final double? opacity;
+}
+
 class CourtTimeline extends StatefulWidget {
   const CourtTimeline({
     super.key,
@@ -14,20 +48,24 @@ class CourtTimeline extends StatefulWidget {
     this.endHour = 22, // exclusive
     this.slotWidth = 80, // bề rộng 1 ô (1 giờ)
     this.rowHeight = 70,
-    this.courts = const ['Sân 1', 'Sân 2'],
+    this.rows = const [],
+    this.events = const [],
     this.leftColumnWidth = 90, // cột tên sân (cố định)
     this.headerHeight = 56.0,
     this.headerLeadingInset = 24.0, // khoảng trống trái của HEADER
-  });
+    DateTime? baseDate,
+  }) : baseDate = baseDate ?? DateTime.now();
 
   final int startHour;
   final int endHour; // exclusive
   final double slotWidth;
   final double rowHeight;
-  final List<String> courts;
+  final List<CourtTimelineRow> rows;
+  final List<CourtTimelineEvent> events;
   final double leftColumnWidth;
   final double headerHeight;
   final double headerLeadingInset;
+  final DateTime baseDate;
 
   @override
   State<CourtTimeline> createState() => _CourtTimelineState();
@@ -41,10 +79,27 @@ class _CourtTimelineState extends State<CourtTimeline> {
   bool _syncing = false;
 
   // số ô (giờ)
-  int get _slotCount => widget.endHour - widget.startHour + 1;
+  int get _slotCount {
+    final diff = widget.endHour - widget.startHour;
+    return diff <= 0 ? 1 : diff;
+  }
 
   // tổng bề rộng phần NỘI DUNG (lưới)
   double get _totalWidth => _slotCount * widget.slotWidth;
+
+  DateTime get _timelineStart => DateTime(
+        widget.baseDate.year,
+        widget.baseDate.month,
+        widget.baseDate.day,
+        widget.startHour,
+      );
+
+  DateTime get _timelineEnd => DateTime(
+        widget.baseDate.year,
+        widget.baseDate.month,
+        widget.baseDate.day,
+        widget.endHour,
+      );
 
   @override
   void initState() {
@@ -151,13 +206,13 @@ class _CourtTimelineState extends State<CourtTimeline> {
                 width: widget.leftColumnWidth,
                 child: ListView.separated(
                   padding: EdgeInsets.zero,
-                  itemCount: widget.courts.length,
+                  itemCount: widget.rows.length,
                   itemBuilder: (_, i) => Container(
                     height: widget.rowHeight,
                     color: const Color(0xFFE7FFF0),
                     alignment: Alignment.centerLeft,
                     padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Text(widget.courts[i],
+                    child: Text(widget.rows[i].label,
                         style: const TextStyle(fontWeight: FontWeight.w600)),
                   ),
                   separatorBuilder: (_, __) =>
@@ -185,17 +240,28 @@ class _CourtTimelineState extends State<CourtTimeline> {
                         width: _totalWidth,
                         child: ListView.separated(
                           padding: EdgeInsets.zero,
-                          itemCount: widget.courts.length,
+                          itemCount: widget.rows.length,
                           itemBuilder: (_, row) => SizedBox(
                             height: widget.rowHeight,
-                            child: CustomPaint(
-                              painter: _GridRowPainter(
-                                totalSlots: _slotCount,
-                                slotWidth: widget.slotWidth,
-                                lineColor: const Color(0x33000000),
-                                background: Colors.white,
-                              ),
-                              child: const SizedBox.expand(),
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                return Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    CustomPaint(
+                                      painter: _GridRowPainter(
+                                        totalSlots: _slotCount,
+                                        slotWidth: widget.slotWidth,
+                                        lineColor: const Color(0x33000000),
+                                        background: Colors.white,
+                                      ),
+                                    ),
+                                    ..._buildRowEvents(
+                                      widget.rows[row].id,
+                                    ),
+                                  ],
+                                );
+                              },
                             ),
                           ),
                           separatorBuilder: (_, __) =>
@@ -211,6 +277,96 @@ class _CourtTimelineState extends State<CourtTimeline> {
         ),
       ],
     );
+  }
+
+  List<Widget> _buildRowEvents(String rowId) {
+    if (widget.events.isEmpty) {
+      return const <Widget>[];
+    }
+
+    final rowEvents =
+        widget.events.where((event) => event.resourceId == rowId).toList();
+    if (rowEvents.isEmpty) {
+      return const <Widget>[];
+    }
+
+    final timelineStart = _timelineStart;
+    final timelineEnd = _timelineEnd;
+    final totalMinutes = timelineEnd.difference(timelineStart).inMinutes;
+    if (totalMinutes <= 0) {
+      return const <Widget>[];
+    }
+
+    return rowEvents.map((event) {
+      final clampedStart = event.start.isBefore(timelineStart)
+          ? timelineStart
+          : event.start;
+      final clampedEnd = event.end.isAfter(timelineEnd)
+          ? timelineEnd
+          : event.end;
+
+      if (!clampedEnd.isAfter(clampedStart)) {
+        return const SizedBox.shrink();
+      }
+
+      final startMinutes = clampedStart
+          .difference(timelineStart)
+          .inMinutes
+          .clamp(0, totalMinutes);
+      final endMinutes = clampedEnd
+          .difference(timelineStart)
+          .inMinutes
+          .clamp(0, totalMinutes);
+      final widthMinutes = endMinutes - startMinutes;
+
+      if (widthMinutes <= 0) {
+        return const SizedBox.shrink();
+      }
+
+      final left = (startMinutes / 60.0) * widget.slotWidth;
+      final width = (widthMinutes / 60.0) * widget.slotWidth;
+
+      final color = event.opacity == null
+          ? event.color
+          : event.color.withOpacity(event.opacity!.clamp(0.0, 1.0));
+      final border = event.borderColor == null
+          ? null
+          : Border.all(color: event.borderColor!, width: 1.5);
+      final textColor = event.textColor ?? Colors.white;
+
+      return Positioned(
+        left: left,
+        width: math.max(width, 8),
+        top: 4,
+        bottom: 4,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(6),
+            border: border,
+          ),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              event.label ?? _formatTimeRange(event.start, event.end),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: textColor,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      );
+    }).toList(growable: false);
+  }
+
+  String _formatTimeRange(DateTime start, DateTime end) {
+    final formatter = DateFormat('HH:mm');
+    return '${formatter.format(start)} - ${formatter.format(end)}';
   }
 }
 

@@ -8,6 +8,7 @@ class CourtDetailData {
   final List<CourtOpeningHour> openingHours;
   final List<CourtPricing> pricing;
   final List<CourtUnit> units;
+  final List<CourtServiceItem> services;
 
   const CourtDetailData({
     required this.court,
@@ -15,6 +16,7 @@ class CourtDetailData {
     this.openingHours = const [],
     this.pricing = const [],
     this.units = const [],
+    this.services = const [],
   });
 
   CourtDetailData copyWith({
@@ -23,6 +25,7 @@ class CourtDetailData {
     List<CourtOpeningHour>? openingHours,
     List<CourtPricing>? pricing,
     List<CourtUnit>? units,
+    List<CourtServiceItem>? services,
   }) {
     return CourtDetailData(
       court: court ?? this.court,
@@ -30,6 +33,99 @@ class CourtDetailData {
       openingHours: openingHours ?? this.openingHours,
       pricing: pricing ?? this.pricing,
       units: units ?? this.units,
+      services: services ?? this.services,
+    );
+  }
+}
+
+class ServiceCatalogItem {
+  final String id;
+  final String name;
+  final String? unit;
+  final bool isActive;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+
+  const ServiceCatalogItem({
+    required this.id,
+    required this.name,
+    this.unit,
+    this.isActive = true,
+    this.createdAt,
+    this.updatedAt,
+  });
+
+  factory ServiceCatalogItem.fromRecord(RecordModel record) {
+    final data = record.data;
+    final rawName = (data['name'] as String?)?.trim() ?? '';
+    final rawUnit = (data['unit'] as String?)?.trim();
+    return ServiceCatalogItem(
+      id: record.id,
+      name: rawName,
+      unit: rawUnit?.isNotEmpty == true ? rawUnit : null,
+      isActive: _parseBool(data['is_active']),
+      createdAt: _parseDate(data['created']),
+      updatedAt: _parseDate(data['updated']),
+    );
+  }
+}
+
+class CourtServiceItem {
+  final String id;
+  final String serviceId;
+  final String name;
+  final String? unit;
+  final bool isActive;
+  final int? price;
+  final String? priceLabel;
+  final String? note;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+
+  const CourtServiceItem({
+    required this.id,
+    required this.serviceId,
+    required this.name,
+    this.unit,
+    this.isActive = true,
+    this.price,
+    this.priceLabel,
+    this.note,
+    this.createdAt,
+    this.updatedAt,
+  });
+
+  factory CourtServiceItem.fromRecord(
+    RecordModel record, {
+    ServiceCatalogItem? catalog,
+  }) {
+    final data = record.data;
+    final rawPrice = data['price'];
+    final parsedPrice = _parsePrice(rawPrice);
+    final rawNote = (data['note'] as String?)?.trim();
+    final serviceId = (data['service_id'] as String?)?.trim() ?? '';
+    final rawServiceName = (data['service_name'] as String?)?.trim();
+    final resolvedName = catalog?.name ??
+        (rawServiceName != null && rawServiceName.isNotEmpty
+            ? rawServiceName
+            : (serviceId.isNotEmpty ? serviceId : 'Dịch vụ'));
+    final resolvedUnit = catalog?.unit ?? (data['unit'] as String?)?.trim();
+
+    return CourtServiceItem(
+      id: record.id,
+      serviceId: serviceId,
+      name: resolvedName,
+      unit: resolvedUnit?.isNotEmpty == true ? resolvedUnit : null,
+      isActive: _parseBool(data['is_active']),
+      price: parsedPrice,
+      priceLabel: parsedPrice == null
+          ? (rawPrice is String && rawPrice.trim().isNotEmpty
+              ? rawPrice.trim()
+              : null)
+          : null,
+      note: rawNote?.isNotEmpty == true ? rawNote : null,
+      createdAt: _parseDate(data['created']),
+      updatedAt: _parseDate(data['updated']),
     );
   }
 }

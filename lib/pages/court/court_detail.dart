@@ -142,15 +142,12 @@ class _CourtDetailState extends State<CourtDetail>
           headerSliverBuilder: (context, innerBoxIsScrolled) => headerWidgets,
           body: TabBarView(
             children: [
-              PricingTableMini(
-                title: 'Bảng giá theo khung giờ',
-                items: _detailData.pricing
-                    .map(ServicePrice.fromCourtPricing)
-                    .toList(growable: false),
+              CourtServicesTab(
+                pricing: _detailData.pricing,
+                services: _detailData.services,
                 isLoading: _isLoading,
                 errorMessage: _errorMessage,
                 onRetry: _loadDetail,
-                emptyLabel: 'Sân chưa cập nhật bảng giá.',
               ),
               CourtImageGallery(
                 images: _detailData.images,

@@ -1,94 +1,392 @@
 // lib/components/my_court_time.dart
-import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'dart:ui' as ui;
 
-/// Header kiểu “timeline” với vạch giờ & vạch 30’:
-/// - Mỗi ô (grid) = 1 giờ.
-/// - Header có LEADING INSET bên trái để label mốc đầu không bị cắt.
-/// - Scroll đồng bộ: header = grid + inset.
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+
+import '../models/booking.dart';
+
+class CourtTimelineRow {
+  const CourtTimelineRow({
+    required this.id,
+    required this.label,
+  });
+
+  final String id;
+  final String label;
+}
+
+/// Visual state for each cell in the time grid.
+enum CourtSlotStatus {
+  available,
+  heldByMe,
+  heldByOther,
+  pendingApprovalMine,
+  pendingApproval,
+  confirmed,
+}
+
 class CourtTimeline extends StatefulWidget {
   const CourtTimeline({
     super.key,
-    this.startHour = 6, // inclusive
-    this.endHour = 22, // exclusive
-    this.slotWidth = 80, // bề rộng 1 ô (1 giờ)
+    required this.rows,
+    required this.date,
+    this.startHour = 6,
+    this.endHour = 22,
+    this.slotDuration = const Duration(hours: 1),
+    this.slotWidth = 80,
     this.rowHeight = 70,
-    this.courts = const ['Sân 1', 'Sân 2'],
-    this.leftColumnWidth = 90, // cột tên sân (cố định)
+    this.leftColumnWidth = 90,
     this.headerHeight = 56.0,
-    this.headerLeadingInset = 24.0, // khoảng trống trái của HEADER
-  });
+    this.headerLeadingInset = 24.0,
+    this.bookings = const [],
+    this.selectedSlots = const {},
+    this.currentUserId,
+    this.onSlotTap,
+  }) : assert(endHour > startHour, 'endHour must be greater than startHour');
 
+  final List<CourtTimelineRow> rows;
+  final DateTime date;
   final int startHour;
   final int endHour; // exclusive
+  final Duration slotDuration;
   final double slotWidth;
   final double rowHeight;
-  final List<String> courts;
   final double leftColumnWidth;
   final double headerHeight;
   final double headerLeadingInset;
+  final List<CourtBooking> bookings;
+  final Set<SelectedSlot> selectedSlots;
+  final String? currentUserId;
+  final void Function(SelectedSlot slot, bool shouldSelect)? onSlotTap;
 
   @override
   State<CourtTimeline> createState() => _CourtTimelineState();
 }
 
 class _CourtTimelineState extends State<CourtTimeline> {
-  // Controller: header có offset khởi tạo = inset
   late final ScrollController _headerCtrl;
   final ScrollController _gridCtrl = ScrollController();
+  late final ScrollController _leftColumnCtrl;
+  final ScrollController _gridVerticalCtrl = ScrollController();
 
-  bool _syncing = false;
+  bool _horizontalSyncing = false;
+  bool _verticalSyncing = false;
 
-  // số ô (giờ)
-  int get _slotCount => widget.endHour - widget.startHour + 1;
+  late Map<String, int> _rowIndexById;
+  late List<List<CourtSlotStatus>> _statusMatrix;
 
-  // tổng bề rộng phần NỘI DUNG (lưới)
+  _DragOperation _currentDragOp = _DragOperation.none;
+  final Set<_CellCoordinate> _draggedCells = <_CellCoordinate>{};
+
+  int get _slotCount {
+    final totalMinutes = (widget.endHour - widget.startHour) * 60;
+    final slotMinutes = widget.slotDuration.inMinutes;
+    if (slotMinutes <= 0) {
+      return 0;
+    }
+    return totalMinutes ~/ slotMinutes;
+  }
+
   double get _totalWidth => _slotCount * widget.slotWidth;
 
   @override
   void initState() {
     super.initState();
-    // Header bắt đầu ở vị trí = inset để thấy trọn label mốc đầu
     _headerCtrl =
         ScrollController(initialScrollOffset: widget.headerLeadingInset);
+    _leftColumnCtrl = ScrollController();
+    _rowIndexById = _buildRowIndexMap(widget.rows);
+    _statusMatrix = _buildStatusMatrix();
 
-    // Đồng bộ header -> grid (trừ inset)
-    _headerCtrl.addListener(() {
-      if (_syncing) return;
-      _syncing = true;
-      final mapped = (_headerCtrl.offset - widget.headerLeadingInset)
-          .clamp(0.0, _totalWidth);
-      _gridCtrl.jumpTo(mapped);
-      _syncing = false;
-    });
+    _headerCtrl.addListener(_handleHeaderScroll);
+    _gridCtrl.addListener(_handleGridHorizontalScroll);
+    _leftColumnCtrl.addListener(_handleLeftVerticalScroll);
+    _gridVerticalCtrl.addListener(_handleGridVerticalScroll);
+  }
 
-    // Đồng bộ grid -> header (cộng inset)
-    _gridCtrl.addListener(() {
-      if (_syncing) return;
-      _syncing = true;
-      final mapped = (_gridCtrl.offset + widget.headerLeadingInset)
-          .clamp(0.0, _totalWidth + widget.headerLeadingInset);
-      _headerCtrl.jumpTo(mapped);
-      _syncing = false;
-    });
+  @override
+  void didUpdateWidget(covariant CourtTimeline oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!listEquals(oldWidget.rows, widget.rows)) {
+      _rowIndexById = _buildRowIndexMap(widget.rows);
+    }
+
+    if (!listEquals(oldWidget.bookings, widget.bookings) ||
+        oldWidget.currentUserId != widget.currentUserId ||
+        oldWidget.date != widget.date ||
+        oldWidget.startHour != widget.startHour ||
+        oldWidget.endHour != widget.endHour) {
+      _statusMatrix = _buildStatusMatrix();
+    }
   }
 
   @override
   void dispose() {
-    _headerCtrl.dispose();
-    _gridCtrl.dispose();
+    _headerCtrl
+      ..removeListener(_handleHeaderScroll)
+      ..dispose();
+    _gridCtrl
+      ..removeListener(_handleGridHorizontalScroll)
+      ..dispose();
+    _leftColumnCtrl
+      ..removeListener(_handleLeftVerticalScroll)
+      ..dispose();
+    _gridVerticalCtrl
+      ..removeListener(_handleGridVerticalScroll)
+      ..dispose();
     super.dispose();
+  }
+
+  void _handleHeaderScroll() {
+    if (_horizontalSyncing) return;
+    if (!_gridCtrl.hasClients) return;
+    _horizontalSyncing = true;
+    final mapped = (_headerCtrl.offset - widget.headerLeadingInset)
+        .clamp(0.0, _totalWidth);
+    _gridCtrl.jumpTo(mapped);
+    _horizontalSyncing = false;
+  }
+
+  void _handleGridHorizontalScroll() {
+    if (_horizontalSyncing) return;
+    if (!_headerCtrl.hasClients) return;
+    _horizontalSyncing = true;
+    final mapped = (_gridCtrl.offset + widget.headerLeadingInset)
+        .clamp(0.0, _totalWidth + widget.headerLeadingInset);
+    _headerCtrl.jumpTo(mapped);
+    _horizontalSyncing = false;
+  }
+
+  void _handleLeftVerticalScroll() {
+    if (_verticalSyncing) return;
+    if (!_gridVerticalCtrl.hasClients) return;
+    _verticalSyncing = true;
+    final offset = _leftColumnCtrl.offset
+        .clamp(0.0, _gridVerticalCtrl.position.maxScrollExtent);
+    _gridVerticalCtrl.jumpTo(offset);
+    _verticalSyncing = false;
+  }
+
+  void _handleGridVerticalScroll() {
+    if (_verticalSyncing) return;
+    if (!_leftColumnCtrl.hasClients) return;
+    _verticalSyncing = true;
+    final offset = _gridVerticalCtrl.offset
+        .clamp(0.0, _leftColumnCtrl.position.maxScrollExtent);
+    _leftColumnCtrl.jumpTo(offset);
+    _verticalSyncing = false;
+  }
+
+  Map<String, int> _buildRowIndexMap(List<CourtTimelineRow> rows) {
+    final map = <String, int>{};
+    for (var i = 0; i < rows.length; i++) {
+      map[rows[i].id] = i;
+    }
+    return map;
+  }
+
+  List<List<CourtSlotStatus>> _buildStatusMatrix() {
+    final matrix = List.generate(
+      widget.rows.length,
+      (_) => List<CourtSlotStatus>.filled(
+        _slotCount,
+        CourtSlotStatus.available,
+        growable: false,
+      ),
+      growable: false,
+    );
+
+    if (widget.bookings.isEmpty || _slotCount == 0) {
+      return matrix;
+    }
+
+    final now = DateTime.now().toUtc();
+    for (final booking in widget.bookings) {
+      final rowIndex = _rowIndexById[booking.courtUnitId];
+      if (rowIndex == null) continue;
+      final status = _mapBookingToStatus(booking, now);
+      if (status == CourtSlotStatus.available) continue;
+
+      final startIndex = _indexFromDate(booking.startTime);
+      final endIndex = _indexFromDate(booking.endTime);
+      for (var column = startIndex; column < endIndex; column++) {
+        if (column < 0 || column >= _slotCount) continue;
+        final current = matrix[rowIndex][column];
+        if (_statusPriority(status) >= _statusPriority(current)) {
+          matrix[rowIndex][column] = status;
+        }
+      }
+    }
+    return matrix;
+  }
+
+  CourtSlotStatus _mapBookingToStatus(CourtBooking booking, DateTime nowUtc) {
+    switch (booking.status) {
+      case BookingStatus.locked:
+        if (!booking.isActiveLock ||
+            (booking.lockedUntil != null &&
+                booking.lockedUntil!.isBefore(nowUtc))) {
+          return CourtSlotStatus.available;
+        }
+        if (widget.currentUserId != null &&
+            booking.userId == widget.currentUserId) {
+          return CourtSlotStatus.heldByMe;
+        }
+        return CourtSlotStatus.heldByOther;
+      case BookingStatus.pending:
+        if (widget.currentUserId != null &&
+            booking.userId == widget.currentUserId) {
+          return CourtSlotStatus.pendingApprovalMine;
+        }
+        return CourtSlotStatus.pendingApproval;
+      case BookingStatus.confirmed:
+        return CourtSlotStatus.confirmed;
+      case BookingStatus.cancelled:
+        return CourtSlotStatus.available;
+    }
+  }
+
+  int _statusPriority(CourtSlotStatus status) {
+    switch (status) {
+      case CourtSlotStatus.available:
+        return 0;
+      case CourtSlotStatus.heldByMe:
+        return 4;
+      case CourtSlotStatus.pendingApprovalMine:
+        return 5;
+      case CourtSlotStatus.heldByOther:
+        return 6;
+      case CourtSlotStatus.pendingApproval:
+        return 7;
+      case CourtSlotStatus.confirmed:
+        return 8;
+    }
+  }
+
+  int _indexFromDate(DateTime dateTime) {
+    final local = dateTime.toLocal();
+    final dayStart = DateTime(widget.date.year, widget.date.month,
+        widget.date.day, widget.startHour);
+    final diffMinutes = local.difference(dayStart).inMinutes;
+    final slotMinutes = widget.slotDuration.inMinutes;
+    if (slotMinutes <= 0) return 0;
+    return (diffMinutes / slotMinutes).floor();
+  }
+
+  SelectedSlot? _slotFromCell(int rowIndex, int column) {
+    if (rowIndex < 0 || rowIndex >= widget.rows.length) return null;
+    if (column < 0 || column >= _slotCount) return null;
+    final base = DateTime(widget.date.year, widget.date.month, widget.date.day,
+        widget.startHour);
+    final start = base.add(Duration(minutes: column * widget.slotDuration.inMinutes));
+    final end = start.add(widget.slotDuration);
+    return SelectedSlot(
+      courtUnitId: widget.rows[rowIndex].id,
+      startTime: start,
+      endTime: end,
+    );
+  }
+
+  int? _columnFromDx(double dx) {
+    if (dx.isNaN) return null;
+    if (dx < 0) return null;
+    final column = dx ~/ widget.slotWidth;
+    if (column >= _slotCount) return null;
+    return column;
+  }
+
+  bool _canSelect(CourtSlotStatus status) {
+    return status == CourtSlotStatus.available ||
+        status == CourtSlotStatus.heldByMe;
+  }
+
+  void _handleTap(int rowIndex, Offset position) {
+    if (widget.onSlotTap == null) return;
+    final column = _columnFromDx(position.dx);
+    if (column == null) return;
+    final slot = _slotFromCell(rowIndex, column);
+    if (slot == null) return;
+
+    final status = _statusMatrix[rowIndex][column];
+    final isSelected = widget.selectedSlots.contains(slot);
+
+    if (isSelected) {
+      widget.onSlotTap!.call(slot, false);
+    } else if (_canSelect(status)) {
+      widget.onSlotTap!.call(slot, true);
+    }
+  }
+
+  void _handlePanStart(int rowIndex, Offset position) {
+    if (widget.onSlotTap == null) return;
+    final column = _columnFromDx(position.dx);
+    if (column == null) return;
+    final slot = _slotFromCell(rowIndex, column);
+    if (slot == null) return;
+    final status = _statusMatrix[rowIndex][column];
+    final isSelected = widget.selectedSlots.contains(slot);
+
+    if (!isSelected && !_canSelect(status)) {
+      _currentDragOp = _DragOperation.none;
+      return;
+    }
+
+    _currentDragOp =
+        isSelected ? _DragOperation.remove : _DragOperation.add;
+    _draggedCells.clear();
+    _applyDrag(rowIndex, column, slot);
+  }
+
+  void _handlePanUpdate(int rowIndex, Offset position) {
+    if (widget.onSlotTap == null) return;
+    if (_currentDragOp == _DragOperation.none) return;
+    final column = _columnFromDx(position.dx);
+    if (column == null) return;
+    final slot = _slotFromCell(rowIndex, column);
+    if (slot == null) return;
+    _applyDrag(rowIndex, column, slot);
+  }
+
+  void _handlePanEnd() {
+    _currentDragOp = _DragOperation.none;
+    _draggedCells.clear();
+  }
+
+  void _applyDrag(int rowIndex, int column, SelectedSlot slot) {
+    final cell = _CellCoordinate(rowIndex, column);
+    if (_draggedCells.contains(cell)) return;
+
+    final status = _statusMatrix[rowIndex][column];
+    final isSelected = widget.selectedSlots.contains(slot);
+
+    switch (_currentDragOp) {
+      case _DragOperation.add:
+        if (_canSelect(status) && !isSelected) {
+          widget.onSlotTap?.call(slot, true);
+        }
+        break;
+      case _DragOperation.remove:
+        if (isSelected) {
+          widget.onSlotTap?.call(slot, false);
+        }
+        break;
+      case _DragOperation.none:
+        break;
+    }
+
+    _draggedCells.add(cell);
   }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final dividerColor = cs.outline;
+    final colors = _SlotColors.fromColorScheme(cs);
 
     return Column(
       children: [
-        // ===================== HEADER =====================
         Container(
           height: widget.headerHeight,
           decoration: BoxDecoration(
@@ -97,7 +395,6 @@ class _CourtTimelineState extends State<CourtTimeline> {
           ),
           child: Row(
             children: [
-              // Phần header cuộn ngang
               Expanded(
                 child: Scrollbar(
                   controller: _headerCtrl,
@@ -115,9 +412,7 @@ class _CourtTimelineState extends State<CourtTimeline> {
                             startHour: widget.startHour,
                             endHour: widget.endHour,
                             slotWidth: widget.slotWidth,
-                            leadingInset: widget
-                                .headerLeadingInset, // DỊCH vạch sang phải
-                            // style giống ảnh mẫu
+                            leadingInset: widget.headerLeadingInset,
                             hourTickColor: const Color(0xFFFFB300),
                             halfTickColor: const Color(0xFFFFB300),
                             hourTickStroke: 2.5,
@@ -140,38 +435,40 @@ class _CourtTimelineState extends State<CourtTimeline> {
             ],
           ),
         ),
-
-        // ===================== LƯỚI THỜI GIAN =====================
         Expanded(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Cột trái: tên sân (cố định)
               SizedBox(
                 width: widget.leftColumnWidth,
-                child: ListView.separated(
-                  padding: EdgeInsets.zero,
-                  itemCount: widget.courts.length,
-                  itemBuilder: (_, i) => Container(
-                    height: widget.rowHeight,
-                    color: const Color(0xFFE7FFF0),
-                    alignment: Alignment.centerLeft,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Text(widget.courts[i],
-                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                child: Scrollbar(
+                  controller: _leftColumnCtrl,
+                  child: ListView.separated(
+                    controller: _leftColumnCtrl,
+                    padding: EdgeInsets.zero,
+                    itemCount: widget.rows.length,
+                    itemBuilder: (_, index) => Container(
+                      height: widget.rowHeight,
+                      color: const Color(0xFFE7FFF0),
+                      alignment: Alignment.centerLeft,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Text(
+                        widget.rows[index].label,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    separatorBuilder: (_, __) =>
+                        Divider(height: 1, color: dividerColor),
                   ),
-                  separatorBuilder: (_, __) =>
-                      Divider(height: 1, color: dividerColor),
                 ),
               ),
-
               Expanded(
                 child: Container(
                   decoration: BoxDecoration(
                     border: Border(
                       bottom: BorderSide(
                         color: Colors.black,
-                        width: 2, // độ dày
+                        width: 2,
                       ),
                     ),
                   ),
@@ -183,23 +480,51 @@ class _CourtTimelineState extends State<CourtTimeline> {
                       scrollDirection: Axis.horizontal,
                       child: SizedBox(
                         width: _totalWidth,
-                        child: ListView.separated(
-                          padding: EdgeInsets.zero,
-                          itemCount: widget.courts.length,
-                          itemBuilder: (_, row) => SizedBox(
-                            height: widget.rowHeight,
-                            child: CustomPaint(
-                              painter: _GridRowPainter(
-                                totalSlots: _slotCount,
-                                slotWidth: widget.slotWidth,
-                                lineColor: const Color(0x33000000),
-                                background: Colors.white,
-                              ),
-                              child: const SizedBox.expand(),
-                            ),
+                        child: Scrollbar(
+                          controller: _gridVerticalCtrl,
+                          child: ListView.separated(
+                            controller: _gridVerticalCtrl,
+                            padding: EdgeInsets.zero,
+                            itemCount: widget.rows.length,
+                            itemBuilder: (_, row) {
+                              final rowStatuses = _statusMatrix[row];
+                              final selectedColumns = widget.selectedSlots
+                                  .where((slot) =>
+                                      slot.courtUnitId == widget.rows[row].id)
+                                  .map((slot) =>
+                                      _indexFromDate(slot.startTime))
+                                  .where((column) =>
+                                      column >= 0 && column < _slotCount)
+                                  .toSet();
+
+                              return SizedBox(
+                                height: widget.rowHeight,
+                                child: GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onTapDown: (details) =>
+                                      _handleTap(row, details.localPosition),
+                                  onPanStart: (details) =>
+                                      _handlePanStart(row, details.localPosition),
+                                  onPanUpdate: (details) =>
+                                      _handlePanUpdate(row, details.localPosition),
+                                  onPanEnd: (_) => _handlePanEnd(),
+                                  onPanCancel: _handlePanEnd,
+                                  child: CustomPaint(
+                                    painter: _CourtRowPainter(
+                                      slotWidth: widget.slotWidth,
+                                      slotCount: _slotCount,
+                                      rowHeight: widget.rowHeight,
+                                      statuses: rowStatuses,
+                                      selectedColumns: selectedColumns,
+                                      colors: colors,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                            separatorBuilder: (_, __) =>
+                                Divider(height: 1, color: dividerColor),
                           ),
-                          separatorBuilder: (_, __) =>
-                              Divider(height: 1, color: dividerColor),
                         ),
                       ),
                     ),
@@ -249,7 +574,7 @@ class _TimeHeaderPainterHalfHour extends CustomPainter {
     canvas.drawRect(Offset.zero & size, bg);
 
     final slotCount = endHour - startHour;
-    final totalWidth = slotCount * slotWidth; // phần nội dung (không gồm inset)
+    final totalWidth = slotCount * slotWidth;
 
     final bottom = size.height - 6.0;
     final tp = TextPainter(textDirection: ui.TextDirection.ltr);
@@ -259,14 +584,12 @@ class _TimeHeaderPainterHalfHour extends CustomPainter {
       final hourX =
           (i == slotCount) ? leadingInset + totalWidth : leadingInset + baseX;
 
-      // Vạch GIỜ
       final hourPaint = Paint()
         ..color = hourTickColor
         ..strokeWidth = hourTickStroke;
       final hourTop = bottom - hourTickHeight;
       canvas.drawLine(Offset(hourX, hourTop), Offset(hourX, bottom), hourPaint);
 
-      // Label GIỜ nằm TRÊN vạch, canh giữa
       final hourVal = startHour + i;
       final labelHour =
           DateFormat('H:00').format(DateTime(2000, 1, 1, hourVal));
@@ -276,7 +599,6 @@ class _TimeHeaderPainterHalfHour extends CustomPainter {
       final hourTy = hourTop - tp.height - 2;
       tp.paint(canvas, Offset(hourTx, hourTy));
 
-      // Vạch 30’ ở giữa ô (nếu bật)
       if (showHalf && i < slotCount) {
         final halfX = leadingInset + baseX + slotWidth / 2;
         final halfPaint = Paint()
@@ -316,41 +638,144 @@ class _TimeHeaderPainterHalfHour extends CustomPainter {
   }
 }
 
-/// Lưới theo ô 1 giờ: đường dọc tại mép ô (x = i * slotWidth)
-class _GridRowPainter extends CustomPainter {
-  _GridRowPainter({
-    required this.totalSlots,
+class _CourtRowPainter extends CustomPainter {
+  _CourtRowPainter({
     required this.slotWidth,
-    required this.lineColor,
-    required this.background,
-  });
+    required this.slotCount,
+    required this.rowHeight,
+    required this.statuses,
+    required this.selectedColumns,
+    required this.colors,
+  })  : assert(statuses.length == slotCount,
+            'Status length must equal slot count');
 
-  final int totalSlots;
   final double slotWidth;
-  final Color lineColor;
-  final Color background;
+  final int slotCount;
+  final double rowHeight;
+  final List<CourtSlotStatus> statuses;
+  final Set<int> selectedColumns;
+  final _SlotColors colors;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final bg = Paint()..color = background;
-    canvas.drawRect(Offset.zero & size, bg);
+    for (var column = 0; column < slotCount; column++) {
+      final rect = Rect.fromLTWH(
+        column * slotWidth,
+        0,
+        slotWidth,
+        rowHeight,
+      );
+      final status = statuses[column];
+      var fillColor = colors.forStatus(status);
+      if (selectedColumns.contains(column)) {
+        fillColor = colors.selectedOverlay;
+      }
+      canvas.drawRect(rect, Paint()..color = fillColor);
+    }
 
     final line = Paint()
-      ..color = lineColor
+      ..color = colors.gridLine
       ..strokeWidth = 1;
-
-    final totalWidth = totalSlots * slotWidth;
-    for (int i = 0; i <= totalSlots; i++) {
-      final dx = (i == totalSlots) ? totalWidth : i * slotWidth;
-      canvas.drawLine(Offset(dx, 0), Offset(dx, size.height), line);
+    for (int i = 0; i <= slotCount; i++) {
+      final dx = (i == slotCount) ? slotCount * slotWidth : i * slotWidth;
+      canvas.drawLine(Offset(dx, 0), Offset(dx, rowHeight), line);
     }
   }
 
   @override
-  bool shouldRepaint(covariant _GridRowPainter old) {
-    return old.totalSlots != totalSlots ||
-        old.slotWidth != slotWidth ||
-        old.lineColor != lineColor ||
-        old.background != background;
+  bool shouldRepaint(covariant _CourtRowPainter oldDelegate) {
+    return oldDelegate.slotWidth != slotWidth ||
+        oldDelegate.rowHeight != rowHeight ||
+        !listEquals(oldDelegate.statuses, statuses) ||
+        !setEquals(oldDelegate.selectedColumns, selectedColumns) ||
+        oldDelegate.colors != colors;
   }
 }
+
+class _SlotColors {
+  _SlotColors({
+    required this.available,
+    required this.heldByMe,
+    required this.heldByOther,
+    required this.pendingMine,
+    required this.pending,
+    required this.confirmed,
+    required this.selectedOverlay,
+    required this.gridLine,
+  });
+
+  factory _SlotColors.fromColorScheme(ColorScheme cs) {
+    return _SlotColors(
+      available: cs.surface,
+      heldByMe: cs.secondaryContainer.withOpacity(0.7),
+      heldByOther: cs.errorContainer.withOpacity(0.9),
+      pendingMine: cs.tertiaryContainer.withOpacity(0.9),
+      pending: cs.tertiary.withOpacity(0.6),
+      confirmed: cs.primaryContainer.withOpacity(0.9),
+      selectedOverlay: cs.secondary.withOpacity(0.35),
+      gridLine: const Color(0x33000000),
+    );
+  }
+
+  final Color available;
+  final Color heldByMe;
+  final Color heldByOther;
+  final Color pendingMine;
+  final Color pending;
+  final Color confirmed;
+  final Color selectedOverlay;
+  final Color gridLine;
+
+  Color forStatus(CourtSlotStatus status) {
+    switch (status) {
+      case CourtSlotStatus.available:
+        return available;
+      case CourtSlotStatus.heldByMe:
+        return heldByMe;
+      case CourtSlotStatus.heldByOther:
+        return heldByOther;
+      case CourtSlotStatus.pendingApprovalMine:
+        return pendingMine;
+      case CourtSlotStatus.pendingApproval:
+        return pending;
+      case CourtSlotStatus.confirmed:
+        return confirmed;
+    }
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is _SlotColors &&
+        other.available == available &&
+        other.heldByMe == heldByMe &&
+        other.heldByOther == heldByOther &&
+        other.pendingMine == pendingMine &&
+        other.pending == pending &&
+        other.confirmed == confirmed &&
+        other.selectedOverlay == selectedOverlay &&
+        other.gridLine == gridLine;
+  }
+
+  @override
+  int get hashCode => Object.hash(available, heldByMe, heldByOther, pendingMine,
+      pending, confirmed, selectedOverlay, gridLine);
+}
+
+class _CellCoordinate {
+  const _CellCoordinate(this.row, this.column);
+
+  final int row;
+  final int column;
+
+  @override
+  bool operator ==(Object other) {
+    return other is _CellCoordinate &&
+        other.row == row &&
+        other.column == column;
+  }
+
+  @override
+  int get hashCode => Object.hash(row, column);
+}
+
+enum _DragOperation { none, add, remove }

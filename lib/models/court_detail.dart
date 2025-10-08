@@ -214,7 +214,7 @@ class CourtUnit {
     final data = record.data;
     return CourtUnit(
       id: record.id,
-      label: (data['label'] as String?)?.trim() ?? '',
+      label: _resolveLabel(data),
       isActive: _parseBool(data['is_active']),
       createdAt: _parseDate(data['created']),
       updatedAt: _parseDate(data['updated']),
@@ -252,4 +252,9 @@ int? _parsePrice(dynamic value) {
     return int.tryParse(cleaned);
   }
   return null;
+}
+
+String _resolveLabel(Map<String, dynamic> data) {
+  final candidate = (data['court_label'] ?? data['label']) as String?;
+  return candidate?.trim().isNotEmpty == true ? candidate!.trim() : '';
 }

@@ -1,62 +1,194 @@
+import 'package:badminton_booking_app/models/booking.dart';
+import 'package:badminton_booking_app/models/court_detail.dart';
+import 'package:badminton_booking_app/utils/booking_helpers.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class PaymentPage extends StatelessWidget {
-  const PaymentPage({super.key});
+  const PaymentPage({
+    super.key,
+    required this.detailData,
+    required this.bookings,
+    this.slotDuration = const Duration(hours: 1),
+  });
+
+  final CourtDetailData detailData;
+  final List<CourtBooking> bookings;
+  final Duration slotDuration;
+
+  List<SelectedSlot> get _slots {
+    return bookings
+        .expand((booking) => booking.splitToSlots(slotDuration))
+        .map((slot) => SelectedSlot(
+              courtUnitId: slot.courtUnitId,
+              startTime: slot.startTime.toUtc(),
+              endTime: slot.endTime.toUtc(),
+            ))
+        .toList();
+  }
+
+  Duration get _totalDuration {
+    var minutes = 0;
+    for (final slot in _slots) {
+      minutes += slot.endTime.difference(slot.startTime).inMinutes;
+    }
+    return Duration(minutes: minutes);
+  }
+
+  double get _totalPrice {
+    var total = 0.0;
+    for (final slot in _slots) {
+      total += calculateSlotPrice(detailData, slot, slotDuration);
+    }
+    return total;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
     final cs = Theme.of(context).colorScheme;
+    final totalDuration = _totalDuration;
+    final durationLabel = totalDuration.inMinutes == 0
+        ? '0 phút'
+        : '${totalDuration.inMinutes ~/ 60}h ${totalDuration.inMinutes % 60}p';
 
     return Scaffold(
-      body: Stack(
-        children: [
-          // List Sân
-          Container(
-              margin: EdgeInsets.only(top: screenHeight / 13),
-              padding: const EdgeInsets.only(top: 20, bottom: 40),
-              child: ListView(
-                children: [
-                  _infoTab(cs),
-                  const SizedBox(height: 20),
-                  // Other widgets can be added here
-                ],
-              )),
-
-          // Title
-          Container(
-            height: screenHeight / 7,
-            decoration: BoxDecoration(
-              color: cs.primary,
+      appBar: AppBar(
+        title: const Text('Thanh toán'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            _buildCourtInfoCard(cs),
+            const SizedBox(height: 16),
+            Expanded(
+              child: bookings.isEmpty
+                  ? _buildEmptyState()
+                  : ListView.builder(
+                      itemCount: bookings.length,
+                      itemBuilder: (context, index) {
+                        final booking = bookings[index];
+                        final slots = booking.splitToSlots(slotDuration);
+                        return _buildBookingCard(cs, booking, slots);
+                      },
+                    ),
             ),
-            child: Padding(
-              padding: const EdgeInsets.only(top: 35),
-              child: Center(
-                child: Text(
-                  'P A Y M E N T',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.onPrimary,
-                  ),
-                ),
+            const SizedBox(height: 12),
+            _buildTotalRow(cs, durationLabel),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: bookings.isEmpty
+                    ? null
+                    : () => _showPaymentSuccess(context),
+                child: const Text('Thanh toán ngay'),
               ),
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCourtInfoCard(ColorScheme cs) {
+    return Material(
+      elevation: 2,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: cs.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: cs.outline.withOpacity(0.2)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              detailData.court.name,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: cs.onSurface,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Icon(Icons.place, size: 18),
+                const SizedBox(width: 6),
+                Expanded(child: Text(detailData.court.location)),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Icon(Icons.phone, size: 18),
+                const SizedBox(width: 6),
+                Text(detailData.court.phone),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBookingCard(
+    ColorScheme cs,
+    CourtBooking booking,
+    List<SelectedSlot> slots,
+  ) {
+    final formatter = DateFormat('dd/MM/yyyy');
+    final dayLabel = formatter.format(booking.startTime.toLocal());
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cs.surfaceVariant.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Ngày $dayLabel',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: cs.onSurface,
             ),
           ),
-          Padding(
-            padding: EdgeInsets.only(
-              top: screenHeight / 14,
-              left: 12,
+          const SizedBox(height: 8),
+          ...slots.map((slot) => _buildSlotRow(cs, slot)).toList(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSlotRow(ColorScheme cs, SelectedSlot slot) {
+    final timeLabel =
+        '${DateFormat.Hm().format(slot.startTime.toLocal())} - ${DateFormat.Hm().format(slot.endTime.toLocal())}';
+    final price = calculateSlotPrice(detailData, slot, slotDuration);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              '${_resolveCourtLabel(slot.courtUnitId)}  $timeLabel',
+              style: TextStyle(color: cs.onSurface),
             ),
-            child: GestureDetector(
-              onTap: () => Navigator.pop(context),
-              child: Container(
-                child: Icon(
-                  Icons.arrow_back,
-                  color: Colors.white,
-                  size: 28,
-                ),
-              ),
+          ),
+          Text(
+            formatCurrency(price),
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: cs.primary,
             ),
           ),
         ],
@@ -64,126 +196,86 @@ class PaymentPage extends StatelessWidget {
     );
   }
 
-  Widget _infoTab(ColorScheme cs) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Material(
-        elevation: 5,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            color: cs.surface,
-            border: Border.all(color: cs.outline, width: 1),
-          ),
-          child: Column(
+  Widget _buildTotalRow(ColorScheme cs, String durationLabel) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      decoration: BoxDecoration(
+        color: cs.surfaceVariant.withOpacity(0.6),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ListTile(
-                leading: const CircleAvatar(
-                  backgroundImage:
-                      AssetImage('assets/images/badminton_logo.jpg'),
-                  radius: 28,
+              const Text('Tổng thời gian'),
+              Text(
+                durationLabel,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: cs.onSurface,
                 ),
-                title: const Text("Minh Nghĩa Badminton",
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Container(
-                  margin: const EdgeInsets.only(top: 6),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE7F5EE),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Text("Cầu lông",
-                      style: TextStyle(color: Color(0xFF0E5A3A))),
-                ),
-              ),
-              const Divider(),
-              Row(
-                children: const [
-                  Icon(Icons.place, size: 20),
-                  SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                        "55D Đ. Trần Nam Phú, Xuân Khánh, Ninh Kiều, Cần Thơ"),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: const [
-                  Icon(Icons.schedule, size: 20),
-                  SizedBox(width: 6),
-                  Text("05:00 - 22:00"),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: const [
-                  Icon(Icons.call, size: 20),
-                  SizedBox(width: 6),
-                  Text(
-                    "0329672505",
-                    style: TextStyle(color: Colors.blue),
-                  ),
-                ],
               ),
             ],
           ),
-        ),
+          const Spacer(),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              const Text('Tổng cộng'),
+              Text(
+                formatCurrency(_totalPrice),
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: cs.primary,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  Widget _infoBooking(ColorScheme cs) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Material(
-        elevation: 5,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            color: cs.surface,
-            border: Border.all(color: cs.outline, width: 1),
-          ),
-          child: Column(
-            children: [
-              Row(
-                children: const [
-                  Icon(Icons.place, size: 20),
-                  SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                        "55D Đ. Trần Nam Phú, Xuân Khánh, Ninh Kiều, Cần Thơ"),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: const [
-                  Icon(Icons.schedule, size: 20),
-                  SizedBox(width: 6),
-                  Text("05:00 - 22:00"),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: const [
-                  Icon(Icons.call, size: 20),
-                  SizedBox(width: 6),
-                  Text(
-                    "0329672505",
-                    style: TextStyle(color: Colors.blue),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: const [
+          Icon(Icons.inbox_outlined, size: 48),
+          SizedBox(height: 12),
+          Text('Chưa có lượt đặt sân nào được duyệt.'),
+        ],
       ),
     );
+  }
+
+  void _showPaymentSuccess(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Thanh toán thành công'),
+        content: const Text(
+            'Chúng tôi đã ghi nhận giao dịch của bạn. Chúc bạn có buổi chơi vui vẻ!'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context)
+              ..pop()
+              ..maybePop(),
+            child: const Text('Hoàn tất'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _resolveCourtLabel(String courtUnitId) {
+    if (detailData.units.isEmpty) return 'Sân';
+    final unit = detailData.units.firstWhere(
+      (unit) => unit.id == courtUnitId,
+      orElse: () => detailData.units.first,
+    );
+    return unit.label.isEmpty ? 'Sân' : unit.label;
   }
 }

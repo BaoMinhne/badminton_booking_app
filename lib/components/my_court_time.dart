@@ -1,7 +1,57 @@
 // lib/components/my_court_time.dart
+import 'package:badminton_booking_app/models/slot_reservation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'dart:ui' as ui;
+
+typedef SlotStateResolver = SlotCellState? Function(
+    int courtIndex, int slotIndex);
+
+class SlotCellState {
+  const SlotCellState({
+    required this.status,
+    this.holdUntil,
+    this.note,
+  });
+
+  final SlotReservationStatus status;
+  final DateTime? holdUntil;
+  final String? note;
+}
+
+Color slotStatusBackground(
+    SlotReservationStatus? status, ColorScheme _) {
+  switch (status) {
+    case SlotReservationStatus.holding:
+      return const Color(0xFFFFF3CD); // vàng nhạt
+    case SlotReservationStatus.awaitingApproval:
+      return const Color(0xFFD6E4FF); // xanh dương nhạt
+    case SlotReservationStatus.booked:
+      return const Color(0xFFFFCDD2); // đỏ nhạt
+    case SlotReservationStatus.locked:
+      return const Color(0xFFEEEEEE); // xám nhạt
+    case SlotReservationStatus.heldByOthers:
+      return const Color(0xFFFFEBEE);
+    case null:
+      return Colors.white;
+  }
+}
+
+Color slotStatusBorder(SlotReservationStatus? status, ColorScheme _) {
+  switch (status) {
+    case SlotReservationStatus.holding:
+      return const Color(0xFFFFB300);
+    case SlotReservationStatus.awaitingApproval:
+      return const Color(0xFF3F51B5);
+    case SlotReservationStatus.booked:
+    case SlotReservationStatus.heldByOthers:
+      return const Color(0xFFE53935);
+    case SlotReservationStatus.locked:
+      return const Color(0xFF9E9E9E);
+    case null:
+      return const Color(0xFFE0E0E0);
+  }
+}
 
 /// Header kiểu “timeline” với vạch giờ & vạch 30’:
 /// - Mỗi ô (grid) = 1 giờ.
@@ -18,6 +68,9 @@ class CourtTimeline extends StatefulWidget {
     this.leftColumnWidth = 90, // cột tên sân (cố định)
     this.headerHeight = 56.0,
     this.headerLeadingInset = 24.0, // khoảng trống trái của HEADER
+    this.slotStateResolver,
+    this.onSlotTap,
+    this.slotInnerPadding = const EdgeInsets.all(4),
   });
 
   final int startHour;
@@ -28,6 +81,9 @@ class CourtTimeline extends StatefulWidget {
   final double leftColumnWidth;
   final double headerHeight;
   final double headerLeadingInset;
+  final SlotStateResolver? slotStateResolver;
+  final void Function(int courtIndex, int slotIndex)? onSlotTap;
+  final EdgeInsets slotInnerPadding;
 
   @override
   State<CourtTimeline> createState() => _CourtTimelineState();
@@ -188,14 +244,29 @@ class _CourtTimelineState extends State<CourtTimeline> {
                           itemCount: widget.courts.length,
                           itemBuilder: (_, row) => SizedBox(
                             height: widget.rowHeight,
-                            child: CustomPaint(
-                              painter: _GridRowPainter(
-                                totalSlots: _slotCount,
-                                slotWidth: widget.slotWidth,
-                                lineColor: const Color(0x33000000),
-                                background: Colors.white,
-                              ),
-                              child: const SizedBox.expand(),
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                CustomPaint(
+                                  painter: _GridRowPainter(
+                                    totalSlots: _slotCount,
+                                    slotWidth: widget.slotWidth,
+                                    lineColor: const Color(0x33000000),
+                                    background: Colors.white,
+                                  ),
+                                  child: const SizedBox.expand(),
+                                ),
+                                if (_totalWidth > 0)
+                                  _SlotOverlay(
+                                    row: row,
+                                    slotCount: _slotCount,
+                                    slotWidth: widget.slotWidth,
+                                    startHour: widget.startHour,
+                                    slotStateResolver: widget.slotStateResolver,
+                                    onSlotTap: widget.onSlotTap,
+                                    padding: widget.slotInnerPadding,
+                                  ),
+                              ],
                             ),
                           ),
                           separatorBuilder: (_, __) =>
@@ -210,6 +281,131 @@ class _CourtTimelineState extends State<CourtTimeline> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _SlotOverlay extends StatelessWidget {
+  const _SlotOverlay({
+    required this.row,
+    required this.slotCount,
+    required this.slotWidth,
+    required this.startHour,
+    required this.slotStateResolver,
+    required this.onSlotTap,
+    required this.padding,
+  });
+
+  final int row;
+  final int slotCount;
+  final double slotWidth;
+  final int startHour;
+  final SlotStateResolver? slotStateResolver;
+  final void Function(int courtIndex, int slotIndex)? onSlotTap;
+  final EdgeInsets padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final cells = List.generate(slotCount, (index) {
+      final state = slotStateResolver?.call(row, index);
+      final background =
+          slotStatusBackground(state?.status, Theme.of(context).colorScheme);
+      final border =
+          slotStatusBorder(state?.status, Theme.of(context).colorScheme);
+      final canTap = onSlotTap != null &&
+          (state == null || state.status == SlotReservationStatus.holding);
+
+      return SizedBox(
+        width: slotWidth,
+        child: Padding(
+          padding: padding,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: canTap ? () => onSlotTap!(row, index) : null,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              decoration: BoxDecoration(
+                color: background,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: border, width: 1.4),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+              child: _SlotCellContent(
+                hourLabel: '${startHour + index}:00',
+                state: state,
+              ),
+            ),
+          ),
+        ),
+      );
+    });
+
+    return IgnorePointer(
+      ignoring: onSlotTap == null,
+      child: SizedBox(
+        width: slotCount * slotWidth,
+        child: Row(children: cells),
+      ),
+    );
+  }
+}
+
+class _SlotCellContent extends StatelessWidget {
+  const _SlotCellContent({required this.hourLabel, this.state});
+
+  final String hourLabel;
+  final SlotCellState? state;
+
+  @override
+  Widget build(BuildContext context) {
+    final texts = <String>[hourLabel];
+    final status = state?.status;
+    final holdUntil = state?.holdUntil;
+    final note = state?.note;
+
+    if (status != null) {
+      switch (status) {
+        case SlotReservationStatus.holding:
+          if (holdUntil != null) {
+            texts.add('Giữ đến ${DateFormat('HH:mm').format(holdUntil)}');
+          } else {
+            texts.add('Đang giữ chỗ');
+          }
+          break;
+        case SlotReservationStatus.awaitingApproval:
+          texts.add('Chờ admin duyệt');
+          break;
+        case SlotReservationStatus.booked:
+          texts.add('Đã đặt');
+          break;
+        case SlotReservationStatus.locked:
+          texts.add('Đã khóa');
+          break;
+        case SlotReservationStatus.heldByOthers:
+          texts.add('Người khác đang giữ');
+          break;
+      }
+    }
+
+    if (note != null && note.isNotEmpty) {
+      texts.add(note);
+    }
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: texts
+          .map((text) => Text(
+                text,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontWeight: text == hourLabel
+                          ? FontWeight.w600
+                          : FontWeight.w500,
+                    ),
+              ))
+          .toList(),
     );
   }
 }

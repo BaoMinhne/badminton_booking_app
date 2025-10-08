@@ -1,7 +1,16 @@
+import 'package:badminton_booking_app/models/court.dart';
+import 'package:badminton_booking_app/models/court_booking.dart';
 import 'package:flutter/material.dart';
 
 class PaymentPage extends StatelessWidget {
-  const PaymentPage({super.key});
+  const PaymentPage({
+    super.key,
+    required this.booking,
+    required this.court,
+  });
+
+  final CourtBooking booking;
+  final Court court;
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +28,7 @@ class PaymentPage extends StatelessWidget {
                 children: [
                   _infoTab(cs),
                   const SizedBox(height: 20),
-                  // Other widgets can be added here
+                  _infoBooking(cs),
                 ],
               )),
 
@@ -85,8 +94,8 @@ class PaymentPage extends StatelessWidget {
                       AssetImage('assets/images/badminton_logo.jpg'),
                   radius: 28,
                 ),
-                title: const Text("Minh Nghĩa Badminton",
-                    style: TextStyle(fontWeight: FontWeight.bold)),
+                title: Text(court.name,
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
                 subtitle: Container(
                   margin: const EdgeInsets.only(top: 6),
                   padding:
@@ -101,31 +110,34 @@ class PaymentPage extends StatelessWidget {
               ),
               const Divider(),
               Row(
-                children: const [
-                  Icon(Icons.place, size: 20),
-                  SizedBox(width: 6),
+                children: [
+                  const Icon(Icons.place, size: 20),
+                  const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                        "55D Đ. Trần Nam Phú, Xuân Khánh, Ninh Kiều, Cần Thơ"),
+                      court.location.isNotEmpty
+                          ? court.location
+                          : 'Địa chỉ đang cập nhật',
+                    ),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
               Row(
-                children: const [
-                  Icon(Icons.schedule, size: 20),
-                  SizedBox(width: 6),
-                  Text("05:00 - 22:00"),
+                children: [
+                  const Icon(Icons.schedule, size: 20),
+                  const SizedBox(width: 6),
+                  Text('${_formatTime(booking.startTime)} - ${_formatTime(booking.endTime)}'),
                 ],
               ),
               const SizedBox(height: 12),
               Row(
-                children: const [
-                  Icon(Icons.call, size: 20),
-                  SizedBox(width: 6),
+                children: [
+                  const Icon(Icons.call, size: 20),
+                  const SizedBox(width: 6),
                   Text(
-                    "0329672505",
-                    style: TextStyle(color: Colors.blue),
+                    court.phone.isNotEmpty ? court.phone : 'Số điện thoại chưa cập nhật',
+                    style: const TextStyle(color: Colors.blue),
                   ),
                 ],
               ),
@@ -152,38 +164,67 @@ class PaymentPage extends StatelessWidget {
           child: Column(
             children: [
               Row(
-                children: const [
-                  Icon(Icons.place, size: 20),
-                  SizedBox(width: 6),
+                children: [
+                  const Icon(Icons.calendar_today, size: 20),
+                  const SizedBox(width: 6),
+                  Text(_formatDate(booking.startTime)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Icon(Icons.access_time_filled, size: 20),
+                  const SizedBox(width: 6),
+                  Text('${_formatTime(booking.startTime)} - ${_formatTime(booking.endTime)}'),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Icon(Icons.shield, size: 20),
+                  const SizedBox(width: 6),
                   Expanded(
-                    child: Text(
-                        "55D Đ. Trần Nam Phú, Xuân Khánh, Ninh Kiều, Cần Thơ"),
+                    child: Text(_describeStatus(booking.status)),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              Row(
-                children: const [
-                  Icon(Icons.schedule, size: 20),
-                  SizedBox(width: 6),
-                  Text("05:00 - 22:00"),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: const [
-                  Icon(Icons.call, size: 20),
-                  SizedBox(width: 6),
-                  Text(
-                    "0329672505",
-                    style: TextStyle(color: Colors.blue),
-                  ),
-                ],
-              ),
+              const SizedBox(height: 16),
+              if (booking.status != CourtBookingStatus.confirmed)
+                Text(
+                  'Thanh toán sẽ khả dụng sau khi quản trị viên duyệt đơn đặt sân.',
+                  style: TextStyle(color: cs.onSurfaceVariant),
+                )
+              else
+                FilledButton.icon(
+                  onPressed: () {},
+                  icon: const Icon(Icons.payment),
+                  label: const Text('Tiến hành thanh toán'),
+                ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  String _formatTime(DateTime time) {
+    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+  }
+
+  String _formatDate(DateTime time) {
+    return '${time.day.toString().padLeft(2, '0')}/${time.month.toString().padLeft(2, '0')}/${time.year}';
+  }
+
+  String _describeStatus(CourtBookingStatus status) {
+    switch (status) {
+      case CourtBookingStatus.locked:
+        return 'Đang giữ chỗ (chưa gửi duyệt)';
+      case CourtBookingStatus.pending:
+        return 'Đang chờ quản trị viên duyệt';
+      case CourtBookingStatus.confirmed:
+        return 'Đã được duyệt - có thể thanh toán';
+      case CourtBookingStatus.cancelled:
+        return 'Đặt sân đã bị hủy';
+    }
   }
 }

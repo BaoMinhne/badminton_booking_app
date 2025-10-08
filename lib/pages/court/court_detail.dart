@@ -188,8 +188,15 @@ class _CourtDetailState extends State<CourtDetail>
           padding: const EdgeInsets.only(right: 12),
           child: FilledButton(
             onPressed: () {
-              Navigator.push(context,
-                  MaterialPageRoute(builder: (context) => BookingPage()));
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => BookingPage(
+                    court: _detailData.court,
+                    courtService: _courtService,
+                  ),
+                ),
+              );
             },
             child: const Text('Đặt lịch'),
           ),

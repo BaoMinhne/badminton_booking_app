@@ -136,8 +136,7 @@ class CourtPage extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
-              onPressed: () =>
-                  context.read<CourtManager>().refresh(),
+              onPressed: () => context.read<CourtManager>().refresh(),
               icon: const Icon(Icons.refresh),
               label: const Text('Thử lại'),
             ),

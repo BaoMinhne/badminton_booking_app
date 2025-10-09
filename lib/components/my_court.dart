@@ -1,4 +1,5 @@
 import 'package:badminton_booking_app/models/court.dart';
+import 'package:badminton_booking_app/services/court_service.dart';
 import 'package:badminton_booking_app/pages/court/booking_page.dart';
 import 'package:badminton_booking_app/pages/court/court_detail.dart';
 import 'package:flutter/material.dart';
@@ -184,11 +185,23 @@ class _MyCourtState extends State<MyCourt> {
                       ),
                       const SizedBox(width: 12),
                       ElevatedButton(
-                        onPressed: () {
-                          Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => BookingPage()));
+                        onPressed: () async {
+                          try {
+                            final detail =
+                                await CourtService().getCourtDetail(court.id);
+                            if (!mounted) return;
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      BookingPage(detailData: detail),
+                                ));
+                          } catch (e) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(e.toString())),
+                            );
+                          }
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: colorSchema.primary,

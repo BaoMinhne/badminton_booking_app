@@ -25,7 +25,8 @@ class BookingService {
     final dayEnd = dayStart.add(const Duration(days: 1));
 
     final escapedCourt = _escapeFilterValue(courtId);
-    final filter = "court_id='$escapedCourt' && start_time < '${dayEnd.toIso8601String()}' && end_time > '${dayStart.toIso8601String()}'";
+    final filter =
+        "court_id='$escapedCourt' && start_time < '${dayEnd.toIso8601String()}' && end_time > '${dayStart.toIso8601String()}'";
 
     try {
       final result = await pb.collection(collection).getList(
@@ -137,6 +138,6 @@ class BookingService {
         return error.response!['message'] as String;
       }
     }
-    return error.message ?? 'Đã xảy ra lỗi. Vui lòng thử lại.';
+    return 'Đã xảy ra lỗi. Vui lòng thử lại.';
   }
 }

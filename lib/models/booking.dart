@@ -1,25 +1,22 @@
 import 'package:pocketbase/pocketbase.dart';
 
 /// Booking status available in the PocketBase `court_bookings` collection.
-enum BookingStatus {
-  pending,
-  confirmed,
-  cancelled,
-  locked,
-}
+enum BookingStatus { held, awaitingPayment, confirmed, cancelled, expired }
 
-BookingStatus _parseBookingStatus(dynamic value) {
-  final raw = (value as String?)?.trim().toLowerCase();
-  switch (raw) {
+BookingStatus _parseBookingStatus(dynamic v) {
+  switch ((v as String?)?.toLowerCase()) {
+    case 'held':
+      return BookingStatus.held;
+    case 'awaiting_payment':
+      return BookingStatus.awaitingPayment;
     case 'confirmed':
       return BookingStatus.confirmed;
     case 'cancelled':
       return BookingStatus.cancelled;
-    case 'locked':
-      return BookingStatus.locked;
-    case 'pending':
+    case 'expired':
+      return BookingStatus.expired;
     default:
-      return BookingStatus.pending;
+      return BookingStatus.held; // fallback an toàn
   }
 }
 
@@ -62,7 +59,7 @@ class CourtBooking {
   final String? note;
 
   bool get isActiveLock {
-    if (status != BookingStatus.locked) return false;
+    if (status != BookingStatus.held) return false;
     if (lockedUntil == null) return true;
     return lockedUntil!.isAfter(DateTime.now().toUtc());
   }

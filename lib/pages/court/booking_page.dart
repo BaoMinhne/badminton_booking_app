@@ -75,8 +75,9 @@ class _BookingPageState extends State<BookingPage> {
 
       if (_currentUserId != null) {
         for (final booking in bookings) {
+          // CHANGED: dùng BookingStatus.held thay cho locked
           if (booking.userId == _currentUserId &&
-              booking.status == BookingStatus.locked &&
+              booking.status == BookingStatus.held &&
               booking.isActiveLock) {
             for (final slot in booking.splitToSlots(widget.slotDuration)) {
               final canonical = _canonicalizeSlot(slot);
@@ -208,13 +209,15 @@ class _BookingPageState extends State<BookingPage> {
     }
   }
 
-  Future<void> _submitForApproval() async {
+  // CHANGED: đổi tên hàm và text sang "chuyển sang chờ thanh toán"
+  Future<void> _proceedToAwaitingPayment() async {
     if (_heldBookings.isEmpty) return;
     setState(() => _submittingRequest = true);
 
     try {
       final updates = <CourtBooking>[];
       for (final booking in _heldBookings.values) {
+        // vẫn gọi service cũ, nhưng service nên update status = 'awaiting_payment'
         final updated = await _bookingService.submitForApproval(booking.id);
         updates.add(updated);
       }
@@ -233,7 +236,7 @@ class _BookingPageState extends State<BookingPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Đã gửi yêu cầu giữ chỗ. Vui lòng chờ quản lý duyệt.'),
+          content: Text('Đã chuyển sang trạng thái chờ thanh toán.'),
         ),
       );
       await _loadBookings();
@@ -280,11 +283,12 @@ class _BookingPageState extends State<BookingPage> {
     return total;
   }
 
-  Iterable<CourtBooking> get _confirmedBookingsForUser {
+  // CHANGED: dùng awaitingPayment thay cho confirmed
+  Iterable<CourtBooking> get _awaitingPaymentForUser {
     if (_currentUserId == null) return const Iterable.empty();
     return _bookings.where((booking) =>
         booking.userId == _currentUserId &&
-        booking.status == BookingStatus.confirmed);
+        booking.status == BookingStatus.awaitingPayment);
   }
 
   int get _startHour {
@@ -481,10 +485,13 @@ class _BookingPageState extends State<BookingPage> {
         spacing: 12,
         runSpacing: 8,
         children: [
-          _legendItem(cs.secondaryContainer.withOpacity(0.7), 'Đang giữ chỗ'),
+          _legendItem(
+              cs.secondaryContainer.withOpacity(0.7), 'Đang giữ chỗ'), // held
           _legendItem(cs.errorContainer.withOpacity(0.9), 'Người khác giữ'),
-          _legendItem(cs.tertiaryContainer.withOpacity(0.9), 'Chờ duyệt'),
-          _legendItem(cs.primaryContainer.withOpacity(0.9), 'Đã duyệt'),
+          _legendItem(cs.tertiaryContainer.withOpacity(0.9),
+              'Chờ thanh toán'), // CHANGED
+          _legendItem(
+              cs.primaryContainer.withOpacity(0.9), 'Đã xác nhận'), // CHANGED
         ],
       ),
     );
@@ -536,14 +543,15 @@ class _BookingPageState extends State<BookingPage> {
               ),
             ],
           ),
-          if (_confirmedBookingsForUser.isNotEmpty) ...[
+          // CHANGED: thông báo số booking chờ thanh toán thay vì đã duyệt
+          if (_awaitingPaymentForUser.isNotEmpty) ...[
             const SizedBox(height: 8),
             Row(
               children: [
-                Icon(Icons.check_circle, size: 20, color: cs.primary),
+                Icon(Icons.pending_actions, size: 20, color: cs.primary),
                 const SizedBox(width: 6),
                 Text(
-                  'Đã có ${_confirmedBookingsForUser.length} lượt được duyệt.',
+                  'Có ${_awaitingPaymentForUser.length} lượt chờ thanh toán.',
                   style: TextStyle(color: cs.primary),
                 ),
               ],
@@ -555,7 +563,8 @@ class _BookingPageState extends State<BookingPage> {
   }
 
   Widget _buildActions(ColorScheme cs) {
-    final hasConfirmed = _confirmedBookingsForUser.isNotEmpty;
+    // CHANGED: bật thanh toán khi có booking awaiting_payment
+    final hasAwaitingPayment = _awaitingPaymentForUser.isNotEmpty;
 
     return SafeArea(
       minimum: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -565,29 +574,31 @@ class _BookingPageState extends State<BookingPage> {
           SizedBox(
             width: double.infinity,
             child: FilledButton(
-              onPressed:
-                  _heldBookings.isEmpty || _submittingRequest ? null : _submitForApproval,
+              onPressed: _heldBookings.isEmpty || _submittingRequest
+                  ? null
+                  : _proceedToAwaitingPayment, // CHANGED
               child: _submittingRequest
                   ? const SizedBox(
                       height: 22,
                       width: 22,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('Gửi yêu cầu đặt sân'),
+                  : const Text('Chuyển sang thanh toán'), // CHANGED
             ),
           ),
           const SizedBox(height: 10),
           SizedBox(
             width: double.infinity,
             child: OutlinedButton(
-              onPressed: hasConfirmed
+              onPressed: hasAwaitingPayment
                   ? () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => PaymentPage(
                             detailData: widget.detailData,
-                            bookings: _confirmedBookingsForUser.toList(),
+                            bookings:
+                                _awaitingPaymentForUser.toList(), // CHANGED
                             slotDuration: widget.slotDuration,
                           ),
                         ),

@@ -22,8 +22,8 @@ enum CourtSlotStatus {
   available,
   heldByMe,
   heldByOther,
-  pendingApprovalMine,
-  pendingApproval,
+  pendingApprovalMine, // mapped from awaiting_payment (mine)
+  pendingApproval, // mapped from awaiting_payment (others)
   confirmed,
 }
 
@@ -222,9 +222,11 @@ class _CourtTimelineState extends State<CourtTimeline> {
     return matrix;
   }
 
+  /// Map BookingStatus (DB) -> CourtSlotStatus (UI)
   CourtSlotStatus _mapBookingToStatus(CourtBooking booking, DateTime nowUtc) {
     switch (booking.status) {
-      case BookingStatus.locked:
+      case BookingStatus.held:
+        // Nếu hết hạn lock thì hiển thị available
         if (!booking.isActiveLock ||
             (booking.lockedUntil != null &&
                 booking.lockedUntil!.isBefore(nowUtc))) {
@@ -235,20 +237,26 @@ class _CourtTimelineState extends State<CourtTimeline> {
           return CourtSlotStatus.heldByMe;
         }
         return CourtSlotStatus.heldByOther;
-      case BookingStatus.pending:
+
+      case BookingStatus.awaitingPayment:
+        // "Chờ thanh toán" (map sang pending* để tái dùng palette UI)
         if (widget.currentUserId != null &&
             booking.userId == widget.currentUserId) {
           return CourtSlotStatus.pendingApprovalMine;
         }
         return CourtSlotStatus.pendingApproval;
+
       case BookingStatus.confirmed:
         return CourtSlotStatus.confirmed;
+
       case BookingStatus.cancelled:
+      case BookingStatus.expired:
         return CourtSlotStatus.available;
     }
   }
 
   int _statusPriority(CourtSlotStatus status) {
+    // Ưu tiên cao hơn sẽ ghi đè cell (vd: confirmed > pending > held > available)
     switch (status) {
       case CourtSlotStatus.available:
         return 0;
@@ -267,8 +275,8 @@ class _CourtTimelineState extends State<CourtTimeline> {
 
   int _indexFromDate(DateTime dateTime) {
     final local = dateTime.toLocal();
-    final dayStart = DateTime(widget.date.year, widget.date.month,
-        widget.date.day, widget.startHour);
+    final dayStart = DateTime(
+        widget.date.year, widget.date.month, widget.date.day, widget.startHour);
     final diffMinutes = local.difference(dayStart).inMinutes;
     final slotMinutes = widget.slotDuration.inMinutes;
     if (slotMinutes <= 0) return 0;
@@ -278,9 +286,10 @@ class _CourtTimelineState extends State<CourtTimeline> {
   SelectedSlot? _slotFromCell(int rowIndex, int column) {
     if (rowIndex < 0 || rowIndex >= widget.rows.length) return null;
     if (column < 0 || column >= _slotCount) return null;
-    final base = DateTime(widget.date.year, widget.date.month, widget.date.day,
-        widget.startHour);
-    final start = base.add(Duration(minutes: column * widget.slotDuration.inMinutes));
+    final base = DateTime(
+        widget.date.year, widget.date.month, widget.date.day, widget.startHour);
+    final start =
+        base.add(Duration(minutes: column * widget.slotDuration.inMinutes));
     final end = start.add(widget.slotDuration);
     return SelectedSlot(
       courtUnitId: widget.rows[rowIndex].id,
@@ -298,6 +307,7 @@ class _CourtTimelineState extends State<CourtTimeline> {
   }
 
   bool _canSelect(CourtSlotStatus status) {
+    // Có thể chọn khi ô còn trống hoặc đang do mình giữ
     return status == CourtSlotStatus.available ||
         status == CourtSlotStatus.heldByMe;
   }
@@ -333,8 +343,7 @@ class _CourtTimelineState extends State<CourtTimeline> {
       return;
     }
 
-    _currentDragOp =
-        isSelected ? _DragOperation.remove : _DragOperation.add;
+    _currentDragOp = isSelected ? _DragOperation.remove : _DragOperation.add;
     _draggedCells.clear();
     _applyDrag(rowIndex, column, slot);
   }
@@ -464,7 +473,7 @@ class _CourtTimelineState extends State<CourtTimeline> {
               ),
               Expanded(
                 child: Container(
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     border: Border(
                       bottom: BorderSide(
                         color: Colors.black,
@@ -491,8 +500,7 @@ class _CourtTimelineState extends State<CourtTimeline> {
                               final selectedColumns = widget.selectedSlots
                                   .where((slot) =>
                                       slot.courtUnitId == widget.rows[row].id)
-                                  .map((slot) =>
-                                      _indexFromDate(slot.startTime))
+                                  .map((slot) => _indexFromDate(slot.startTime))
                                   .where((column) =>
                                       column >= 0 && column < _slotCount)
                                   .toSet();
@@ -503,10 +511,10 @@ class _CourtTimelineState extends State<CourtTimeline> {
                                   behavior: HitTestBehavior.opaque,
                                   onTapDown: (details) =>
                                       _handleTap(row, details.localPosition),
-                                  onPanStart: (details) =>
-                                      _handlePanStart(row, details.localPosition),
-                                  onPanUpdate: (details) =>
-                                      _handlePanUpdate(row, details.localPosition),
+                                  onPanStart: (details) => _handlePanStart(
+                                      row, details.localPosition),
+                                  onPanUpdate: (details) => _handlePanUpdate(
+                                      row, details.localPosition),
                                   onPanEnd: (_) => _handlePanEnd(),
                                   onPanCancel: _handlePanEnd,
                                   child: CustomPaint(
@@ -646,7 +654,7 @@ class _CourtRowPainter extends CustomPainter {
     required this.statuses,
     required this.selectedColumns,
     required this.colors,
-  })  : assert(statuses.length == slotCount,
+  }) : assert(statuses.length == slotCount,
             'Status length must equal slot count');
 
   final double slotWidth;

@@ -64,7 +64,7 @@ class BookingService {
       'user_id': userId,
       'start_time': startTime.toUtc().toIso8601String(),
       'end_time': endTime.toUtc().toIso8601String(),
-      'status': 'locked',
+      'status': 'held',
       'locked_until': lockedUntil.toIso8601String(),
     };
 
@@ -78,6 +78,7 @@ class BookingService {
     }
   }
 
+  /// Huỷ giữ chỗ (xoá bản ghi). Giữ nguyên hành vi cũ.
   Future<void> releaseBooking(String bookingId) async {
     final pb = await getPocketbaseInstance();
     try {
@@ -89,22 +90,25 @@ class BookingService {
     }
   }
 
+  /// CHANGED: chuyển trạng thái từ 'held' -> 'awaiting_payment'
+  /// (trước đây là 'pending')
   Future<CourtBooking> submitForApproval(String bookingId) async {
     final pb = await getPocketbaseInstance();
     try {
       final record = await pb.collection(collection).update(bookingId, body: {
-        'status': 'pending',
-        'locked_until': null,
+        'status': 'awaiting_payment', // CHANGED
+        'locked_until': null, // bỏ khoá tạm khi sang chờ thanh toán
       });
       return CourtBooking.fromRecord(record);
     } on ClientException catch (error) {
       throw BookingServiceException(_mapClientException(error));
     } catch (_) {
       throw BookingServiceException(
-          'Không thể gửi yêu cầu đặt sân. Vui lòng thử lại.');
+          'Không thể chuyển sang chờ thanh toán. Vui lòng thử lại.');
     }
   }
 
+  /// Xác nhận sau khi thanh toán thành công.
   Future<CourtBooking> markAsConfirmed(String bookingId) async {
     final pb = await getPocketbaseInstance();
     try {

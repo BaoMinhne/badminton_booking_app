@@ -69,8 +69,17 @@ class BookingService {
     };
 
     try {
+      await _ensureNoConflictingBookings(
+        pb: pb,
+        courtId: courtId,
+        courtUnitId: courtUnitId,
+        startTime: startTime,
+        endTime: endTime,
+      );
       final record = await pb.collection(collection).create(body: body);
       return CourtBooking.fromRecord(record);
+    } on BookingServiceException {
+      rethrow;
     } on ClientException catch (error) {
       throw BookingServiceException(_mapClientException(error));
     } catch (_) {
@@ -122,6 +131,55 @@ class BookingService {
     } catch (_) {
       throw BookingServiceException(
           'Không thể xác nhận đặt sân. Vui lòng thử lại.');
+    }
+  }
+
+  Future<void> _ensureNoConflictingBookings({
+    required PocketBase pb,
+    required String courtId,
+    required String courtUnitId,
+    required DateTime startTime,
+    required DateTime endTime,
+  }) async {
+    final startIso = startTime.toUtc().toIso8601String();
+    final endIso = endTime.toUtc().toIso8601String();
+    final escapedCourt = _escapeFilterValue(courtId);
+    final escapedUnit = _escapeFilterValue(courtUnitId);
+
+    final filter =
+        "court_id='$escapedCourt' && court_unit_id='$escapedUnit' && start_time < '$endIso' && end_time > '$startIso' && status != 'cancelled' && status != 'expired'";
+
+    try {
+      final result = await pb.collection(collection).getList(
+            page: 1,
+            perPage: 200,
+            filter: filter,
+          );
+
+      final now = DateTime.now().toUtc();
+      for (final record in result.items) {
+        final booking = CourtBooking.fromRecord(record);
+
+        final isBlockingStatus = booking.status == BookingStatus.confirmed ||
+            booking.status == BookingStatus.awaitingPayment ||
+            (booking.status == BookingStatus.held &&
+                (booking.lockedUntil == null ||
+                    booking.lockedUntil!.isAfter(now)));
+
+        if (isBlockingStatus) {
+          throw BookingServiceException(
+            'Khung giờ này đã có lượt đặt khác. Vui lòng chọn thời gian khác.',
+          );
+        }
+      }
+    } on BookingServiceException {
+      rethrow;
+    } on ClientException catch (error) {
+      throw BookingServiceException(_mapClientException(error));
+    } catch (_) {
+      throw BookingServiceException(
+        'Không thể kiểm tra tình trạng sân. Vui lòng thử lại.',
+      );
     }
   }
 

@@ -591,8 +591,8 @@ class _BookingPageState extends State<BookingPage> {
             width: double.infinity,
             child: OutlinedButton(
               onPressed: hasAwaitingPayment
-                  ? () {
-                      Navigator.push(
+                  ? () async {
+                      final result = await Navigator.push<bool>(
                         context,
                         MaterialPageRoute(
                           builder: (context) => PaymentPage(
@@ -600,9 +600,14 @@ class _BookingPageState extends State<BookingPage> {
                             bookings:
                                 _awaitingPaymentForUser.toList(), // CHANGED
                             slotDuration: widget.slotDuration,
+                            bookingService: _bookingService,
                           ),
                         ),
                       );
+
+                      if (result == true && mounted) {
+                        await _loadBookings();
+                      }
                     }
                   : null,
               child: const Text('Thanh toán'),

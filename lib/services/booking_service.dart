@@ -94,23 +94,38 @@ class BookingService {
       try {
         final dynamic sub = subscription;
         final collectionApi = pb.collection(collection);
-        if (sub is RealtimeSubscription) {
-          try {
-            await (sub as dynamic).unsubscribe();
-            return;
-          } catch (_) {
-            await collectionApi.unsubscribe(sub.id);
+
+        try {
+          final dynamic maybeUnsubscribe = sub.unsubscribe;
+          if (maybeUnsubscribe is Future<void> Function()) {
+            await maybeUnsubscribe();
             return;
           }
-        } else if (sub is Future<void> Function()) {
+        } catch (_) {
+          // ignore and try other strategies
+        }
+
+        if (sub is Future<void> Function()) {
           await sub();
           return;
-        } else if (sub is String) {
+        }
+
+        try {
+          final dynamic maybeId = sub.id;
+          if (maybeId is String && maybeId.isNotEmpty) {
+            await collectionApi.unsubscribe(maybeId);
+            return;
+          }
+        } catch (_) {
+          // ignore and try other strategies
+        }
+
+        if (sub is String) {
           await collectionApi.unsubscribe(sub);
           return;
-        } else {
-          await collectionApi.unsubscribe('*');
         }
+
+        await collectionApi.unsubscribe('*');
       } catch (_) {
         try {
           await pb.collection(collection).unsubscribe('*');

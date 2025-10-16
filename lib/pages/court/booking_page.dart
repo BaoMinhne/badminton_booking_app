@@ -33,12 +33,15 @@ class _BookingPageState extends State<BookingPage> {
   final Map<SelectedSlot, CourtBooking> _heldBookings = {};
   final Set<SelectedSlot> _processingSlots = {};
 
+  BookingRealtimeSubscription? _realtimeSubscription;
+
   List<CourtBooking> _bookings = <CourtBooking>[];
 
   bool _isLoading = false;
   String? _errorMessage;
   bool _submittingRequest = false;
   String? _currentUserId;
+  bool _hasRealtimeInitialized = false;
 
   @override
   void initState() {
@@ -51,14 +54,33 @@ class _BookingPageState extends State<BookingPage> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final auth = Provider.of<AuthManager>(context);
+    final previousUserId = _currentUserId;
     final newUserId = auth.user?.id;
-    if (newUserId != _currentUserId) {
+    final shouldRestart =
+        !_hasRealtimeInitialized || newUserId != previousUserId;
+    if (shouldRestart) {
       _currentUserId = newUserId;
-      _loadBookings();
+      _hasRealtimeInitialized = true;
+      if (previousUserId != newUserId) {
+        _selectedSlots.clear();
+        _heldBookings.clear();
+      }
+      _restartRealtime();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant BookingPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.detailData.court.id != widget.detailData.court.id) {
+      _restartRealtime();
+    } else if (oldWidget.slotDuration != widget.slotDuration) {
+      _applyBookings(_bookings, clearError: false);
     }
   }
 
   Future<void> _loadBookings() async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -69,36 +91,88 @@ class _BookingPageState extends State<BookingPage> {
         courtId: widget.detailData.court.id,
         date: _selectedDate,
       );
+      if (!mounted) return;
+      _applyBookings(bookings);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = _describeError(error);
+        _isLoading = false;
+      });
+    }
+  }
 
-      final newSelected = <SelectedSlot>{};
-      final newHeld = <SelectedSlot, CourtBooking>{};
+  void _applyBookings(List<CourtBooking> bookings, {bool clearError = true}) {
+    if (!mounted) return;
+    final newSelected = <SelectedSlot>{};
+    final newHeld = <SelectedSlot, CourtBooking>{};
 
-      if (_currentUserId != null) {
-        for (final booking in bookings) {
-          // CHANGED: dùng BookingStatus.held thay cho locked
-          if (booking.userId == _currentUserId &&
-              booking.status == BookingStatus.held &&
-              booking.isActiveLock) {
-            for (final slot in booking.splitToSlots(widget.slotDuration)) {
-              final canonical = _canonicalizeSlot(slot);
-              newSelected.add(canonical);
-              newHeld[canonical] = booking;
-            }
+    if (_currentUserId != null) {
+      for (final booking in bookings) {
+        // CHANGED: dùng BookingStatus.held thay cho locked
+        if (booking.userId == _currentUserId &&
+            booking.status == BookingStatus.held &&
+            booking.isActiveLock) {
+          for (final slot in booking.splitToSlots(widget.slotDuration)) {
+            final canonical = _canonicalizeSlot(slot);
+            newSelected.add(canonical);
+            newHeld[canonical] = booking;
           }
         }
       }
+    }
 
-      if (!mounted) return;
+    setState(() {
+      _bookings = bookings;
+      _selectedSlots
+        ..clear()
+        ..addAll(newSelected);
+      _heldBookings
+        ..clear()
+        ..addAll(newHeld);
+      _isLoading = false;
+      if (clearError) {
+        _errorMessage = null;
+      }
+    });
+  }
+
+  Future<void> _restartRealtime({bool emitInitial = true}) async {
+    final previous = _realtimeSubscription;
+    _realtimeSubscription = null;
+    if (previous != null) {
+      await previous.cancel();
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    if (emitInitial) {
       setState(() {
-        _bookings = bookings;
-        _selectedSlots
-          ..clear()
-          ..addAll(newSelected);
-        _heldBookings
-          ..clear()
-          ..addAll(newHeld);
-        _isLoading = false;
+        _isLoading = true;
+        _errorMessage = null;
       });
+    }
+
+    try {
+      final subscription = await _bookingService.subscribeToBookings(
+        courtId: widget.detailData.court.id,
+        date: _selectedDate,
+        emitInitial: emitInitial,
+        onData: (bookings) {
+          if (!mounted) return;
+          _applyBookings(bookings);
+        },
+        onError: (error) {
+          if (!mounted) return;
+          setState(() {
+            _errorMessage = _describeError(error);
+            _isLoading = false;
+          });
+        },
+      );
+      _realtimeSubscription = subscription;
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -123,7 +197,7 @@ class _BookingPageState extends State<BookingPage> {
       setState(() {
         _selectedDate = picked;
       });
-      await _loadBookings();
+      await _restartRealtime();
     }
   }
 
@@ -338,6 +412,14 @@ class _BookingPageState extends State<BookingPage> {
     );
   }
 
+  @override
+  void dispose() {
+    final subscription = _realtimeSubscription;
+    _realtimeSubscription = null;
+    subscription?.cancel();
+    super.dispose();
+  }
+
   String _describeError(Object error) {
     if (error is BookingServiceException) {
       return error.message;
@@ -357,7 +439,7 @@ class _BookingPageState extends State<BookingPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _isLoading ? null : _loadBookings,
+            onPressed: _isLoading ? null : () => _restartRealtime(),
             tooltip: 'Tải lại trạng thái đặt sân',
           ),
         ],
@@ -648,7 +730,7 @@ class _BookingPageState extends State<BookingPage> {
           ),
           const SizedBox(height: 12),
           FilledButton(
-            onPressed: _loadBookings,
+            onPressed: () => _restartRealtime(),
             child: const Text('Thử lại'),
           ),
         ],

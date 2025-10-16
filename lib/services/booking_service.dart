@@ -12,6 +12,20 @@ class BookingServiceException implements Exception {
   String toString() => message;
 }
 
+class BookingRealtimeSubscription {
+  BookingRealtimeSubscription(this._cancel);
+
+  final Future<void> Function() _cancel;
+
+  Future<void> cancel() async {
+    try {
+      await _cancel();
+    } catch (_) {
+      // Ignore cancellation errors to keep the UI stable.
+    }
+  }
+}
+
 class BookingService {
   static const collection = 'court_bookings';
 
@@ -20,13 +34,7 @@ class BookingService {
     required DateTime date,
   }) async {
     final pb = await getPocketbaseInstance();
-
-    final dayStart = DateTime(date.year, date.month, date.day).toUtc();
-    final dayEnd = dayStart.add(const Duration(days: 1));
-
-    final escapedCourt = _escapeFilterValue(courtId);
-    final filter =
-        "court_id='$escapedCourt' && start_time < '${dayEnd.toIso8601String()}' && end_time > '${dayStart.toIso8601String()}'";
+    final filter = _buildDailyCourtFilter(courtId: courtId, date: date);
 
     try {
       final result = await pb.collection(collection).getList(
@@ -43,6 +51,72 @@ class BookingService {
       throw BookingServiceException(
           'Không thể tải lịch đặt sân. Vui lòng thử lại sau.');
     }
+  }
+
+  Future<BookingRealtimeSubscription> subscribeToBookings({
+    required String courtId,
+    required DateTime date,
+    required void Function(List<CourtBooking> bookings) onData,
+    void Function(Object error)? onError,
+    bool emitInitial = true,
+  }) async {
+    final pb = await getPocketbaseInstance();
+    final filter = _buildDailyCourtFilter(courtId: courtId, date: date);
+
+    var isFetching = false;
+
+    Future<void> loadLatest() async {
+      if (isFetching) return;
+      isFetching = true;
+      try {
+        final bookings = await listBookings(courtId: courtId, date: date);
+        onData(bookings);
+      } catch (error) {
+        onError?.call(error);
+      } finally {
+        isFetching = false;
+      }
+    }
+
+    if (emitInitial) {
+      await loadLatest();
+    }
+
+    final subscription = await pb.collection(collection).subscribe(
+          '*',
+          (_) async {
+            await loadLatest();
+          },
+          filter: filter,
+        );
+
+    return BookingRealtimeSubscription(() async {
+      try {
+        final dynamic sub = subscription;
+        final collectionApi = pb.collection(collection);
+        if (sub is RealtimeSubscription) {
+          try {
+            await (sub as dynamic).unsubscribe();
+            return;
+          } catch (_) {
+            await collectionApi.unsubscribe(sub.id);
+            return;
+          }
+        } else if (sub is Future<void> Function()) {
+          await sub();
+          return;
+        } else if (sub is String) {
+          await collectionApi.unsubscribe(sub);
+          return;
+        } else {
+          await collectionApi.unsubscribe('*');
+        }
+      } catch (_) {
+        try {
+          await pb.collection(collection).unsubscribe('*');
+        } catch (_) {}
+      }
+    });
   }
 
   Future<CourtBooking> lockSlot({
@@ -185,6 +259,16 @@ class BookingService {
 
   String _escapeFilterValue(String value) {
     return value.replaceAll("'", "\\'");
+  }
+
+  String _buildDailyCourtFilter({
+    required String courtId,
+    required DateTime date,
+  }) {
+    final dayStart = DateTime(date.year, date.month, date.day).toUtc();
+    final dayEnd = dayStart.add(const Duration(days: 1));
+    final escapedCourt = _escapeFilterValue(courtId);
+    return "court_id='$escapedCourt' && start_time < '${dayEnd.toIso8601String()}' && end_time > '${dayStart.toIso8601String()}'";
   }
 
   String _mapClientException(ClientException error) {

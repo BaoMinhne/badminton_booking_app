@@ -83,12 +83,12 @@ class BookingService {
     }
 
     final subscription = await pb.collection(collection).subscribe(
-          '*',
-          (_) async {
-            await loadLatest();
-          },
-          filter: filter,
-        );
+      '*',
+      (_) async {
+        await loadLatest();
+      },
+      filter: filter,
+    );
 
     return BookingRealtimeSubscription(() async {
       try {

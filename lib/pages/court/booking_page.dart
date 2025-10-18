@@ -29,6 +29,8 @@ class _BookingPageState extends State<BookingPage> {
   late DateTime _selectedDate;
   late BookingService _bookingService;
 
+  final Set<SelectedSlot> _otherBookedSlots = {};
+
   final Set<SelectedSlot> _selectedSlots = <SelectedSlot>{};
   final Map<SelectedSlot, CourtBooking> _heldBookings = {};
   final Set<SelectedSlot> _processingSlots = {};
@@ -106,17 +108,31 @@ class _BookingPageState extends State<BookingPage> {
     if (!mounted) return;
     final newSelected = <SelectedSlot>{};
     final newHeld = <SelectedSlot, CourtBooking>{};
+    final newOtherBooked = <SelectedSlot>{};
 
-    if (_currentUserId != null) {
-      for (final booking in bookings) {
-        // CHANGED: dùng BookingStatus.held thay cho locked
-        if (booking.userId == _currentUserId &&
-            booking.status == BookingStatus.held &&
-            booking.isActiveLock) {
+    final now = DateTime.now().toUtc();
+
+    for (final booking in bookings) {
+      // Phân loại booking theo trạng thái
+      final isConfirmed = booking.status == BookingStatus.confirmed;
+      final isAwaitingPayment = booking.status == BookingStatus.awaitingPayment;
+      final isHeld = booking.status == BookingStatus.held &&
+          (booking.lockedUntil == null || booking.lockedUntil!.isAfter(now));
+
+      // Phân loại theo người dùng
+      if (booking.userId == _currentUserId) {
+        if (isHeld) {
           for (final slot in booking.splitToSlots(widget.slotDuration)) {
             final canonical = _canonicalizeSlot(slot);
             newSelected.add(canonical);
             newHeld[canonical] = booking;
+          }
+        }
+      } else {
+        // Đây là booking của người dùng khác
+        if (isConfirmed || isAwaitingPayment || isHeld) {
+          for (final slot in booking.splitToSlots(widget.slotDuration)) {
+            newOtherBooked.add(_canonicalizeSlot(slot));
           }
         }
       }
@@ -124,12 +140,12 @@ class _BookingPageState extends State<BookingPage> {
 
     setState(() {
       _bookings = bookings;
-      _selectedSlots
-        ..clear()
-        ..addAll(newSelected);
-      _heldBookings
-        ..clear()
-        ..addAll(newHeld);
+      _selectedSlots.clear();
+      _selectedSlots.addAll(newSelected);
+      _heldBookings.clear();
+      _heldBookings.addAll(newHeld);
+      _otherBookedSlots.clear();
+      _otherBookedSlots.addAll(newOtherBooked);
       _isLoading = false;
       if (clearError) {
         _errorMessage = null;
@@ -203,6 +219,16 @@ class _BookingPageState extends State<BookingPage> {
 
   void _handleSlotTap(SelectedSlot slot, bool shouldSelect) {
     final canonical = _canonicalizeSlot(slot);
+
+    // Thêm điều kiện kiểm tra slot đã bị đặt bởi người khác
+    if (_otherBookedSlots.contains(canonical)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Khung giờ này đã có người khác giữ hoặc đặt.')),
+      );
+      return;
+    }
+
     if (_processingSlots.contains(canonical)) {
       return;
     }
@@ -461,8 +487,10 @@ class _BookingPageState extends State<BookingPage> {
                           date: _selectedDate,
                           startHour: _startHour,
                           endHour: _endHour,
-                          bookings: _bookings,
-                          selectedSlots: _selectedSlots,
+                          bookings: _bookings, // Giữ nguyên bookings
+                          selectedSlots:
+                              _selectedSlots, // Giữ nguyên selectedSlots
+                          otherBookedSlots: _otherBookedSlots, // THÊM DÒNG NÀY
                           currentUserId: _currentUserId,
                           onSlotTap: _handleSlotTap,
                         ),

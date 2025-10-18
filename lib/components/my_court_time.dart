@@ -42,6 +42,7 @@ class CourtTimeline extends StatefulWidget {
     this.headerLeadingInset = 24.0,
     this.bookings = const [],
     this.selectedSlots = const {},
+    this.otherBookedSlots = const {},
     this.currentUserId,
     this.onSlotTap,
   }) : assert(endHour > startHour, 'endHour must be greater than startHour');
@@ -60,6 +61,7 @@ class CourtTimeline extends StatefulWidget {
   final Set<SelectedSlot> selectedSlots;
   final String? currentUserId;
   final void Function(SelectedSlot slot, bool shouldSelect)? onSlotTap;
+  final Set<SelectedSlot> otherBookedSlots;
 
   @override
   State<CourtTimeline> createState() => _CourtTimelineState();
@@ -113,11 +115,14 @@ class _CourtTimelineState extends State<CourtTimeline> {
       _rowIndexById = _buildRowIndexMap(widget.rows);
     }
 
+    // THÊM ĐIỀU KIỆN MỚI
     if (!listEquals(oldWidget.bookings, widget.bookings) ||
         oldWidget.currentUserId != widget.currentUserId ||
         oldWidget.date != widget.date ||
         oldWidget.startHour != widget.startHour ||
-        oldWidget.endHour != widget.endHour) {
+        oldWidget.endHour != widget.endHour ||
+        !setEquals(oldWidget.otherBookedSlots, widget.otherBookedSlots)) {
+      // DÒNG MỚI
       _statusMatrix = _buildStatusMatrix();
     }
   }
@@ -198,27 +203,59 @@ class _CourtTimelineState extends State<CourtTimeline> {
       growable: false,
     );
 
-    if (widget.bookings.isEmpty || _slotCount == 0) {
+    if (_slotCount == 0) {
       return matrix;
     }
 
-    final now = DateTime.now().toUtc();
+    // Bước 1: Tô màu cho các booking đã được xác nhận hoặc chờ thanh toán
+    // Đây là trạng thái có độ ưu tiên cao nhất, thuộc về bất kỳ ai
     for (final booking in widget.bookings) {
       final rowIndex = _rowIndexById[booking.courtUnitId];
       if (rowIndex == null) continue;
-      final status = _mapBookingToStatus(booking, now);
-      if (status == CourtSlotStatus.available) continue;
+
+      final status = _mapBookingToStatus(booking, DateTime.now().toUtc());
+      if (status == CourtSlotStatus.available ||
+          status == CourtSlotStatus.heldByMe ||
+          status == CourtSlotStatus.heldByOther) {
+        continue; // Bỏ qua trạng thái "held" và "available" ở bước này
+      }
 
       final startIndex = _indexFromDate(booking.startTime);
       final endIndex = _indexFromDate(booking.endTime);
       for (var column = startIndex; column < endIndex; column++) {
         if (column < 0 || column >= _slotCount) continue;
-        final current = matrix[rowIndex][column];
-        if (_statusPriority(status) >= _statusPriority(current)) {
-          matrix[rowIndex][column] = status;
+        matrix[rowIndex][column] = status;
+      }
+    }
+
+    // Bước 2: Tô màu cho các slot đã được người khác giữ (heldByOther)
+    // Logic này sẽ ghi đè lên các slot "available"
+    for (final slot in widget.otherBookedSlots) {
+      final rowIndex = _rowIndexById[slot.courtUnitId];
+      if (rowIndex == null) continue;
+      final columnIndex = _indexFromDate(slot.startTime);
+
+      if (columnIndex >= 0 && columnIndex < _slotCount) {
+        if (matrix[rowIndex][columnIndex] == CourtSlotStatus.available) {
+          matrix[rowIndex][columnIndex] = CourtSlotStatus.heldByOther;
         }
       }
     }
+
+    // Bước 3: Tô màu cho các slot được giữ bởi người dùng hiện tại (heldByMe)
+    // Logic này sẽ ghi đè lên các slot "available" và "heldByOther"
+    // Vì trạng thái này có ưu tiên cao hơn (để người dùng thấy slot của mình)
+    for (final slot in widget.selectedSlots) {
+      final rowIndex = _rowIndexById[slot.courtUnitId];
+      if (rowIndex == null) continue;
+      final columnIndex = _indexFromDate(slot.startTime);
+
+      if (columnIndex >= 0 && columnIndex < _slotCount) {
+        // Logic ưu tiên:heldByMe sẽ ghi đè các trạng thái khác
+        matrix[rowIndex][columnIndex] = CourtSlotStatus.heldByMe;
+      }
+    }
+
     return matrix;
   }
 

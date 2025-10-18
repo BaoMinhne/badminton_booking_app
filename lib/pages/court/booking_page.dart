@@ -391,6 +391,56 @@ class _BookingPageState extends State<BookingPage> {
         booking.status == BookingStatus.awaitingPayment);
   }
 
+  Iterable<CourtBooking> get _blockingBookingsFromOthers {
+    final now = DateTime.now().toUtc();
+    return _bookings.where((booking) {
+      if (booking.userId == _currentUserId) {
+        return false;
+      }
+
+      switch (booking.status) {
+        case BookingStatus.confirmed:
+        case BookingStatus.awaitingPayment:
+          return true;
+        case BookingStatus.held:
+          return booking.lockedUntil == null ||
+              booking.lockedUntil!.isAfter(now);
+        case BookingStatus.cancelled:
+        case BookingStatus.expired:
+          return false;
+      }
+    });
+  }
+
+  String _labelForCourtUnit(String unitId) {
+    for (final unit in widget.detailData.units) {
+      if (unit.id == unitId) {
+        return unit.label.isEmpty ? 'Sân' : unit.label;
+      }
+    }
+    return 'Sân';
+  }
+
+  String _formatBookingTimeRange(CourtBooking booking) {
+    final start = DateFormat('HH:mm').format(booking.startTime.toLocal());
+    final end = DateFormat('HH:mm').format(booking.endTime.toLocal());
+    return '$start - $end';
+  }
+
+  String _describeOtherBookingStatus(CourtBooking booking) {
+    switch (booking.status) {
+      case BookingStatus.confirmed:
+        return 'Đã xác nhận';
+      case BookingStatus.awaitingPayment:
+        return 'Chờ thanh toán';
+      case BookingStatus.held:
+        return 'Đang giữ chỗ';
+      case BookingStatus.cancelled:
+      case BookingStatus.expired:
+        return '';
+    }
+  }
+
   int get _startHour {
     final minutes = widget.detailData.openingHours
         .map((item) => parseTimeToMinutes(item.openTime))
@@ -475,6 +525,8 @@ class _BookingPageState extends State<BookingPage> {
         children: [
           _buildHeader(cs, holdExpires),
           _buildLegend(cs),
+          if (_blockingBookingsFromOthers.isNotEmpty)
+            _buildOtherBookingsNotice(cs),
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
@@ -602,6 +654,59 @@ class _BookingPageState extends State<BookingPage> {
               'Chờ thanh toán'), // CHANGED
           _legendItem(
               cs.primaryContainer.withOpacity(0.9), 'Đã xác nhận'), // CHANGED
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOtherBookingsNotice(ColorScheme cs) {
+    final bookings = _blockingBookingsFromOthers.toList()
+      ..sort((a, b) => a.startTime.compareTo(b.startTime));
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: cs.surfaceVariant.withOpacity(0.35),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: cs.outlineVariant.withOpacity(0.6)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.lock_clock, color: cs.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Các khung giờ đã có người đặt',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: cs.onSurface,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...bookings.map(
+            (booking) {
+              final statusLabel = _describeOtherBookingStatus(booking);
+              final parts = [
+                _formatBookingTimeRange(booking),
+                _labelForCourtUnit(booking.courtUnitId),
+                if (statusLabel.isNotEmpty) statusLabel,
+              ];
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text(
+                  parts.join(' • '),
+                  style: TextStyle(color: cs.onSurfaceVariant),
+                ),
+              );
+            },
+          ),
         ],
       ),
     );

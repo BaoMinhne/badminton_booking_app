@@ -1,8 +1,9 @@
 import 'package:badminton_booking_app/components/my_court_time.dart';
 import 'package:badminton_booking_app/models/booking.dart';
 import 'package:badminton_booking_app/models/court_detail.dart';
-import 'package:badminton_booking_app/pages/court/payment_page.dart';
 import 'package:badminton_booking_app/pages/auth/auth_manager.dart';
+import 'package:badminton_booking_app/pages/court/booking_manager.dart';
+import 'package:badminton_booking_app/pages/court/payment_page.dart';
 import 'package:badminton_booking_app/services/booking_service.dart';
 import 'package:badminton_booking_app/utils/booking_helpers.dart';
 import 'package:flutter/material.dart';
@@ -13,12 +14,10 @@ class BookingPage extends StatefulWidget {
   const BookingPage({
     super.key,
     required this.detailData,
-    this.bookingService,
     this.slotDuration = const Duration(hours: 1),
   });
 
   final CourtDetailData detailData;
-  final BookingService? bookingService;
   final Duration slotDuration;
 
   @override
@@ -26,330 +25,55 @@ class BookingPage extends StatefulWidget {
 }
 
 class _BookingPageState extends State<BookingPage> {
-  late DateTime _selectedDate;
-  late BookingService _bookingService;
-
-  final Set<SelectedSlot> _selectedSlots = <SelectedSlot>{};
-  final Map<SelectedSlot, CourtBooking> _heldBookings = {};
-  final Set<SelectedSlot> _processingSlots = {};
-
-  List<CourtBooking> _bookings = <CourtBooking>[];
-
-  bool _isLoading = false;
-  String? _errorMessage;
-  bool _submittingRequest = false;
-  String? _currentUserId;
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedDate = DateTime.now();
-    _bookingService = widget.bookingService ?? BookingService();
-  }
+  String? _lastUserId;
+  String? _lastCourtId;
+  bool _initRequested = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final auth = Provider.of<AuthManager>(context);
-    final newUserId = auth.user?.id;
-    if (newUserId != _currentUserId) {
-      _currentUserId = newUserId;
-      _loadBookings();
-    }
-  }
+    final userId = auth.user?.id;
+    final manager = Provider.of<BookingManager>(context, listen: false);
 
-  Future<void> _loadBookings() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    final shouldInit = !_initRequested ||
+        _lastCourtId != widget.detailData.court.id ||
+        manager.courtId != widget.detailData.court.id ||
+        _lastUserId != userId;
 
-    try {
-      final bookings = await _bookingService.listBookings(
+    if (shouldInit) {
+      final initialDate = manager.isInitialized &&
+              manager.courtId == widget.detailData.court.id
+          ? manager.date
+          : DateTime.now();
+      manager.init(
         courtId: widget.detailData.court.id,
-        date: _selectedDate,
+        date: initialDate,
+        userId: userId,
+        slotDuration: widget.slotDuration,
       );
-
-      final newSelected = <SelectedSlot>{};
-      final newHeld = <SelectedSlot, CourtBooking>{};
-
-      if (_currentUserId != null) {
-        for (final booking in bookings) {
-          // CHANGED: dùng BookingStatus.held thay cho locked
-          if (booking.userId == _currentUserId &&
-              booking.status == BookingStatus.held &&
-              booking.isActiveLock) {
-            for (final slot in booking.splitToSlots(widget.slotDuration)) {
-              final canonical = _canonicalizeSlot(slot);
-              newSelected.add(canonical);
-              newHeld[canonical] = booking;
-            }
-          }
-        }
-      }
-
-      if (!mounted) return;
-      setState(() {
-        _bookings = bookings;
-        _selectedSlots
-          ..clear()
-          ..addAll(newSelected);
-        _heldBookings
-          ..clear()
-          ..addAll(newHeld);
-        _isLoading = false;
-      });
-    } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = _describeError(error);
-        _isLoading = false;
-      });
+      _initRequested = true;
+      _lastCourtId = widget.detailData.court.id;
+      _lastUserId = userId;
+    } else if (manager.slotDuration != widget.slotDuration) {
+      manager.updateSlotDuration(widget.slotDuration);
     }
-  }
-
-  Future<void> _selectDate() async {
-    final first = DateTime.now().subtract(const Duration(days: 1));
-    final last = DateTime.now().add(const Duration(days: 365));
-
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate,
-      firstDate: first,
-      lastDate: last,
-    );
-
-    if (picked != null && picked != _selectedDate) {
-      setState(() {
-        _selectedDate = picked;
-      });
-      await _loadBookings();
-    }
-  }
-
-  void _handleSlotTap(SelectedSlot slot, bool shouldSelect) {
-    final canonical = _canonicalizeSlot(slot);
-    if (_processingSlots.contains(canonical)) {
-      return;
-    }
-
-    if (shouldSelect) {
-      if (_currentUserId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Vui lòng đăng nhập để giữ chỗ.')),
-        );
-        return;
-      }
-      _lockSlot(canonical);
-    } else {
-      _releaseSlot(canonical);
-    }
-  }
-
-  Future<void> _lockSlot(SelectedSlot slot) async {
-    setState(() => _processingSlots.add(slot));
-
-    try {
-      final booking = await _bookingService.lockSlot(
-        courtId: widget.detailData.court.id,
-        courtUnitId: slot.courtUnitId,
-        userId: _currentUserId!,
-        startTime: slot.startTime.toUtc(),
-        endTime: slot.endTime.toUtc(),
-      );
-
-      final bookingSlots = booking.splitToSlots(widget.slotDuration);
-      if (!mounted) return;
-      setState(() {
-        _bookings = [..._bookings, booking];
-        for (final item in bookingSlots) {
-          final canonical = _canonicalizeSlot(item);
-          _selectedSlots.add(canonical);
-          _heldBookings[canonical] = booking;
-        }
-      });
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_describeError(error))),
-      );
-    } finally {
-      if (!mounted) return;
-      setState(() => _processingSlots.remove(slot));
-    }
-  }
-
-  Future<void> _releaseSlot(SelectedSlot slot) async {
-    final booking = _heldBookings.remove(slot);
-    if (booking == null) {
-      setState(() => _selectedSlots.remove(slot));
-      return;
-    }
-
-    setState(() {
-      _processingSlots.add(slot);
-    });
-
-    try {
-      await _bookingService.releaseBooking(booking.id);
-      if (!mounted) return;
-      setState(() {
-        _selectedSlots.remove(slot);
-        _bookings.removeWhere((item) => item.id == booking.id);
-      });
-    } catch (error) {
-      if (!mounted) return;
-      _heldBookings[slot] = booking;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_describeError(error))),
-      );
-    } finally {
-      if (!mounted) return;
-      setState(() => _processingSlots.remove(slot));
-    }
-  }
-
-  // CHANGED: đổi tên hàm và text sang "chuyển sang chờ thanh toán"
-  Future<void> _proceedToAwaitingPayment() async {
-    if (_heldBookings.isEmpty) return;
-    setState(() => _submittingRequest = true);
-
-    try {
-      final updates = <CourtBooking>[];
-      for (final booking in _heldBookings.values) {
-        // vẫn gọi service cũ, nhưng service nên update status = 'awaiting_payment'
-        final updated = await _bookingService.submitForApproval(booking.id);
-        updates.add(updated);
-      }
-
-      if (!mounted) return;
-      setState(() {
-        for (final updated in updates) {
-          _bookings.removeWhere((item) => item.id == updated.id);
-          _bookings.add(updated);
-        }
-        _selectedSlots.clear();
-        _heldBookings.clear();
-        _submittingRequest = false;
-      });
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Đã chuyển sang trạng thái chờ thanh toán.'),
-        ),
-      );
-      await _loadBookings();
-    } catch (error) {
-      if (!mounted) return;
-      setState(() => _submittingRequest = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_describeError(error))),
-      );
-    }
-  }
-
-  List<CourtTimelineRow> get _rows {
-    final units = widget.detailData.units;
-    if (units.isEmpty) {
-      return [const CourtTimelineRow(id: 'default', label: 'Sân 1')];
-    }
-    return units
-        .where((unit) => unit.isActive)
-        .map((unit) => CourtTimelineRow(
-              id: unit.id,
-              label: unit.label.isEmpty ? 'Sân' : unit.label,
-            ))
-        .toList();
-  }
-
-  Duration get _totalDuration {
-    var minutes = 0;
-    for (final slot in _selectedSlots) {
-      minutes += slot.endTime.difference(slot.startTime).inMinutes;
-    }
-    return Duration(minutes: minutes);
-  }
-
-  double get _totalPrice {
-    var total = 0.0;
-    for (final slot in _selectedSlots) {
-      total += calculateSlotPrice(
-        widget.detailData,
-        slot,
-        widget.slotDuration,
-      );
-    }
-    return total;
-  }
-
-  // CHANGED: dùng awaitingPayment thay cho confirmed
-  Iterable<CourtBooking> get _awaitingPaymentForUser {
-    if (_currentUserId == null) return const Iterable.empty();
-    return _bookings.where((booking) =>
-        booking.userId == _currentUserId &&
-        booking.status == BookingStatus.awaitingPayment);
-  }
-
-  int get _startHour {
-    final minutes = widget.detailData.openingHours
-        .map((item) => parseTimeToMinutes(item.openTime))
-        .whereType<int>();
-    if (minutes.isEmpty) return 6;
-    final minMinute = minutes.reduce((a, b) => a < b ? a : b);
-    final base = (minMinute / 60).floor();
-    if (base < 0) return 0;
-    if (base > 23) return 23;
-    return base;
-  }
-
-  int get _endHour {
-    final minutes = widget.detailData.openingHours
-        .map((item) => parseTimeToMinutes(item.closeTime))
-        .whereType<int>();
-    if (minutes.isEmpty) return 22;
-    final maxMinute = minutes.reduce((a, b) => a > b ? a : b);
-    var endHour = (maxMinute / 60).ceil();
-    if (endHour < 1) {
-      endHour = 1;
-    } else if (endHour > 24) {
-      endHour = 24;
-    }
-    return endHour <= _startHour ? _startHour + 1 : endHour;
-  }
-
-  DateTime? get _holdExpiresAt {
-    DateTime? result;
-    for (final booking in _heldBookings.values) {
-      final locked = booking.lockedUntil?.toLocal();
-      if (locked == null) continue;
-      if (result == null || locked.isBefore(result)) {
-        result = locked;
-      }
-    }
-    return result;
-  }
-
-  SelectedSlot _canonicalizeSlot(SelectedSlot slot) {
-    return SelectedSlot(
-      courtUnitId: slot.courtUnitId,
-      startTime: slot.startTime.toUtc(),
-      endTime: slot.endTime.toUtc(),
-    );
-  }
-
-  String _describeError(Object error) {
-    if (error is BookingServiceException) {
-      return error.message;
-    }
-    return 'Đã xảy ra lỗi. Vui lòng thử lại.';
   }
 
   @override
   Widget build(BuildContext context) {
+    final manager = context.watch<BookingManager>();
+    final userId = context.select<AuthManager, String?>(
+      (auth) => auth.user?.id,
+    );
+
     final cs = Theme.of(context).colorScheme;
     final rows = _rows;
-    final holdExpires = _holdExpiresAt;
+    final bookings = manager.bookings;
+    final selectedSlots = manager.selectedSlots;
+    final awaitingPayment = manager.awaitingPaymentBookings.toList(growable: false);
+    final heldSlots = manager.heldSlots;
+    final holdExpires = manager.holdExpiresAt?.toLocal();
 
     return Scaffold(
       appBar: AppBar(
@@ -357,45 +81,143 @@ class _BookingPageState extends State<BookingPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _isLoading ? null : _loadBookings,
             tooltip: 'Tải lại trạng thái đặt sân',
+            onPressed: manager.isLoading
+                ? null
+                : () async {
+                    try {
+                      await manager.refetch(showLoading: true);
+                    } catch (error) {
+                      if (!mounted) return;
+                      _showError(error);
+                    }
+                  },
           ),
         ],
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildHeader(cs, holdExpires),
+          _buildHeader(cs, manager.date, holdExpires, selectedSlots, manager),
           _buildLegend(cs),
           Expanded(
-            child: _isLoading
+            child: manager.isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : _errorMessage != null
-                    ? _buildErrorState(cs)
+                : manager.error != null
+                    ? _buildErrorState(cs, manager)
                     : Padding(
                         padding: const EdgeInsets.only(bottom: 12),
                         child: CourtTimeline(
                           rows: rows,
-                          date: _selectedDate,
+                          date: manager.date,
                           startHour: _startHour,
                           endHour: _endHour,
-                          bookings: _bookings,
-                          selectedSlots: _selectedSlots,
-                          currentUserId: _currentUserId,
-                          onSlotTap: _handleSlotTap,
+                          bookings: bookings,
+                          selectedSlots: selectedSlots,
+                          currentUserId: userId,
+                          onSlotTap: (slot, shouldSelect) =>
+                              _handleSlotTap(slot, shouldSelect, userId, manager),
                         ),
                       ),
           ),
-          _buildSummary(cs, holdExpires),
+          _buildSummary(
+            cs,
+            selectedSlots,
+            awaitingPayment,
+            holdExpires,
+            heldSlots,
+            manager,
+          ),
         ],
       ),
-      bottomNavigationBar: _buildActions(cs),
+      bottomNavigationBar: _buildActions(
+        cs,
+        userId,
+        manager,
+        awaitingPayment,
+      ),
     );
   }
 
-  Widget _buildHeader(ColorScheme cs, DateTime? holdExpires) {
-    final dateLabel = DateFormat('dd/MM/yyyy').format(_selectedDate);
-    final totalDuration = _totalDuration;
+  Future<void> _selectDate(BookingManager manager) async {
+    final now = DateTime.now();
+    final first = now.subtract(const Duration(days: 1));
+    final last = now.add(const Duration(days: 365));
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: manager.date,
+      firstDate: first,
+      lastDate: last,
+    );
+
+    if (picked != null && !_isSameDay(picked, manager.date)) {
+      try {
+        await manager.changeDate(picked);
+      } catch (error) {
+        if (!mounted) return;
+        _showError(error);
+      }
+    }
+  }
+
+  void _handleSlotTap(
+    SelectedSlot slot,
+    bool shouldSelect,
+    String? userId,
+    BookingManager manager,
+  ) {
+    if (!shouldSelect && manager.heldByMe.containsKey(slot.key)) {
+      _cancelHold(slot, manager);
+      return;
+    }
+
+    if (shouldSelect) {
+      if (userId == null) {
+        _showLoginRequired();
+        return;
+      }
+      if (manager.isSlotUnavailable(slot, myUserId: userId)) {
+        return;
+      }
+      manager.toggleSelect(slot);
+    } else {
+      manager.toggleSelect(slot);
+    }
+  }
+
+  Future<void> _cancelHold(SelectedSlot slot, BookingManager manager) async {
+    try {
+      await manager.cancelHold(slot);
+    } catch (error) {
+      if (!mounted) return;
+      _showError(error);
+    }
+  }
+
+  void _showLoginRequired() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Vui lòng đăng nhập để giữ chỗ.')),
+    );
+  }
+
+  void _showError(Object error) {
+    final message =
+        error is BookingServiceException ? error.message : 'Đã xảy ra lỗi. Vui lòng thử lại.';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  Widget _buildHeader(
+    ColorScheme cs,
+    DateTime selectedDate,
+    DateTime? holdExpires,
+    Set<SelectedSlot> selectedSlots,
+    BookingManager manager,
+  ) {
+    final dateLabel = DateFormat('dd/MM/yyyy').format(selectedDate);
+    final totalDuration = _totalDuration(selectedSlots);
     final durationLabel = totalDuration.inMinutes == 0
         ? 'Chưa chọn thời gian'
         : '${totalDuration.inMinutes ~/ 60}h ${totalDuration.inMinutes % 60}p';
@@ -421,7 +243,7 @@ class _BookingPageState extends State<BookingPage> {
                 style: FilledButton.styleFrom(
                   backgroundColor: cs.surface,
                 ),
-                onPressed: _selectDate,
+                onPressed: () => _selectDate(manager),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -457,8 +279,11 @@ class _BookingPageState extends State<BookingPage> {
             const SizedBox(height: 4),
             Row(
               children: [
-                Icon(Icons.hourglass_bottom,
-                    size: 18, color: cs.onPrimary.withOpacity(0.9)),
+                Icon(
+                  Icons.hourglass_bottom,
+                  size: 18,
+                  color: cs.onPrimary.withOpacity(0.9),
+                ),
                 const SizedBox(width: 6),
                 Text(
                   'Giữ chỗ đến ${DateFormat('HH:mm').format(holdExpires)}',
@@ -486,19 +311,26 @@ class _BookingPageState extends State<BookingPage> {
         runSpacing: 8,
         children: [
           _legendItem(
-              cs.secondaryContainer.withOpacity(0.7), 'Đang giữ chỗ'), // held
+              cs.secondaryContainer.withOpacity(0.7), 'Đang giữ chỗ'),
           _legendItem(cs.errorContainer.withOpacity(0.9), 'Người khác giữ'),
-          _legendItem(cs.tertiaryContainer.withOpacity(0.9),
-              'Chờ thanh toán'), // CHANGED
           _legendItem(
-              cs.primaryContainer.withOpacity(0.9), 'Đã xác nhận'), // CHANGED
+              cs.tertiaryContainer.withOpacity(0.9), 'Chờ thanh toán'),
+          _legendItem(
+              cs.primaryContainer.withOpacity(0.9), 'Đã xác nhận'),
         ],
       ),
     );
   }
 
-  Widget _buildSummary(ColorScheme cs, DateTime? holdExpires) {
-    final totalPrice = _totalPrice;
+  Widget _buildSummary(
+    ColorScheme cs,
+    Set<SelectedSlot> selectedSlots,
+    List<CourtBooking> awaitingPayment,
+    DateTime? holdExpires,
+    List<SelectedSlot> heldSlots,
+    BookingManager manager,
+  ) {
+    final totalPrice = _totalPrice(selectedSlots);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -521,17 +353,13 @@ class _BookingPageState extends State<BookingPage> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  _selectedSlots.isEmpty
-                      ? 'Chọn khung giờ để giữ chỗ tối đa 15 phút.'
-                      : 'Đã chọn ${_selectedSlots.length} khung giờ.',
+                  'Tổng cộng',
+                  style: TextStyle(
+                    color: cs.onSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Icon(Icons.payments_outlined, size: 20, color: cs.primary),
               const SizedBox(width: 8),
               Text(
                 formatCurrency(totalPrice),
@@ -543,17 +371,40 @@ class _BookingPageState extends State<BookingPage> {
               ),
             ],
           ),
-          // CHANGED: thông báo số booking chờ thanh toán thay vì đã duyệt
-          if (_awaitingPaymentForUser.isNotEmpty) ...[
+          if (awaitingPayment.isNotEmpty) ...[
             const SizedBox(height: 8),
             Row(
               children: [
                 Icon(Icons.pending_actions, size: 20, color: cs.primary),
                 const SizedBox(width: 6),
                 Text(
-                  'Có ${_awaitingPaymentForUser.length} lượt chờ thanh toán.',
+                  'Có ${awaitingPayment.length} lượt chờ thanh toán.',
                   style: TextStyle(color: cs.primary),
                 ),
+              ],
+            ),
+          ],
+          if (heldSlots.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              'Đang giữ (${heldSlots.length})',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: cs.onSurface,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final slot in heldSlots)
+                  InputChip(
+                    label: Text(_formatSlotLabel(slot)),
+                    onDeleted: manager.isMutating
+                        ? null
+                        : () => _cancelHold(slot, manager),
+                  ),
               ],
             ),
           ],
@@ -562,9 +413,14 @@ class _BookingPageState extends State<BookingPage> {
     );
   }
 
-  Widget _buildActions(ColorScheme cs) {
-    // CHANGED: bật thanh toán khi có booking awaiting_payment
-    final hasAwaitingPayment = _awaitingPaymentForUser.isNotEmpty;
+  Widget _buildActions(
+    ColorScheme cs,
+    String? userId,
+    BookingManager manager,
+    List<CourtBooking> awaitingPayment,
+  ) {
+    final hasSelection = manager.selectedSlots.isNotEmpty;
+    final hasAwaitingPayment = awaitingPayment.isNotEmpty;
 
     return SafeArea(
       minimum: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -574,42 +430,76 @@ class _BookingPageState extends State<BookingPage> {
           SizedBox(
             width: double.infinity,
             child: FilledButton(
-              onPressed: _heldBookings.isEmpty || _submittingRequest
+              onPressed: !hasSelection || manager.isMutating
                   ? null
-                  : _proceedToAwaitingPayment, // CHANGED
-              child: _submittingRequest
+                  : () async {
+                      if (userId == null) {
+                        _showLoginRequired();
+                        return;
+                      }
+                      try {
+                        await manager.holdSelected(userId: userId);
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Đã giữ chỗ thành công.')),
+                        );
+                      } catch (error) {
+                        if (!mounted) return;
+                        _showError(error);
+                      }
+                    },
+              child: manager.isMutating && hasSelection
                   ? const SizedBox(
                       height: 22,
                       width: 22,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('Chuyển sang thanh toán'), // CHANGED
+                  : Text('Giữ chỗ (${manager.selectedSlots.length})'),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.tonal(
+              onPressed: manager.heldBookings.isEmpty || manager.isMutating
+                  ? null
+                  : () async {
+                      try {
+                        await manager.proceedToPayment();
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text('Đã chuyển sang trạng thái chờ thanh toán.')),
+                        );
+                        await manager.refetch(showLoading: true);
+                      } catch (error) {
+                        if (!mounted) return;
+                        _showError(error);
+                      }
+                    },
+              child: const Text('Chuyển sang thanh toán'),
             ),
           ),
           const SizedBox(height: 10),
           SizedBox(
             width: double.infinity,
             child: OutlinedButton(
-              onPressed: hasAwaitingPayment
-                  ? () async {
+              onPressed: !hasAwaitingPayment || manager.isMutating
+                  ? null
+                  : () async {
                       final result = await Navigator.push<bool>(
                         context,
                         MaterialPageRoute(
                           builder: (context) => PaymentPage(
                             detailData: widget.detailData,
-                            bookings:
-                                _awaitingPaymentForUser.toList(), // CHANGED
                             slotDuration: widget.slotDuration,
-                            bookingService: _bookingService,
                           ),
                         ),
                       );
-
                       if (result == true && mounted) {
-                        await _loadBookings();
+                        await manager.refetch(showLoading: true);
                       }
-                    }
-                  : null,
+                    },
               child: const Text('Thanh toán'),
             ),
           ),
@@ -637,22 +527,111 @@ class _BookingPageState extends State<BookingPage> {
     );
   }
 
-  Widget _buildErrorState(ColorScheme cs) {
+  Widget _buildErrorState(ColorScheme cs, BookingManager manager) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            _errorMessage ?? 'Không thể tải dữ liệu.',
+            manager.error ?? 'Không thể tải dữ liệu.',
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 12),
           FilledButton(
-            onPressed: _loadBookings,
+            onPressed: () async {
+              try {
+                await manager.refetch(showLoading: true);
+              } catch (error) {
+                if (!mounted) return;
+                _showError(error);
+              }
+            },
             child: const Text('Thử lại'),
           ),
         ],
       ),
     );
+  }
+
+  List<CourtTimelineRow> get _rows {
+    final units = widget.detailData.units;
+    if (units.isEmpty) {
+      return [const CourtTimelineRow(id: 'default', label: 'Sân 1')];
+    }
+    return units
+        .where((unit) => unit.isActive)
+        .map((unit) => CourtTimelineRow(
+              id: unit.id,
+              label: unit.label.isEmpty ? 'Sân' : unit.label,
+            ))
+        .toList();
+  }
+
+  Duration _totalDuration(Set<SelectedSlot> slots) {
+    var minutes = 0;
+    for (final slot in slots) {
+      minutes += slot.endTime.difference(slot.startTime).inMinutes;
+    }
+    return Duration(minutes: minutes);
+  }
+
+  double _totalPrice(Set<SelectedSlot> slots) {
+    var total = 0.0;
+    for (final slot in slots) {
+      total += calculateSlotPrice(
+        widget.detailData,
+        slot,
+        widget.slotDuration,
+      );
+    }
+    return total;
+  }
+
+  int get _startHour {
+    final minutes = widget.detailData.openingHours
+        .map((item) => parseTimeToMinutes(item.openTime))
+        .whereType<int>();
+    if (minutes.isEmpty) return 6;
+    final minMinute = minutes.reduce((a, b) => a < b ? a : b);
+    final base = (minMinute / 60).floor();
+    if (base < 0) return 0;
+    if (base > 23) return 23;
+    return base;
+  }
+
+  int get _endHour {
+    final minutes = widget.detailData.openingHours
+        .map((item) => parseTimeToMinutes(item.closeTime))
+        .whereType<int>();
+    if (minutes.isEmpty) return 22;
+    final maxMinute = minutes.reduce((a, b) => a > b ? a : b);
+    var endHour = (maxMinute / 60).ceil();
+    if (endHour < 1) {
+      endHour = 1;
+    } else if (endHour > 24) {
+      endHour = 24;
+    }
+    return endHour <= _startHour ? _startHour + 1 : endHour;
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  String _formatSlotLabel(SelectedSlot slot) {
+    final formatter = DateFormat('HH:mm');
+    final start = formatter.format(slot.startTime.toLocal());
+    final end = formatter.format(slot.endTime.toLocal());
+    final courtLabel = _resolveCourtLabel(slot.courtUnitId);
+    return '$courtLabel $start-$end';
+  }
+
+  String _resolveCourtLabel(String courtUnitId) {
+    if (widget.detailData.units.isEmpty) return 'Sân';
+    final unit = widget.detailData.units.firstWhere(
+      (unit) => unit.id == courtUnitId,
+      orElse: () => widget.detailData.units.first,
+    );
+    return unit.label.isEmpty ? 'Sân' : unit.label;
   }
 }

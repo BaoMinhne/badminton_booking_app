@@ -111,6 +111,13 @@ class SelectedSlot {
   final DateTime startTime;
   final DateTime endTime;
 
+  /// Unique key for identifying a slot regardless of timezone representation.
+  String get key {
+    final startUtc = startTime.toUtc();
+    final endUtc = endTime.toUtc();
+    return '${courtUnitId}_${startUtc.millisecondsSinceEpoch}_${endUtc.millisecondsSinceEpoch}';
+  }
+
   SelectedSlot copyWith({
     DateTime? startTime,
     DateTime? endTime,

@@ -1,72 +1,37 @@
 import 'package:badminton_booking_app/models/booking.dart';
 import 'package:badminton_booking_app/models/court_detail.dart';
+import 'package:badminton_booking_app/pages/court/booking_manager.dart';
 import 'package:badminton_booking_app/services/booking_service.dart';
 import 'package:badminton_booking_app/utils/booking_helpers.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 
 class PaymentPage extends StatefulWidget {
   const PaymentPage({
     super.key,
     required this.detailData,
-    required this.bookings,
     this.slotDuration = const Duration(hours: 1),
-    this.bookingService,
   });
 
   final CourtDetailData detailData;
-  final List<CourtBooking> bookings;
   final Duration slotDuration;
-  final BookingService? bookingService;
 
   @override
   State<PaymentPage> createState() => _PaymentPageState();
 }
 
 class _PaymentPageState extends State<PaymentPage> {
-  late BookingService _bookingService;
-  bool _processing = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _bookingService = widget.bookingService ?? BookingService();
-  }
-
-  List<SelectedSlot> get _slots {
-    return widget.bookings
-        .expand((booking) => booking.splitToSlots(widget.slotDuration))
-        .map((slot) => SelectedSlot(
-              courtUnitId: slot.courtUnitId,
-              startTime: slot.startTime.toUtc(),
-              endTime: slot.endTime.toUtc(),
-            ))
-        .toList();
-  }
-
-  Duration get _totalDuration {
-    var minutes = 0;
-    for (final slot in _slots) {
-      minutes += slot.endTime.difference(slot.startTime).inMinutes;
-    }
-    return Duration(minutes: minutes);
-  }
-
-  double get _totalPrice {
-    var total = 0.0;
-    for (final slot in _slots) {
-      total += calculateSlotPrice(widget.detailData, slot, widget.slotDuration);
-    }
-    return total;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final totalDuration = _totalDuration;
+    final manager = context.watch<BookingManager>();
+    final bookings = manager.awaitingPaymentBookings.toList(growable: false);
+    final slots = _collectSlots(bookings);
+    final totalDuration = _totalDuration(slots);
     final durationLabel = totalDuration.inMinutes == 0
         ? '0 phút'
         : '${totalDuration.inMinutes ~/ 60}h ${totalDuration.inMinutes % 60}p';
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
@@ -79,27 +44,41 @@ class _PaymentPageState extends State<PaymentPage> {
             _buildCourtInfoCard(cs),
             const SizedBox(height: 16),
             Expanded(
-              child: widget.bookings.isEmpty
+              child: bookings.isEmpty
                   ? _buildEmptyState()
                   : ListView.builder(
-                      itemCount: widget.bookings.length,
+                      itemCount: bookings.length,
                       itemBuilder: (context, index) {
-                        final booking = widget.bookings[index];
-                        final slots = booking.splitToSlots(widget.slotDuration);
-                        return _buildBookingCard(cs, booking, slots);
+                        final booking = bookings[index];
+                        final bookingSlots = booking.splitToSlots(widget.slotDuration);
+                        return _buildBookingCard(cs, booking, bookingSlots);
                       },
                     ),
             ),
             const SizedBox(height: 12),
-            _buildTotalRow(cs, durationLabel),
+            _buildTotalRow(cs, durationLabel, slots),
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               child: FilledButton(
-                onPressed: widget.bookings.isEmpty || _processing
+                onPressed: bookings.isEmpty || manager.isMutating
                     ? null
-                    : _handlePayment,
-                child: _processing
+                    : () async {
+                        final bookingManager = context.read<BookingManager>();
+                        try {
+                          await bookingManager.confirmAllAfterPayment();
+                          if (!mounted) return;
+                          await bookingManager.refetch(showLoading: true);
+                          if (!mounted) return;
+                          await _showPaymentSuccess();
+                          if (!mounted) return;
+                          Navigator.of(context).pop(true);
+                        } catch (error) {
+                          if (!mounted) return;
+                          _showError(error);
+                        }
+                      },
+                child: manager.isMutating
                     ? const SizedBox(
                         height: 22,
                         width: 22,
@@ -195,8 +174,7 @@ class _PaymentPageState extends State<PaymentPage> {
   Widget _buildSlotRow(ColorScheme cs, SelectedSlot slot) {
     final timeLabel =
         '${DateFormat.Hm().format(slot.startTime.toLocal())} - ${DateFormat.Hm().format(slot.endTime.toLocal())}';
-    final price =
-        calculateSlotPrice(widget.detailData, slot, widget.slotDuration);
+    final price = calculateSlotPrice(widget.detailData, slot, widget.slotDuration);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -220,7 +198,13 @@ class _PaymentPageState extends State<PaymentPage> {
     );
   }
 
-  Widget _buildTotalRow(ColorScheme cs, String durationLabel) {
+  Widget _buildTotalRow(
+    ColorScheme cs,
+    String durationLabel,
+    List<SelectedSlot> slots,
+  ) {
+    final totalPrice = _totalPrice(slots);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
@@ -248,7 +232,7 @@ class _PaymentPageState extends State<PaymentPage> {
             children: [
               const Text('Tổng cộng'),
               Text(
-                formatCurrency(_totalPrice),
+                formatCurrency(totalPrice),
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -275,30 +259,36 @@ class _PaymentPageState extends State<PaymentPage> {
     );
   }
 
-  Future<void> _handlePayment() async {
-    setState(() => _processing = true);
-
-    try {
-      for (final booking in widget.bookings) {
-        await _bookingService.markAsConfirmed(booking.id);
-      }
-
-      if (!mounted) return;
-      await _showPaymentSuccess(context);
-      if (!mounted) return;
-      Navigator.of(context).pop(true);
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_describeError(error))),
-      );
-    } finally {
-      if (!mounted) return;
-      setState(() => _processing = false);
-    }
+  List<SelectedSlot> _collectSlots(List<CourtBooking> bookings) {
+    return bookings
+        .expand((booking) => booking.splitToSlots(widget.slotDuration))
+        .map(
+          (slot) => SelectedSlot(
+            courtUnitId: slot.courtUnitId,
+            startTime: slot.startTime.toUtc(),
+            endTime: slot.endTime.toUtc(),
+          ),
+        )
+        .toList(growable: false);
   }
 
-  Future<void> _showPaymentSuccess(BuildContext context) {
+  Duration _totalDuration(List<SelectedSlot> slots) {
+    var minutes = 0;
+    for (final slot in slots) {
+      minutes += slot.endTime.difference(slot.startTime).inMinutes;
+    }
+    return Duration(minutes: minutes);
+  }
+
+  double _totalPrice(List<SelectedSlot> slots) {
+    var total = 0.0;
+    for (final slot in slots) {
+      total += calculateSlotPrice(widget.detailData, slot, widget.slotDuration);
+    }
+    return total;
+  }
+
+  Future<void> _showPaymentSuccess() {
     return showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
@@ -315,11 +305,12 @@ class _PaymentPageState extends State<PaymentPage> {
     );
   }
 
-  String _describeError(Object error) {
-    if (error is BookingServiceException) {
-      return error.message;
-    }
-    return 'Đã xảy ra lỗi. Vui lòng thử lại.';
+  void _showError(Object error) {
+    final message =
+        error is BookingServiceException ? error.message : 'Đã xảy ra lỗi. Vui lòng thử lại.';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   String _resolveCourtLabel(String courtUnitId) {

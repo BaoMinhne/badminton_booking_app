@@ -290,18 +290,20 @@ class _ProfilePageState extends State<ProfilePage> {
                               if (!confirm) return;
 
                               try {
-                                await context.read<AuthManager>().logout();
+                                final authManager = context.read<AuthManager>();
+                                final navigator = Navigator.of(context);
+                                await authManager.logout();
 
-                                if (!context.mounted) return;
+                                if (!mounted) return;
 
                                 // Xoá toàn bộ stack và quay về LoginPage
-                                Navigator.of(context).pushAndRemoveUntil(
+                                navigator.pushAndRemoveUntil(
                                   MaterialPageRoute(
                                       builder: (_) => LoginPage()),
                                   (route) => false,
                                 );
                               } catch (e) {
-                                if (!context.mounted) return;
+                                if (!mounted) return;
                                 await showErrorDialog(
                                     context, 'Đăng xuất thất bại: $e');
                               }

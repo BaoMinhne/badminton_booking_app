@@ -28,8 +28,7 @@ class BookingManager with ChangeNotifier {
   final Map<String, CourtBooking> _heldByMe = <String, CourtBooking>{};
   final Map<String, SelectedSlot> _heldSlots = <String, SelectedSlot>{};
 
-  RealtimeSubscription? _realtimeSubscription;
-  StreamSubscription<RecordSubscriptionEvent>? _rtSub;
+  bool _isRealtimeSubscribed = false;
 
   String? get courtId => _courtId;
   DateTime get date => _date;
@@ -418,39 +417,40 @@ class BookingManager with ChangeNotifier {
   Future<void> _setupRealtime(String courtId) async {
     try {
       final pb = await getPocketbaseInstance();
-      _realtimeSubscription =
-          await pb.collection(BookingService.collection).subscribe('*');
-      _rtSub = _realtimeSubscription?.stream.listen((event) {
-        final record = event.record;
-        if (record != null) {
-          final recordCourtId = (record.data['court_id'] as String?) ?? '';
-          if (recordCourtId != _courtId) {
-            return;
+      await pb.collection(BookingService.collection).subscribe(
+        '*',
+        (RecordSubscriptionEvent event) {
+          final record = event.record;
+          if (record != null) {
+            final recordCourtId = (record.data['court_id'] as String?) ?? '';
+            final activeCourtId = _courtId ?? courtId;
+            if (recordCourtId != activeCourtId) {
+              return;
+            }
           }
-        }
-        // ignore errors – background refresh only
-        _refreshBookingsInternal().then((_) {
-          notifyListeners();
-        }).catchError((_) {});
-      });
+          // ignore errors – background refresh only
+          _refreshBookingsInternal().then((_) {
+            notifyListeners();
+          }).catchError((_) {});
+        },
+      );
+      _isRealtimeSubscribed = true;
     } catch (_) {
       // Realtime not critical; ignore errors silently.
     }
   }
 
   Future<void> _teardownRealtime() async {
-    await _rtSub?.cancel();
-    _rtSub = null;
-    if (_realtimeSubscription != null) {
-      try {
-        final pb = await getPocketbaseInstance();
-        await pb
-            .collection(BookingService.collection)
-            .unsubscribe(_realtimeSubscription!);
-      } catch (_) {
-        // ignore
-      }
-      _realtimeSubscription = null;
+    if (!_isRealtimeSubscribed) {
+      return;
+    }
+    try {
+      final pb = await getPocketbaseInstance();
+      await pb.collection(BookingService.collection).unsubscribe('*');
+    } catch (_) {
+      // ignore
+    } finally {
+      _isRealtimeSubscribed = false;
     }
   }
 

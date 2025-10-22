@@ -1,15 +1,16 @@
 import 'package:badminton_booking_app/components/my_court_time.dart';
 import 'package:badminton_booking_app/models/booking.dart';
 import 'package:badminton_booking_app/models/court_detail.dart';
-import 'package:badminton_booking_app/pages/court/payment_page.dart';
 import 'package:badminton_booking_app/pages/auth/auth_manager.dart';
+import 'package:badminton_booking_app/pages/court/booking_manager.dart';
+import 'package:badminton_booking_app/pages/court/payment_page.dart';
 import 'package:badminton_booking_app/services/booking_service.dart';
 import 'package:badminton_booking_app/utils/booking_helpers.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-class BookingPage extends StatefulWidget {
+class BookingPage extends StatelessWidget {
   const BookingPage({
     super.key,
     required this.detailData,
@@ -22,334 +23,47 @@ class BookingPage extends StatefulWidget {
   final Duration slotDuration;
 
   @override
-  State<BookingPage> createState() => _BookingPageState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider<BookingManager>(
+      create: (_) => BookingManager(
+        detailData: detailData,
+        bookingService: bookingService,
+        slotDuration: slotDuration,
+      ),
+      child: _BookingPageView(detailData: detailData),
+    );
+  }
 }
 
-class _BookingPageState extends State<BookingPage> {
-  late DateTime _selectedDate;
-  late BookingService _bookingService;
+class _BookingPageView extends StatefulWidget {
+  const _BookingPageView({required this.detailData});
 
-  final Set<SelectedSlot> _selectedSlots = <SelectedSlot>{};
-  final Map<SelectedSlot, CourtBooking> _heldBookings = {};
-  final Set<SelectedSlot> _processingSlots = {};
-
-  List<CourtBooking> _bookings = <CourtBooking>[];
-
-  bool _isLoading = false;
-  String? _errorMessage;
-  bool _submittingRequest = false;
-  String? _currentUserId;
+  final CourtDetailData detailData;
 
   @override
-  void initState() {
-    super.initState();
-    _selectedDate = DateTime.now();
-    _bookingService = widget.bookingService ?? BookingService();
-  }
+  State<_BookingPageView> createState() => _BookingPageViewState();
+}
+
+class _BookingPageViewState extends State<_BookingPageView> {
+  String? _lastUserId;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final auth = Provider.of<AuthManager>(context);
-    final newUserId = auth.user?.id;
-    if (newUserId != _currentUserId) {
-      _currentUserId = newUserId;
-      _loadBookings();
+    final provider = Provider.of<BookingManager>(context, listen: false);
+    final userId = auth.user?.id;
+    if (userId != _lastUserId) {
+      _lastUserId = userId;
+      provider.updateCurrentUser(userId);
     }
-  }
-
-  Future<void> _loadBookings() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final bookings = await _bookingService.listBookings(
-        courtId: widget.detailData.court.id,
-        date: _selectedDate,
-      );
-
-      final newSelected = <SelectedSlot>{};
-      final newHeld = <SelectedSlot, CourtBooking>{};
-
-      if (_currentUserId != null) {
-        for (final booking in bookings) {
-          // CHANGED: dùng BookingStatus.held thay cho locked
-          if (booking.userId == _currentUserId &&
-              booking.status == BookingStatus.held &&
-              booking.isActiveLock) {
-            for (final slot in booking.splitToSlots(widget.slotDuration)) {
-              final canonical = _canonicalizeSlot(slot);
-              newSelected.add(canonical);
-              newHeld[canonical] = booking;
-            }
-          }
-        }
-      }
-
-      if (!mounted) return;
-      setState(() {
-        _bookings = bookings;
-        _selectedSlots
-          ..clear()
-          ..addAll(newSelected);
-        _heldBookings
-          ..clear()
-          ..addAll(newHeld);
-        _isLoading = false;
-      });
-    } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = _describeError(error);
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _selectDate() async {
-    final first = DateTime.now().subtract(const Duration(days: 1));
-    final last = DateTime.now().add(const Duration(days: 365));
-
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate,
-      firstDate: first,
-      lastDate: last,
-    );
-
-    if (picked != null && picked != _selectedDate) {
-      setState(() {
-        _selectedDate = picked;
-      });
-      await _loadBookings();
-    }
-  }
-
-  void _handleSlotTap(SelectedSlot slot, bool shouldSelect) {
-    final canonical = _canonicalizeSlot(slot);
-    if (_processingSlots.contains(canonical)) {
-      return;
-    }
-
-    if (shouldSelect) {
-      if (_currentUserId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Vui lòng đăng nhập để giữ chỗ.')),
-        );
-        return;
-      }
-      _lockSlot(canonical);
-    } else {
-      _releaseSlot(canonical);
-    }
-  }
-
-  Future<void> _lockSlot(SelectedSlot slot) async {
-    setState(() => _processingSlots.add(slot));
-
-    try {
-      final booking = await _bookingService.lockSlot(
-        courtId: widget.detailData.court.id,
-        courtUnitId: slot.courtUnitId,
-        userId: _currentUserId!,
-        startTime: slot.startTime.toUtc(),
-        endTime: slot.endTime.toUtc(),
-      );
-
-      final bookingSlots = booking.splitToSlots(widget.slotDuration);
-      if (!mounted) return;
-      setState(() {
-        _bookings = [..._bookings, booking];
-        for (final item in bookingSlots) {
-          final canonical = _canonicalizeSlot(item);
-          _selectedSlots.add(canonical);
-          _heldBookings[canonical] = booking;
-        }
-      });
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_describeError(error))),
-      );
-    } finally {
-      if (!mounted) return;
-      setState(() => _processingSlots.remove(slot));
-    }
-  }
-
-  Future<void> _releaseSlot(SelectedSlot slot) async {
-    final booking = _heldBookings.remove(slot);
-    if (booking == null) {
-      setState(() => _selectedSlots.remove(slot));
-      return;
-    }
-
-    setState(() {
-      _processingSlots.add(slot);
-    });
-
-    try {
-      await _bookingService.releaseBooking(booking.id);
-      if (!mounted) return;
-      setState(() {
-        _selectedSlots.remove(slot);
-        _bookings.removeWhere((item) => item.id == booking.id);
-      });
-    } catch (error) {
-      if (!mounted) return;
-      _heldBookings[slot] = booking;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_describeError(error))),
-      );
-    } finally {
-      if (!mounted) return;
-      setState(() => _processingSlots.remove(slot));
-    }
-  }
-
-  // CHANGED: đổi tên hàm và text sang "chuyển sang chờ thanh toán"
-  Future<void> _proceedToAwaitingPayment() async {
-    if (_heldBookings.isEmpty) return;
-    setState(() => _submittingRequest = true);
-
-    try {
-      final updates = <CourtBooking>[];
-      for (final booking in _heldBookings.values) {
-        // vẫn gọi service cũ, nhưng service nên update status = 'awaiting_payment'
-        final updated = await _bookingService.submitForApproval(booking.id);
-        updates.add(updated);
-      }
-
-      if (!mounted) return;
-      setState(() {
-        for (final updated in updates) {
-          _bookings.removeWhere((item) => item.id == updated.id);
-          _bookings.add(updated);
-        }
-        _selectedSlots.clear();
-        _heldBookings.clear();
-        _submittingRequest = false;
-      });
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Đã chuyển sang trạng thái chờ thanh toán.'),
-        ),
-      );
-      await _loadBookings();
-    } catch (error) {
-      if (!mounted) return;
-      setState(() => _submittingRequest = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_describeError(error))),
-      );
-    }
-  }
-
-  List<CourtTimelineRow> get _rows {
-    final units = widget.detailData.units;
-    if (units.isEmpty) {
-      return [const CourtTimelineRow(id: 'default', label: 'Sân 1')];
-    }
-    return units
-        .where((unit) => unit.isActive)
-        .map((unit) => CourtTimelineRow(
-              id: unit.id,
-              label: unit.label.isEmpty ? 'Sân' : unit.label,
-            ))
-        .toList();
-  }
-
-  Duration get _totalDuration {
-    var minutes = 0;
-    for (final slot in _selectedSlots) {
-      minutes += slot.endTime.difference(slot.startTime).inMinutes;
-    }
-    return Duration(minutes: minutes);
-  }
-
-  double get _totalPrice {
-    var total = 0.0;
-    for (final slot in _selectedSlots) {
-      total += calculateSlotPrice(
-        widget.detailData,
-        slot,
-        widget.slotDuration,
-      );
-    }
-    return total;
-  }
-
-  // CHANGED: dùng awaitingPayment thay cho confirmed
-  Iterable<CourtBooking> get _awaitingPaymentForUser {
-    if (_currentUserId == null) return const Iterable.empty();
-    return _bookings.where((booking) =>
-        booking.userId == _currentUserId &&
-        booking.status == BookingStatus.awaitingPayment);
-  }
-
-  int get _startHour {
-    final minutes = widget.detailData.openingHours
-        .map((item) => parseTimeToMinutes(item.openTime))
-        .whereType<int>();
-    if (minutes.isEmpty) return 6;
-    final minMinute = minutes.reduce((a, b) => a < b ? a : b);
-    final base = (minMinute / 60).floor();
-    if (base < 0) return 0;
-    if (base > 23) return 23;
-    return base;
-  }
-
-  int get _endHour {
-    final minutes = widget.detailData.openingHours
-        .map((item) => parseTimeToMinutes(item.closeTime))
-        .whereType<int>();
-    if (minutes.isEmpty) return 22;
-    final maxMinute = minutes.reduce((a, b) => a > b ? a : b);
-    var endHour = (maxMinute / 60).ceil();
-    if (endHour < 1) {
-      endHour = 1;
-    } else if (endHour > 24) {
-      endHour = 24;
-    }
-    return endHour <= _startHour ? _startHour + 1 : endHour;
-  }
-
-  DateTime? get _holdExpiresAt {
-    DateTime? result;
-    for (final booking in _heldBookings.values) {
-      final locked = booking.lockedUntil?.toLocal();
-      if (locked == null) continue;
-      if (result == null || locked.isBefore(result)) {
-        result = locked;
-      }
-    }
-    return result;
-  }
-
-  SelectedSlot _canonicalizeSlot(SelectedSlot slot) {
-    return SelectedSlot(
-      courtUnitId: slot.courtUnitId,
-      startTime: slot.startTime.toUtc(),
-      endTime: slot.endTime.toUtc(),
-    );
-  }
-
-  String _describeError(Object error) {
-    if (error is BookingServiceException) {
-      return error.message;
-    }
-    return 'Đã xảy ra lỗi. Vui lòng thử lại.';
   }
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final rows = _rows;
-    final holdExpires = _holdExpiresAt;
+    final provider = context.watch<BookingManager>();
+    final colorScheme = Theme.of(context).colorScheme;
+    final timelineRows = _buildTimelineRows(provider);
 
     return Scaffold(
       appBar: AppBar(
@@ -357,83 +71,149 @@ class _BookingPageState extends State<BookingPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _isLoading ? null : _loadBookings,
             tooltip: 'Tải lại trạng thái đặt sân',
+            onPressed: provider.isLoading
+                ? null
+                : () {
+                    provider.refreshBookings();
+                  },
           ),
         ],
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildHeader(cs, holdExpires),
-          _buildLegend(cs),
+          _buildHeader(context, provider, colorScheme),
+          _buildLegend(colorScheme),
           Expanded(
-            child: _isLoading
+            child: provider.isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : _errorMessage != null
-                    ? _buildErrorState(cs)
+                : provider.friendlyErrorMessage != null
+                    ? _buildErrorState(context, provider, colorScheme)
                     : Padding(
                         padding: const EdgeInsets.only(bottom: 12),
                         child: CourtTimeline(
-                          rows: rows,
-                          date: _selectedDate,
-                          startHour: _startHour,
-                          endHour: _endHour,
-                          bookings: _bookings,
-                          selectedSlots: _selectedSlots,
-                          currentUserId: _currentUserId,
-                          onSlotTap: _handleSlotTap,
+                          rows: timelineRows,
+                          date: provider.selectedDate,
+                          startHour: _resolveStartHour(),
+                          endHour: _resolveEndHour(),
+                          bookings: provider.bookings,
+                          selectedSlots: provider.selectedSlots,
+                          currentUserId: _lastUserId,
+                          onSlotTap: (slot, shouldSelect) =>
+                              _handleSlotTap(context, provider, slot, shouldSelect),
                         ),
                       ),
           ),
-          _buildSummary(cs, holdExpires),
+          _buildSummary(provider, colorScheme),
         ],
       ),
-      bottomNavigationBar: _buildActions(cs),
+      bottomNavigationBar: _buildActions(context, provider, colorScheme),
     );
   }
 
-  Widget _buildHeader(ColorScheme cs, DateTime? holdExpires) {
-    final dateLabel = DateFormat('dd/MM/yyyy').format(_selectedDate);
-    final totalDuration = _totalDuration;
+  List<CourtTimelineRow> _buildTimelineRows(BookingManager provider) {
+    final units = widget.detailData.units.where((unit) => unit.isActive).toList();
+    if (units.isEmpty) {
+      return const [CourtTimelineRow(id: 'default', label: 'Sân 1')];
+    }
+    final selectedId = provider.selectedCourtUnitId;
+    if (selectedId == null) {
+      return units
+          .map((unit) => CourtTimelineRow(
+                id: unit.id,
+                label: unit.label.isEmpty ? 'Sân' : unit.label,
+              ))
+          .toList();
+    }
+    final unit = units.firstWhere(
+      (item) => item.id == selectedId,
+      orElse: () => units.first,
+    );
+    return [
+      CourtTimelineRow(
+        id: unit.id,
+        label: unit.label.isEmpty ? 'Sân' : unit.label,
+      ),
+    ];
+  }
+
+  Future<void> _handleSlotTap(
+    BuildContext context,
+    BookingManager provider,
+    SelectedSlot slot,
+    bool shouldSelect,
+  ) async {
+    if (provider.isSlotInProgress(slot)) {
+      return;
+    }
+
+    try {
+      if (shouldSelect) {
+        await provider.holdSlot(slot);
+      } else {
+        await provider.releaseSlot(slot);
+      }
+    } on BookingManagerException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.message),
+          action: SnackBarAction(
+            label: 'Tải lại',
+            onPressed: () {
+              provider.refreshBookings();
+            },
+          ),
+        ),
+      );
+    }
+  }
+
+  Widget _buildHeader(
+    BuildContext context,
+    BookingManager provider,
+    ColorScheme colorScheme,
+  ) {
+    final dateLabel = DateFormat('dd/MM/yyyy').format(provider.selectedDate);
+    final totalDuration = provider.totalSelectedDuration;
     final durationLabel = totalDuration.inMinutes == 0
         ? 'Chưa chọn thời gian'
         : '${totalDuration.inMinutes ~/ 60}h ${totalDuration.inMinutes % 60}p';
 
     return Container(
-      color: cs.primary,
+      color: colorScheme.primary,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
-              Text(
-                widget.detailData.court.name,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: cs.onPrimary,
+              Expanded(
+                child: Text(
+                  widget.detailData.court.name,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onPrimary,
+                  ),
                 ),
               ),
-              const Spacer(),
               FilledButton.tonal(
-                style: FilledButton.styleFrom(
-                  backgroundColor: cs.surface,
-                ),
-                onPressed: _selectDate,
+                style: FilledButton.styleFrom(backgroundColor: colorScheme.surface),
+                onPressed: () => _selectDate(context, provider),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       dateLabel,
                       style: TextStyle(
-                        color: cs.onSurface,
+                        color: colorScheme.onSurface,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Icon(Icons.calendar_month, color: cs.onSurface),
+                    Icon(Icons.calendar_month, color: colorScheme.onSurface),
                   ],
                 ),
               ),
@@ -441,178 +221,82 @@ class _BookingPageState extends State<BookingPage> {
           ),
           const SizedBox(height: 8),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Icon(Icons.schedule, color: cs.onPrimary.withOpacity(0.9)),
-              const SizedBox(width: 6),
-              Text(
-                durationLabel,
-                style: TextStyle(
-                  color: cs.onPrimary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          if (holdExpires != null) ...[
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Icon(Icons.hourglass_bottom,
-                    size: 18, color: cs.onPrimary.withOpacity(0.9)),
-                const SizedBox(width: 6),
-                Text(
-                  'Giữ chỗ đến ${DateFormat('HH:mm').format(holdExpires)}',
-                  style: TextStyle(color: cs.onPrimary),
-                ),
-              ],
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLegend(ColorScheme cs) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: cs.surface,
-        border: Border(
-          bottom: BorderSide(color: cs.outlineVariant.withOpacity(0.4)),
-        ),
-      ),
-      child: Wrap(
-        spacing: 12,
-        runSpacing: 8,
-        children: [
-          _legendItem(
-              cs.secondaryContainer.withOpacity(0.7), 'Đang giữ chỗ'), // held
-          _legendItem(cs.errorContainer.withOpacity(0.9), 'Người khác giữ'),
-          _legendItem(cs.tertiaryContainer.withOpacity(0.9),
-              'Chờ thanh toán'), // CHANGED
-          _legendItem(
-              cs.primaryContainer.withOpacity(0.9), 'Đã xác nhận'), // CHANGED
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSummary(ColorScheme cs, DateTime? holdExpires) {
-    final totalPrice = _totalPrice;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: cs.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 4,
-            offset: const Offset(0, -2),
-          )
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.sticky_note_2_outlined, size: 20),
+              Icon(Icons.schedule, color: colorScheme.onPrimary),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  _selectedSlots.isEmpty
-                      ? 'Chọn khung giờ để giữ chỗ tối đa 15 phút.'
-                      : 'Đã chọn ${_selectedSlots.length} khung giờ.',
+                  durationLabel,
+                  style: TextStyle(color: colorScheme.onPrimary),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Icon(Icons.payments_outlined, size: 20, color: cs.primary),
-              const SizedBox(width: 8),
-              Text(
-                formatCurrency(totalPrice),
-                style: TextStyle(
-                  color: cs.primary,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
-              ),
-            ],
-          ),
-          // CHANGED: thông báo số booking chờ thanh toán thay vì đã duyệt
-          if (_awaitingPaymentForUser.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(Icons.pending_actions, size: 20, color: cs.primary),
-                const SizedBox(width: 6),
-                Text(
-                  'Có ${_awaitingPaymentForUser.length} lượt chờ thanh toán.',
-                  style: TextStyle(color: cs.primary),
-                ),
-              ],
+          if (widget.detailData.units.length > 1)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: _buildCourtUnitSelector(provider, colorScheme),
             ),
-          ],
         ],
       ),
     );
   }
 
-  Widget _buildActions(ColorScheme cs) {
-    // CHANGED: bật thanh toán khi có booking awaiting_payment
-    final hasAwaitingPayment = _awaitingPaymentForUser.isNotEmpty;
+  Widget _buildCourtUnitSelector(BookingManager provider, ColorScheme colorScheme) {
+    final units = widget.detailData.units.where((unit) => unit.isActive).toList();
+    final selectedId = provider.selectedCourtUnitId ??
+        (units.isNotEmpty ? units.first.id : null);
 
-    return SafeArea(
-      minimum: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: colorScheme.surface.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
         children: [
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: _heldBookings.isEmpty || _submittingRequest
-                  ? null
-                  : _proceedToAwaitingPayment, // CHANGED
-              child: _submittingRequest
-                  ? const SizedBox(
-                      height: 22,
-                      width: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+          Icon(Icons.sports_tennis, color: colorScheme.primary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: selectedId,
+                onChanged: (value) {
+                  if (value != null) {
+                    provider.changeCourtUnit(value);
+                  }
+                },
+                items: units
+                    .map(
+                      (unit) => DropdownMenuItem<String>(
+                        value: unit.id,
+                        child: Text(unit.label.isEmpty ? 'Sân' : unit.label),
+                      ),
                     )
-                  : const Text('Chuyển sang thanh toán'), // CHANGED
+                    .toList(),
+              ),
             ),
           ),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              onPressed: hasAwaitingPayment
-                  ? () async {
-                      final result = await Navigator.push<bool>(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => PaymentPage(
-                            detailData: widget.detailData,
-                            bookings:
-                                _awaitingPaymentForUser.toList(), // CHANGED
-                            slotDuration: widget.slotDuration,
-                            bookingService: _bookingService,
-                          ),
-                        ),
-                      );
+        ],
+      ),
+    );
+  }
 
-                      if (result == true && mounted) {
-                        await _loadBookings();
-                      }
-                    }
-                  : null,
-              child: const Text('Thanh toán'),
-            ),
-          ),
+  Widget _buildLegend(ColorScheme colorScheme) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      color: colorScheme.surface,
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          _legendItem(colorScheme.primary.withOpacity(0.2), 'Có thể đặt'),
+          _legendItem(colorScheme.primary, 'Bạn đang giữ chỗ'),
+          _legendItem(colorScheme.secondary, 'Người khác giữ chỗ'),
+          _legendItem(colorScheme.tertiary, 'Chờ thanh toán'),
+          _legendItem(colorScheme.error, 'Đã xác nhận'),
         ],
       ),
     );
@@ -637,22 +321,249 @@ class _BookingPageState extends State<BookingPage> {
     );
   }
 
-  Widget _buildErrorState(ColorScheme cs) {
+  Widget _buildErrorState(
+    BuildContext context,
+    BookingManager provider,
+    ColorScheme colorScheme,
+  ) {
     return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.warning_amber_rounded, color: colorScheme.error, size: 40),
+            const SizedBox(height: 12),
+            Text(
+              provider.friendlyErrorMessage ?? 'Không thể tải dữ liệu.',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: () {
+                provider.refreshBookings();
+              },
+              child: const Text('Tải lại'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummary(BookingManager provider, ColorScheme colorScheme) {
+    final holdExpires = provider.holdExpiresAt;
+    final totalPrice = provider.totalSelectedPrice;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        border: Border(top: BorderSide(color: colorScheme.outlineVariant)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.sticky_note_2_outlined, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  provider.selectedSlots.isEmpty
+                      ? 'Chọn khung giờ để giữ chỗ tối đa 15 phút.'
+                      : 'Đã chọn ${provider.selectedSlots.length} khung giờ.',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(Icons.payments_outlined, size: 20, color: colorScheme.primary),
+              const SizedBox(width: 8),
+              Text(
+                formatCurrency(totalPrice),
+                style: TextStyle(
+                  color: colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
+            ],
+          ),
+          if (holdExpires != null) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(Icons.timer_outlined, size: 20, color: colorScheme.error),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Giữ chỗ hết hạn lúc ${DateFormat('HH:mm').format(holdExpires)}.',
+                    style: TextStyle(color: colorScheme.error),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          if (provider.hasAwaitingPaymentBookings) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(Icons.pending_actions, size: 20, color: colorScheme.primary),
+                const SizedBox(width: 6),
+                Text(
+                  'Có ${provider.awaitingPaymentBookings.length} lượt chờ thanh toán.',
+                  style: TextStyle(color: colorScheme.primary),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActions(
+    BuildContext context,
+    BookingManager provider,
+    ColorScheme colorScheme,
+  ) {
+    return SafeArea(
+      minimum: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            _errorMessage ?? 'Không thể tải dữ liệu.',
-            textAlign: TextAlign.center,
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: provider.hasHeldBookings && !provider.isSubmittingHeldBookings
+                  ? () async {
+                      await _handleSubmitForPayment(context, provider);
+                    }
+                  : null,
+              child: provider.isSubmittingHeldBookings
+                  ? const SizedBox(
+                      height: 22,
+                      width: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Chuyển sang thanh toán'),
+            ),
           ),
-          const SizedBox(height: 12),
-          FilledButton(
-            onPressed: _loadBookings,
-            child: const Text('Thử lại'),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: provider.hasAwaitingPaymentBookings
+                  ? () async {
+                      final providerInstance = context.read<BookingManager>();
+                      final result = await Navigator.of(context).push<bool>(
+                        MaterialPageRoute(
+                          builder: (context) => ChangeNotifierProvider.value(
+                            value: providerInstance,
+                            child: const PaymentPage(),
+                          ),
+                        ),
+                      );
+                      if (result == true && mounted) {
+                        await provider.refreshBookings();
+                      }
+                    }
+                  : null,
+              child: const Text('Thanh toán'),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: TextButton(
+              onPressed: provider.hasHeldBookings
+                  ? () async {
+                      await provider.cancelHeldBookings();
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Đã huỷ giữ chỗ hiện tại.')),
+                      );
+                    }
+                  : null,
+              child: const Text('Huỷ giữ chỗ'),
+            ),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _handleSubmitForPayment(
+    BuildContext context,
+    BookingManager provider,
+  ) async {
+    try {
+      await provider.submitHeldBookingsForPayment();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã chuyển sang trạng thái chờ thanh toán.')),
+      );
+    } on BookingManagerException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.message),
+          action: SnackBarAction(
+            label: 'Tải lại',
+            onPressed: () {
+              provider.refreshBookings();
+            },
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _selectDate(BuildContext context, BookingManager provider) async {
+    final today = DateTime.now();
+    final first = today.subtract(const Duration(days: 1));
+    final last = today.add(const Duration(days: 365));
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: provider.selectedDate,
+      firstDate: first,
+      lastDate: last,
+    );
+
+    if (picked != null) {
+      await provider.changeDate(picked);
+    }
+  }
+
+  int _resolveStartHour() {
+    final minutes = widget.detailData.openingHours
+        .map((item) => parseTimeToMinutes(item.openTime))
+        .whereType<int>();
+    if (minutes.isEmpty) return 6;
+    final minMinute = minutes.reduce((a, b) => a < b ? a : b);
+    final base = (minMinute / 60).floor();
+    if (base < 0) return 0;
+    if (base > 23) return 23;
+    return base;
+  }
+
+  int _resolveEndHour() {
+    final minutes = widget.detailData.openingHours
+        .map((item) => parseTimeToMinutes(item.closeTime))
+        .whereType<int>();
+    if (minutes.isEmpty) return 22;
+    final maxMinute = minutes.reduce((a, b) => a > b ? a : b);
+    var endHour = (maxMinute / 60).ceil();
+    if (endHour < 1) {
+      endHour = 1;
+    } else if (endHour > 24) {
+      endHour = 24;
+    }
+    final start = _resolveStartHour();
+    return endHour <= start ? start + 1 : endHour;
   }
 }

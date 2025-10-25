@@ -55,7 +55,13 @@ class _BookingPageViewState extends State<_BookingPageView> {
     final userId = auth.user?.id;
     if (userId != _lastUserId) {
       _lastUserId = userId;
-      provider.updateCurrentUser(userId);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          provider.updateCurrentUser(userId);
+        });
+      });
     }
   }
 
@@ -97,11 +103,11 @@ class _BookingPageViewState extends State<_BookingPageView> {
                           date: provider.selectedDate,
                           startHour: _resolveStartHour(),
                           endHour: _resolveEndHour(),
-                          bookings: provider.bookings,
+                          bookings: provider.bookingsForSelectedUnit,
                           selectedSlots: provider.selectedSlots,
                           currentUserId: _lastUserId,
-                          onSlotTap: (slot, shouldSelect) =>
-                              _handleSlotTap(context, provider, slot, shouldSelect),
+                          onSlotTap: (slot, shouldSelect) => _handleSlotTap(
+                              context, provider, slot, shouldSelect),
                         ),
                       ),
           ),
@@ -113,7 +119,8 @@ class _BookingPageViewState extends State<_BookingPageView> {
   }
 
   List<CourtTimelineRow> _buildTimelineRows(BookingManager provider) {
-    final units = widget.detailData.units.where((unit) => unit.isActive).toList();
+    final units =
+        widget.detailData.units.where((unit) => unit.isActive).toList();
     if (units.isEmpty) {
       return const [CourtTimelineRow(id: 'default', label: 'Sân 1')];
     }
@@ -200,7 +207,8 @@ class _BookingPageViewState extends State<_BookingPageView> {
                 ),
               ),
               FilledButton.tonal(
-                style: FilledButton.styleFrom(backgroundColor: colorScheme.surface),
+                style: FilledButton.styleFrom(
+                    backgroundColor: colorScheme.surface),
                 onPressed: () => _selectDate(context, provider),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -243,8 +251,10 @@ class _BookingPageViewState extends State<_BookingPageView> {
     );
   }
 
-  Widget _buildCourtUnitSelector(BookingManager provider, ColorScheme colorScheme) {
-    final units = widget.detailData.units.where((unit) => unit.isActive).toList();
+  Widget _buildCourtUnitSelector(
+      BookingManager provider, ColorScheme colorScheme) {
+    final units =
+        widget.detailData.units.where((unit) => unit.isActive).toList();
     final selectedId = provider.selectedCourtUnitId ??
         (units.isNotEmpty ? units.first.id : null);
 
@@ -332,7 +342,8 @@ class _BookingPageViewState extends State<_BookingPageView> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.warning_amber_rounded, color: colorScheme.error, size: 40),
+            Icon(Icons.warning_amber_rounded,
+                color: colorScheme.error, size: 40),
             const SizedBox(height: 12),
             Text(
               provider.friendlyErrorMessage ?? 'Không thể tải dữ liệu.',
@@ -380,7 +391,8 @@ class _BookingPageViewState extends State<_BookingPageView> {
           const SizedBox(height: 8),
           Row(
             children: [
-              Icon(Icons.payments_outlined, size: 20, color: colorScheme.primary),
+              Icon(Icons.payments_outlined,
+                  size: 20, color: colorScheme.primary),
               const SizedBox(width: 8),
               Text(
                 formatCurrency(totalPrice),
@@ -411,7 +423,8 @@ class _BookingPageViewState extends State<_BookingPageView> {
             const SizedBox(height: 8),
             Row(
               children: [
-                Icon(Icons.pending_actions, size: 20, color: colorScheme.primary),
+                Icon(Icons.pending_actions,
+                    size: 20, color: colorScheme.primary),
                 const SizedBox(width: 6),
                 Text(
                   'Có ${provider.awaitingPaymentBookings.length} lượt chờ thanh toán.',
@@ -438,11 +451,12 @@ class _BookingPageViewState extends State<_BookingPageView> {
           SizedBox(
             width: double.infinity,
             child: FilledButton(
-              onPressed: provider.hasHeldBookings && !provider.isSubmittingHeldBookings
-                  ? () async {
-                      await _handleSubmitForPayment(context, provider);
-                    }
-                  : null,
+              onPressed:
+                  provider.hasHeldBookings && !provider.isSubmittingHeldBookings
+                      ? () async {
+                          await _handleSubmitForPayment(context, provider);
+                        }
+                      : null,
               child: provider.isSubmittingHeldBookings
                   ? const SizedBox(
                       height: 22,
@@ -484,7 +498,8 @@ class _BookingPageViewState extends State<_BookingPageView> {
                       await provider.cancelHeldBookings();
                       if (!mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Đã huỷ giữ chỗ hiện tại.')),
+                        const SnackBar(
+                            content: Text('Đã huỷ giữ chỗ hiện tại.')),
                       );
                     }
                   : null,
@@ -504,7 +519,8 @@ class _BookingPageViewState extends State<_BookingPageView> {
       await provider.submitHeldBookingsForPayment();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã chuyển sang trạng thái chờ thanh toán.')),
+        const SnackBar(
+            content: Text('Đã chuyển sang trạng thái chờ thanh toán.')),
       );
     } on BookingManagerException catch (error) {
       if (!mounted) return;
@@ -522,7 +538,8 @@ class _BookingPageViewState extends State<_BookingPageView> {
     }
   }
 
-  Future<void> _selectDate(BuildContext context, BookingManager provider) async {
+  Future<void> _selectDate(
+      BuildContext context, BookingManager provider) async {
     final today = DateTime.now();
     final first = today.subtract(const Duration(days: 1));
     final last = today.add(const Duration(days: 365));

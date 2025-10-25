@@ -36,17 +36,18 @@ class BookingManager extends ChangeNotifier {
 
   List<CourtBooking> _loadedBookings = <CourtBooking>[];
   final Set<SelectedSlot> _selectedSlots = <SelectedSlot>{};
-  final Map<SelectedSlot, CourtBooking> _heldBookingsBySlot = <SelectedSlot, CourtBooking>{};
+  final Map<SelectedSlot, CourtBooking> _heldBookingsBySlot =
+      <SelectedSlot, CourtBooking>{};
   final Set<SelectedSlot> _slotsInProgress = <SelectedSlot>{};
 
-  final Map<String, _BookingCacheEntry> _bookingCacheByKey = <String, _BookingCacheEntry>{};
+  final Map<String, _BookingCacheEntry> _bookingCacheByKey =
+      <String, _BookingCacheEntry>{};
 
   DateTime get selectedDate => _selectedDate;
   String? get selectedCourtUnitId => _selectedCourtUnitId;
   bool get isLoading => _isLoading;
   bool get isSubmittingHeldBookings => _isSubmittingHeldBookings;
-  bool get isConfirmingAwaitingPayment =>
-      _isConfirmingAwaitingPaymentBookings;
+  bool get isConfirmingAwaitingPayment => _isConfirmingAwaitingPaymentBookings;
   String? get friendlyErrorMessage => _friendlyErrorMessage;
   List<CourtBooking> get bookings => List.unmodifiable(_loadedBookings);
   List<CourtBooking> get bookingsForSelectedUnit {
@@ -122,9 +123,10 @@ class BookingManager extends ChangeNotifier {
     if (unitId == _selectedCourtUnitId) {
       return;
     }
+    _friendlyErrorMessage = null;
     _selectedCourtUnitId = unitId;
     notifyListeners();
-    await loadBookings();
+    await loadBookings(forceRefresh: true);
   }
 
   Future<void> loadBookings({bool forceRefresh = false}) async {
@@ -141,7 +143,8 @@ class BookingManager extends ChangeNotifier {
       }
 
       if (_selectedCourtUnitId != null) {
-        final fallbackCache = _bookingCacheByKey[_cacheKeyFor(_selectedDate, null)];
+        final fallbackCache =
+            _bookingCacheByKey[_cacheKeyFor(_selectedDate, null)];
         if (fallbackCache != null) {
           _loadedBookings = List<CourtBooking>.from(fallbackCache.bookings);
           _friendlyErrorMessage = null;
@@ -423,7 +426,9 @@ class BookingManager extends ChangeNotifier {
 
     final grouped = <String, List<CourtBooking>>{};
     for (final booking in bookings) {
-      grouped.putIfAbsent(booking.courtUnitId, () => <CourtBooking>[]).add(booking);
+      grouped
+          .putIfAbsent(booking.courtUnitId, () => <CourtBooking>[])
+          .add(booking);
     }
 
     for (final entry in grouped.entries) {
@@ -438,7 +443,7 @@ class BookingManager extends ChangeNotifier {
   String _cacheKeyFor(DateTime date, String? unitId) {
     final formatter = DateFormat('yyyy-MM-dd');
     final dayLabel = formatter.format(date);
-    return '${detailData.court.id}__$dayLabel__${unitId ?? 'all'}';
+    return '${detailData.court.id}__${dayLabel}__${unitId ?? 'all'}';
   }
 
   DateTime _normalizeDate(DateTime date) {

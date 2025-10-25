@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
@@ -13,19 +14,21 @@ class BookingManager extends ChangeNotifier {
     required this.detailData,
     BookingService? bookingService,
     this.slotDuration = const Duration(hours: 1),
-  }) : _bookingService = bookingService ?? BookingService() {
+    this.unitGroupSize = 5,
+  })  : assert(unitGroupSize > 0, 'unitGroupSize must be positive'),
+        _bookingService = bookingService ?? BookingService() {
     _selectedDate = _normalizeDate(DateTime.now());
-    _selectedCourtUnitId = _resolveInitialCourtUnitId();
 
     Future.microtask(() => loadBookings());
   }
 
   final CourtDetailData detailData;
   final Duration slotDuration;
+  final int unitGroupSize;
   final BookingService _bookingService;
 
   DateTime _selectedDate = DateTime.now();
-  String? _selectedCourtUnitId;
+  int _selectedUnitGroupIndex = 0;
   String? _currentUserId;
 
   bool _isLoading = false;
@@ -44,19 +47,46 @@ class BookingManager extends ChangeNotifier {
       <String, _BookingCacheEntry>{};
 
   DateTime get selectedDate => _selectedDate;
-  String? get selectedCourtUnitId => _selectedCourtUnitId;
+  int get selectedUnitGroupIndex => _selectedUnitGroupIndex;
   bool get isLoading => _isLoading;
   bool get isSubmittingHeldBookings => _isSubmittingHeldBookings;
   bool get isConfirmingAwaitingPayment => _isConfirmingAwaitingPaymentBookings;
   String? get friendlyErrorMessage => _friendlyErrorMessage;
   List<CourtBooking> get bookings => List.unmodifiable(_loadedBookings);
-  List<CourtBooking> get bookingsForSelectedUnit {
-    final unitId = _selectedCourtUnitId;
-    if (unitId == null) {
+  List<CourtUnit> get activeCourtUnits =>
+      detailData.units.where((unit) => unit.isActive).toList(growable: false);
+  List<CourtUnit> get visibleCourtUnits {
+    final units = activeCourtUnits;
+    if (units.isEmpty) {
+      return const [];
+    }
+    final totalGroups = totalCourtUnitGroups;
+    if (totalGroups == 0) {
+      return const [];
+    }
+    final safeIndex =
+        _selectedUnitGroupIndex.clamp(0, totalGroups - 1).toInt();
+    final start = safeIndex * unitGroupSize;
+    final end = math.min(start + unitGroupSize, units.length);
+    return units.sublist(start, end);
+  }
+
+  int get totalCourtUnitGroups {
+    final units = activeCourtUnits;
+    if (units.isEmpty) {
+      return 0;
+    }
+    return (units.length / unitGroupSize).ceil();
+  }
+
+  List<CourtBooking> get bookingsForVisibleUnits {
+    final visibleUnits = visibleCourtUnits;
+    if (visibleUnits.isEmpty) {
       return List.unmodifiable(_loadedBookings);
     }
+    final visibleIds = visibleUnits.map((unit) => unit.id).toSet();
     return List.unmodifiable(
-      _loadedBookings.where((booking) => booking.courtUnitId == unitId),
+      _loadedBookings.where((booking) => visibleIds.contains(booking.courtUnitId)),
     );
   }
 
@@ -119,18 +149,21 @@ class BookingManager extends ChangeNotifier {
     await loadBookings();
   }
 
-  Future<void> changeCourtUnit(String? unitId) async {
-    if (unitId == _selectedCourtUnitId) {
+  Future<void> changeCourtUnitGroup(int groupIndex) async {
+    final totalGroups = totalCourtUnitGroups;
+    if (totalGroups == 0) {
       return;
     }
-    _friendlyErrorMessage = null;
-    _selectedCourtUnitId = unitId;
+    final clampedIndex = groupIndex.clamp(0, totalGroups - 1).toInt();
+    if (clampedIndex == _selectedUnitGroupIndex) {
+      return;
+    }
+    _selectedUnitGroupIndex = clampedIndex;
     notifyListeners();
-    await loadBookings(forceRefresh: true);
   }
 
   Future<void> loadBookings({bool forceRefresh = false}) async {
-    final cacheKey = _cacheKeyFor(_selectedDate, _selectedCourtUnitId);
+    final cacheKey = _cacheKeyFor(_selectedDate, null);
 
     if (!forceRefresh) {
       final cached = _bookingCacheByKey[cacheKey];
@@ -140,18 +173,6 @@ class BookingManager extends ChangeNotifier {
         _syncSelectedSlotsWithBookings();
         notifyListeners();
         return;
-      }
-
-      if (_selectedCourtUnitId != null) {
-        final fallbackCache =
-            _bookingCacheByKey[_cacheKeyFor(_selectedDate, null)];
-        if (fallbackCache != null) {
-          _loadedBookings = List<CourtBooking>.from(fallbackCache.bookings);
-          _friendlyErrorMessage = null;
-          _syncSelectedSlotsWithBookings();
-          notifyListeners();
-          return;
-        }
       }
     }
 
@@ -448,17 +469,6 @@ class BookingManager extends ChangeNotifier {
 
   DateTime _normalizeDate(DateTime date) {
     return DateTime(date.year, date.month, date.day);
-  }
-
-  String? _resolveInitialCourtUnitId() {
-    if (detailData.units.isEmpty) {
-      return null;
-    }
-    final activeUnit = detailData.units.firstWhere(
-      (unit) => unit.isActive,
-      orElse: () => detailData.units.first,
-    );
-    return activeUnit.id;
   }
 
   String _describeFriendlyError(Object error) {

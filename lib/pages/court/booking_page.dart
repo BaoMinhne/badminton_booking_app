@@ -103,7 +103,7 @@ class _BookingPageViewState extends State<_BookingPageView> {
                           date: provider.selectedDate,
                           startHour: _resolveStartHour(),
                           endHour: _resolveEndHour(),
-                          bookings: provider.bookingsForSelectedUnit,
+                          bookings: provider.bookingsForVisibleUnits,
                           selectedSlots: provider.selectedSlots,
                           currentUserId: _lastUserId,
                           onSlotTap: (slot, shouldSelect) => _handleSlotTap(
@@ -119,30 +119,45 @@ class _BookingPageViewState extends State<_BookingPageView> {
   }
 
   List<CourtTimelineRow> _buildTimelineRows(BookingManager provider) {
-    final units =
+    final activeUnits =
         widget.detailData.units.where((unit) => unit.isActive).toList();
-    if (units.isEmpty) {
+    if (activeUnits.isEmpty) {
       return const [CourtTimelineRow(id: 'default', label: 'Sân 1')];
     }
-    final selectedId = provider.selectedCourtUnitId;
-    if (selectedId == null) {
-      return units
-          .map((unit) => CourtTimelineRow(
-                id: unit.id,
-                label: unit.label.isEmpty ? 'Sân' : unit.label,
-              ))
+    final orderMap = <String, int>{};
+    for (var i = 0; i < activeUnits.length; i++) {
+      orderMap[activeUnits[i].id] = i + 1;
+    }
+    final visibleUnits = provider.visibleCourtUnits;
+    if (visibleUnits.isEmpty) {
+      return activeUnits
+          .map(
+            (unit) => CourtTimelineRow(
+              id: unit.id,
+              label: _unitLabel(unit, orderMap),
+            ),
+          )
           .toList();
     }
-    final unit = units.firstWhere(
-      (item) => item.id == selectedId,
-      orElse: () => units.first,
-    );
-    return [
-      CourtTimelineRow(
-        id: unit.id,
-        label: unit.label.isEmpty ? 'Sân' : unit.label,
-      ),
-    ];
+    return visibleUnits
+        .map(
+          (unit) => CourtTimelineRow(
+            id: unit.id,
+            label: _unitLabel(unit, orderMap),
+          ),
+        )
+        .toList();
+  }
+
+  String _unitLabel(CourtUnit unit, Map<String, int> orderMap) {
+    if (unit.label.trim().isNotEmpty) {
+      return unit.label.trim();
+    }
+    final index = orderMap[unit.id];
+    if (index != null) {
+      return 'Sân $index';
+    }
+    return 'Sân';
   }
 
   Future<void> _handleSlotTap(
@@ -241,7 +256,7 @@ class _BookingPageViewState extends State<_BookingPageView> {
               ),
             ],
           ),
-          if (widget.detailData.units.length > 1)
+          if (widget.detailData.units.where((unit) => unit.isActive).length > 1)
             Padding(
               padding: const EdgeInsets.only(top: 12),
               child: _buildCourtUnitSelector(provider, colorScheme),
@@ -253,10 +268,22 @@ class _BookingPageViewState extends State<_BookingPageView> {
 
   Widget _buildCourtUnitSelector(
       BookingManager provider, ColorScheme colorScheme) {
-    final units =
+    final activeUnits =
         widget.detailData.units.where((unit) => unit.isActive).toList();
-    final selectedId = provider.selectedCourtUnitId ??
-        (units.isNotEmpty ? units.first.id : null);
+    if (activeUnits.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final orderMap = <String, int>{};
+    for (var i = 0; i < activeUnits.length; i++) {
+      orderMap[activeUnits[i].id] = i + 1;
+    }
+    final groups = _chunkUnits(activeUnits, provider.unitGroupSize);
+    if (groups.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final selectedGroupIndex = provider.selectedUnitGroupIndex
+        .clamp(0, groups.length - 1)
+        .toInt();
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -270,18 +297,23 @@ class _BookingPageViewState extends State<_BookingPageView> {
           const SizedBox(width: 8),
           Expanded(
             child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: selectedId,
+              child: DropdownButton<int>(
+                value: selectedGroupIndex,
                 onChanged: (value) {
                   if (value != null) {
-                    provider.changeCourtUnit(value);
+                    provider.changeCourtUnitGroup(value);
                   }
                 },
-                items: units
+                items: groups
+                    .asMap()
+                    .entries
                     .map(
-                      (unit) => DropdownMenuItem<String>(
-                        value: unit.id,
-                        child: Text(unit.label.isEmpty ? 'Sân' : unit.label),
+                      (entry) => DropdownMenuItem<int>(
+                        value: entry.key,
+                        child: Text(
+                          _groupLabel(entry.value, orderMap),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     )
                     .toList(),
@@ -291,6 +323,30 @@ class _BookingPageViewState extends State<_BookingPageView> {
         ],
       ),
     );
+  }
+
+  List<List<CourtUnit>> _chunkUnits(List<CourtUnit> units, int groupSize) {
+    final chunks = <List<CourtUnit>>[];
+    if (units.isEmpty) {
+      return chunks;
+    }
+    for (var i = 0; i < units.length; i += groupSize) {
+      final end = i + groupSize;
+      chunks.add(units.sublist(i, end > units.length ? units.length : end));
+    }
+    return chunks;
+  }
+
+  String _groupLabel(List<CourtUnit> group, Map<String, int> orderMap) {
+    if (group.isEmpty) {
+      return 'Sân';
+    }
+    final startLabel = _unitLabel(group.first, orderMap);
+    if (group.length == 1) {
+      return startLabel;
+    }
+    final endLabel = _unitLabel(group.last, orderMap);
+    return '$startLabel đến $endLabel';
   }
 
   Widget _buildLegend(ColorScheme colorScheme) {

@@ -47,8 +47,10 @@ class _PaymentPageState extends State<PaymentPage> {
                       itemCount: bookings.length,
                       itemBuilder: (context, index) {
                         final booking = bookings[index];
-                        final bookingSlots = booking.splitToSlots(provider.slotDuration);
-                        return _buildBookingCard(colorScheme, provider, booking, bookingSlots);
+                        final bookingSlots =
+                            booking.splitToSlots(provider.slotDuration);
+                        return _buildBookingCard(
+                            colorScheme, provider, booking, bookingSlots);
                       },
                     ),
             ),
@@ -102,7 +104,8 @@ class _PaymentPageState extends State<PaymentPage> {
   double _totalPrice(BookingManager provider, List<SelectedSlot> slots) {
     var total = 0.0;
     for (final slot in slots) {
-      total += calculateSlotPrice(provider.detailData, slot, provider.slotDuration);
+      total +=
+          calculateSlotPrice(provider.detailData, slot, provider.slotDuration);
     }
     return total;
   }
@@ -173,7 +176,8 @@ class _PaymentPageState extends State<PaymentPage> {
             children: [
               const Icon(Icons.access_time, size: 18),
               const SizedBox(width: 6),
-              Text(DateFormat('dd/MM/yyyy HH:mm').format(booking.startTime.toLocal())),
+              Text(DateFormat('dd/MM/yyyy HH:mm')
+                  .format(booking.startTime.toLocal())),
             ],
           ),
           const SizedBox(height: 8),
@@ -182,7 +186,8 @@ class _PaymentPageState extends State<PaymentPage> {
                 '${DateFormat('HH:mm').format(slot.startTime.toLocal())} - ${DateFormat('HH:mm').format(slot.endTime.toLocal())}';
             return Padding(
               padding: const EdgeInsets.only(bottom: 4),
-              child: Text('${_resolveCourtLabel(provider, slot.courtUnitId)}  $timeLabel'),
+              child: Text(
+                  '${_resolveCourtLabel(provider, slot.courtUnitId)}  $timeLabel'),
             );
           }),
         ],
@@ -190,7 +195,8 @@ class _PaymentPageState extends State<PaymentPage> {
     );
   }
 
-  Widget _buildTotalRow(ColorScheme colorScheme, String durationLabel, double totalPrice) {
+  Widget _buildTotalRow(
+      ColorScheme colorScheme, String durationLabel, double totalPrice) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -244,7 +250,7 @@ class _PaymentPageState extends State<PaymentPage> {
     setState(() => _isProcessingPayment = true);
 
     try {
-      await context.read<BookingManager>().confirmAwaitingPaymentBookings();
+      await context.read<BookingManager>().confirmPaymentBookings();
       if (!mounted) return;
       await _showPaymentSuccess(context);
       if (!mounted) return;

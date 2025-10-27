@@ -281,12 +281,11 @@ class _BookingPageViewState extends State<_BookingPageView> {
     if (groups.isEmpty) {
       return const SizedBox.shrink();
     }
-    final selectedGroupIndex = provider.selectedUnitGroupIndex
-        .clamp(0, groups.length - 1)
-        .toInt();
+    final selectedGroupIndex =
+        provider.selectedUnitGroupIndex.clamp(0, groups.length - 1).toInt();
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
         color: colorScheme.surface.withOpacity(0.9),
         borderRadius: BorderRadius.circular(12),
@@ -346,7 +345,7 @@ class _BookingPageViewState extends State<_BookingPageView> {
       return startLabel;
     }
     final endLabel = _unitLabel(group.last, orderMap);
-    return '$startLabel đến $endLabel';
+    return '$startLabel ~ $endLabel';
   }
 
   Widget _buildLegend(ColorScheme colorScheme) {
@@ -358,11 +357,11 @@ class _BookingPageViewState extends State<_BookingPageView> {
         runSpacing: 8,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          _legendItem(colorScheme.primary.withOpacity(0.2), 'Có thể đặt'),
-          _legendItem(colorScheme.primary, 'Bạn đang giữ chỗ'),
-          _legendItem(colorScheme.secondary, 'Người khác giữ chỗ'),
-          _legendItem(colorScheme.tertiary, 'Chờ thanh toán'),
-          _legendItem(colorScheme.error, 'Đã xác nhận'),
+          _legendItem(Colors.white, 'Có thể đặt'),
+          _legendItem(Color(0xFFD9ECFF), 'Chỗ đang được giữ'),
+          _legendItem(Color(0xFFF9D7F7), 'Chờ thanh toán'),
+          _legendItem(Color(0xFFFFD9D3), 'Người khác đã giữ'),
+          _legendItem(Color(0xFFDCE3FF), 'Đã xác nhận'),
         ],
       ),
     );
@@ -378,7 +377,7 @@ class _BookingPageViewState extends State<_BookingPageView> {
           decoration: BoxDecoration(
             color: color,
             borderRadius: BorderRadius.circular(3),
-            border: Border.all(color: Colors.black12),
+            border: Border.all(color: Colors.black38),
           ),
         ),
         const SizedBox(width: 6),
@@ -572,7 +571,7 @@ class _BookingPageViewState extends State<_BookingPageView> {
     BookingManager provider,
   ) async {
     try {
-      await provider.submitHeldBookingsForPayment();
+      await provider.submitHeldBookings();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

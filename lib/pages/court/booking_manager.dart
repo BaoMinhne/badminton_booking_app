@@ -33,7 +33,7 @@ class BookingManager extends ChangeNotifier {
 
   bool _isLoading = false;
   bool _isSubmittingHeldBookings = false;
-  bool _isConfirmingAwaitingPaymentBookings = false;
+  bool _isConfirmingPayment = false;
 
   String? _friendlyErrorMessage;
 
@@ -50,7 +50,7 @@ class BookingManager extends ChangeNotifier {
   int get selectedUnitGroupIndex => _selectedUnitGroupIndex;
   bool get isLoading => _isLoading;
   bool get isSubmittingHeldBookings => _isSubmittingHeldBookings;
-  bool get isConfirmingAwaitingPayment => _isConfirmingAwaitingPaymentBookings;
+  bool get isConfirmingPayment => _isConfirmingPayment;
   String? get friendlyErrorMessage => _friendlyErrorMessage;
   List<CourtBooking> get bookings => List.unmodifiable(_loadedBookings);
   List<CourtUnit> get activeCourtUnits =>
@@ -64,8 +64,7 @@ class BookingManager extends ChangeNotifier {
     if (totalGroups == 0) {
       return const [];
     }
-    final safeIndex =
-        _selectedUnitGroupIndex.clamp(0, totalGroups - 1).toInt();
+    final safeIndex = _selectedUnitGroupIndex.clamp(0, totalGroups - 1).toInt();
     final start = safeIndex * unitGroupSize;
     final end = math.min(start + unitGroupSize, units.length);
     return units.sublist(start, end);
@@ -86,7 +85,8 @@ class BookingManager extends ChangeNotifier {
     }
     final visibleIds = visibleUnits.map((unit) => unit.id).toSet();
     return List.unmodifiable(
-      _loadedBookings.where((booking) => visibleIds.contains(booking.courtUnitId)),
+      _loadedBookings
+          .where((booking) => visibleIds.contains(booking.courtUnitId)),
     );
   }
 
@@ -274,7 +274,7 @@ class BookingManager extends ChangeNotifier {
     return _slotsInProgress.contains(normalized);
   }
 
-  Future<void> submitHeldBookingsForPayment() async {
+  Future<void> submitHeldBookings() async {
     if (_heldBookingsBySlot.isEmpty) {
       return;
     }
@@ -318,13 +318,13 @@ class BookingManager extends ChangeNotifier {
     }
   }
 
-  Future<void> confirmAwaitingPaymentBookings() async {
+  Future<void> confirmPaymentBookings() async {
     final bookingsToConfirm = awaitingPaymentBookings.toList();
     if (bookingsToConfirm.isEmpty) {
       return;
     }
 
-    _isConfirmingAwaitingPaymentBookings = true;
+    _isConfirmingPayment = true;
     notifyListeners();
 
     final confirmedBookings = <CourtBooking>[];
@@ -360,7 +360,7 @@ class BookingManager extends ChangeNotifier {
       notifyListeners();
       await loadBookings(forceRefresh: true);
     } finally {
-      _isConfirmingAwaitingPaymentBookings = false;
+      _isConfirmingPayment = false;
       notifyListeners();
     }
   }

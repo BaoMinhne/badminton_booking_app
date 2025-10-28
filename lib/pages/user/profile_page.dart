@@ -5,8 +5,10 @@ import 'package:badminton_booking_app/components/my_icon_button.dart';
 import 'package:badminton_booking_app/models/user_details.dart';
 import 'package:badminton_booking_app/pages/auth/auth_manager.dart';
 import 'package:badminton_booking_app/pages/auth/login_page.dart';
+import 'package:badminton_booking_app/pages/user/user_booking_history_page.dart';
 import 'package:badminton_booking_app/pages/user/user_detail.dart';
 import 'package:badminton_booking_app/pages/user/user_manager.dart';
+import 'package:badminton_booking_app/pages/user/user_today_bookings_page.dart';
 import 'package:badminton_booking_app/utils/dialog_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -262,7 +264,32 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                           SizedBox(height: 5),
                           _buildListItem(
-                              context, Icons.calendar_month, "Booking History"),
+                            context,
+                            Icons.calendar_month,
+                            "Booking History",
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const UserBookingHistoryPage(),
+                                ),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 10),
+                          _buildListItem(
+                            context,
+                            Icons.event_note,
+                            "Today's Bookings",
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const UserTodayBookingsPage(),
+                                ),
+                              );
+                            },
+                          ),
                           SizedBox(height: 15),
                           Text(
                             "Systems",
@@ -366,6 +393,14 @@ class _ProfilePageState extends State<ProfilePage> {
                           icon: Icons.calendar_today,
                           title: "",
                           color: const Color.fromARGB(255, 207, 162, 48),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const UserTodayBookingsPage(),
+                              ),
+                            );
+                          },
                         ),
                         SizedBox(width: 5),
                       ],

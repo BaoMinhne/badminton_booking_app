@@ -1,6 +1,7 @@
 import 'package:pocketbase/pocketbase.dart';
 
 import '../models/booking.dart';
+import '../models/user_booking_view.dart';
 import 'pocketbase_client.dart';
 
 class BookingServiceException implements Exception {
@@ -42,6 +43,49 @@ class BookingService {
     } catch (_) {
       throw BookingServiceException(
           'Không thể tải lịch đặt sân. Vui lòng thử lại sau.');
+    }
+  }
+
+  Future<List<UserBookingView>> listUserBookings({
+    required String userId,
+    DateTime? startTimeInclusive,
+    DateTime? endTimeExclusive,
+    int page = 1,
+    int perPage = 200,
+  }) async {
+    final pocketBase = await getPocketbaseInstance();
+
+    final escapedUserId = _escapeFilterValue(userId);
+    final filterBuffer = StringBuffer("user_id='$escapedUserId'");
+
+    if (startTimeInclusive != null) {
+      final normalizedStart = startTimeInclusive.toUtc().toIso8601String();
+      filterBuffer.write(" && end_time >= '$normalizedStart'");
+    }
+
+    if (endTimeExclusive != null) {
+      final normalizedEnd = endTimeExclusive.toUtc().toIso8601String();
+      filterBuffer.write(" && start_time < '$normalizedEnd'");
+    }
+
+    try {
+      final result = await pocketBase.collection(collection).getList(
+            page: page,
+            perPage: perPage,
+            filter: filterBuffer.toString(),
+            sort: '-start_time',
+            expand: 'court_id,court_unit_id',
+          );
+
+      return result.items
+          .map((record) => UserBookingView.fromRecord(record, pocketBase))
+          .toList(growable: false);
+    } on ClientException catch (error) {
+      throw BookingServiceException(_mapClientException(error));
+    } catch (_) {
+      throw BookingServiceException(
+        'Không thể tải danh sách đặt sân. Vui lòng thử lại sau.',
+      );
     }
   }
 

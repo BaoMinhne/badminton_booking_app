@@ -1,190 +1,231 @@
+import 'package:badminton_booking_app/models/court.dart';
+import 'package:badminton_booking_app/models/court_detail.dart';
+import 'package:badminton_booking_app/pages/court/booking_page.dart';
+import 'package:badminton_booking_app/pages/court/court_manager.dart';
 import 'package:badminton_booking_app/pages/court/tabs/image_tab.dart';
 import 'package:badminton_booking_app/pages/court/tabs/review_tab.dart';
 import 'package:badminton_booking_app/pages/court/tabs/rule_tab.dart';
 import 'package:badminton_booking_app/pages/court/tabs/service_tab.dart';
+import 'package:badminton_booking_app/services/court_service.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class CourtDetail extends StatefulWidget {
-  const CourtDetail({super.key});
+  const CourtDetail({
+    super.key,
+    required this.court,
+    this.courtService,
+  });
+
+  final Court court;
+  final CourtService? courtService;
 
   @override
   State<CourtDetail> createState() => _CourtDetailState();
 }
 
-class _CourtDetailState extends State<CourtDetail> {
+class _CourtDetailState extends State<CourtDetail>
+    with TickerProviderStateMixin {
   bool _isFavorite = false;
+  late CourtDetailData _detailData;
+  bool _isLoading = false;
+  String? _errorMessage;
+  late final CourtService _courtService;
 
-  void _toggleFavorite() {
+  @override
+  void initState() {
+    super.initState();
+    _detailData = CourtDetailData(court: widget.court);
+    _courtService = widget.courtService ?? _resolveCourtService();
+    _loadDetail();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final manager = Provider.of<CourtManager>(context);
+    if (manager == null) return;
+
+    final updatedCourt = _findCourtById(manager);
+    if (updatedCourt != null && !identical(updatedCourt, _detailData.court)) {
+      setState(() {
+        _detailData = _detailData.copyWith(court: updatedCourt);
+      });
+    }
+  }
+
+  void _toggleFavorite() => setState(() => _isFavorite = !_isFavorite);
+
+  Future<void> _loadDetail() async {
     setState(() {
-      _isFavorite = !_isFavorite;
+      _isLoading = true;
+      _errorMessage = null;
     });
+
+    try {
+      final data = await _courtService.getCourtDetail(widget.court.id);
+      if (!mounted) return;
+      setState(() {
+        _detailData = data;
+        _isLoading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = _describeError(
+          error,
+          fallback: 'Không thể tải thông tin sân. Vui lòng thử lại.',
+        );
+        _isLoading = false;
+      });
+    }
+  }
+
+  CourtService _resolveCourtService() {
+    try {
+      final manager = Provider.of<CourtManager>(context, listen: false);
+      return manager.courtService;
+    } on ProviderNotFoundException {
+      return CourtService();
+    }
+  }
+
+  Court? _findCourtById(CourtManager manager) {
+    for (final court in manager.courts) {
+      if (court.id == widget.court.id) {
+        return court;
+      }
+    }
+    return null;
   }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final screenWidth = MediaQuery.of(context).size.width;
 
-    return Scaffold(
-      body: Container(
-        child: Stack(
-          children: [
-            Container(
-              padding: EdgeInsets.only(),
-              height: MediaQuery.of(context).size.height / 2,
-              width: screenWidth,
-              decoration: BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage(
-                    'assets/images/court_cover.jpg',
-                  ),
-                  fit: BoxFit.contain,
-                  alignment: Alignment.topCenter,
-                ),
+    final headerWidgets = <Widget>[
+      _buildAppBar(context, cs),
+      SliverToBoxAdapter(child: _infoCard(context, cs)),
+    ];
+
+    if (_errorMessage != null) {
+      headerWidgets.add(
+        SliverToBoxAdapter(child: _buildErrorBanner(context, cs)),
+      );
+    }
+
+    headerWidgets.add(
+      SliverPersistentHeader(
+        pinned: true,
+        delegate: _SliverTabBarDelegate(
+          TabBar(
+            labelColor: cs.primary,
+            unselectedLabelColor: cs.onSurface,
+            indicatorColor: cs.primary,
+            isScrollable: true,
+            padding: const EdgeInsets.only(left: 5),
+            tabAlignment: TabAlignment.start,
+            tabs: const [
+              Tab(text: 'Dịch vụ'),
+              Tab(text: 'Hình ảnh'),
+              Tab(text: 'Điều khoản & quy định'),
+              Tab(text: 'Đánh giá'),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    return DefaultTabController(
+      length: 4,
+      child: Scaffold(
+        body: NestedScrollView(
+          headerSliverBuilder: (context, innerBoxIsScrolled) => headerWidgets,
+          body: TabBarView(
+            children: [
+              CourtServicesTab(
+                pricing: _detailData.pricing,
+                services: _detailData.services,
+                isLoading: _isLoading,
+                errorMessage: _errorMessage,
+                onRetry: _loadDetail,
               ),
-            ),
-            Positioned(
-              top: MediaQuery.of(context).padding.top,
-              left: 16,
-              right: 16,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _circleBtn(
-                    icon: Icons.arrow_back,
-                    onTap: () {
-                      Navigator.pop(context);
-                    },
-                    cs: cs,
-                  ),
-                  Row(
-                    children: [
-                      _circleBtn(
-                        icon: _isFavorite
-                            ? Icons.favorite
-                            : Icons.favorite_border,
-                        onTap: _toggleFavorite,
-                        cs: cs,
-                      ),
-                      const SizedBox(width: 8),
-                      ElevatedButton(
-                        onPressed: () {},
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey.shade400,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                        ),
-                        child: const Text("Đặt lịch"),
-                      )
-                    ],
-                  ),
-                ],
+              CourtImageGallery(
+                images: _detailData.images,
+                isLoading: _isLoading,
+                errorMessage: _errorMessage,
+                onRetry: _loadDetail,
+                emptyMessage: 'Sân chưa có hình ảnh.',
               ),
-            ),
-            Container(
-              padding:
-                  EdgeInsets.only(left: 20, top: 40, right: 20, bottom: 40),
-              margin: EdgeInsets.only(
-                top: MediaQuery.of(context).size.height / 4,
-              ),
-              height: MediaQuery.of(context).size.height,
-              width: screenWidth,
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.only(top: screenWidth / 4.5),
-              child: _infoTab(cs),
-            ),
-            Container(
-              padding: EdgeInsets.only(
-                top: screenWidth - 65,
-              ),
-              child: DefaultTabController(
-                length: 4,
-                child: Column(
-                  children: [
-                    TabBar(
-                      labelColor: cs.primary,
-                      unselectedLabelColor: cs.onSurface,
-                      indicatorColor: cs.primary,
-                      isScrollable: true,
-                      padding: EdgeInsets.only(left: 5),
-                      tabAlignment: TabAlignment.start,
-                      tabs: const [
-                        Tab(text: "Dịch vụ"),
-                        Tab(text: "Hình ảnh"),
-                        Tab(text: "Điều khoản & quy định"),
-                        Tab(text: "Đánh giá"),
-                      ],
-                    ),
-                    Expanded(
-                      child: TabBarView(
-                        children: [
-                          PricingTableMini(
-                            items: const [
-                              ServicePrice(
-                                  name: "Thuê sân đơn",
-                                  unit: "giờ",
-                                  price: 60000),
-                              ServicePrice(
-                                  name: "Thuê sân (cao điểm)",
-                                  unit: "giờ",
-                                  price: 150000,
-                                  isPeak: true,
-                                  note: "17:00–21:00 T2–T6"),
-                              ServicePrice(
-                                  name: "Mượn vợt",
-                                  unit: "cây",
-                                  price: 20000,
-                                  note: "Kèm 1 quả cầu"),
-                              ServicePrice(
-                                  name: "Thuê giày", unit: "đôi", price: 30000),
-                              ServicePrice(
-                                  name: "Mua cầu lông",
-                                  unit: "ống",
-                                  price: 320000,
-                                  note: "Loại trung cấp"),
-                            ],
-                          ),
-                          CourtImageGallery(
-                            images: const [
-                              // Có thể dùng cả asset lẫn URL
-                              'assets/images/court_cover.jpg',
-                              'assets/images/badminton_logo.jpg',
-                              'https://picsum.photos/seed/court1/1200/800',
-                              'https://picsum.photos/seed/court2/1200/800',
-                              'https://picsum.photos/seed/court3/1200/800',
-                              'https://picsum.photos/seed/court4/1200/800',
-                            ],
-                          ),
-                          Rules(items: [
-                            "Đặt cọc 50% cho giờ cao điểm",
-                            "Hủy trước 6h hoàn 100%, sau đó không hoàn",
-                            "Đi giày cầu lông, không hút thuốc trong sân",
-                            "Giữ vệ sinh chung, không xả rác bừa bãi",
-                            "Tuân thủ quy định của sân và nhân viên sân",
-                            "Không mang đồ ăn thức uống có cồn vào sân",
-                            "Giữ gìn tài sản cá nhân, sân không chịu trách nhiệm",
-                          ]),
-                          ReviewTab(initialReviews: []),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+              Rules(items: _buildDefaultRules()),
+              const ReviewTab(initialReviews: []),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _infoTab(ColorScheme cs) {
-    return SingleChildScrollView(
+  SliverAppBar _buildAppBar(BuildContext context, ColorScheme cs) {
+    final coverUrl = _detailData.court.coverImageUrl;
+
+    return SliverAppBar(
+      pinned: true,
+      floating: false,
+      expandedHeight: MediaQuery.of(context).size.height * 0.28,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back),
+        onPressed: () => Navigator.of(context).pop(),
+      ),
+      actions: [
+        _circleBtn(
+          icon: _isFavorite ? Icons.favorite : Icons.favorite_border,
+          onTap: _toggleFavorite,
+          cs: cs,
+        ),
+        const SizedBox(width: 8),
+        Padding(
+          padding: const EdgeInsets.only(right: 12),
+          child: FilledButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => BookingPage(
+                    detailData: _detailData,
+                  ),
+                ),
+              );
+            },
+            child: const Text('Đặt lịch'),
+          ),
+        ),
+      ],
+      flexibleSpace: FlexibleSpaceBar(
+        background: _buildHeaderImage(coverUrl),
+      ),
+    );
+  }
+
+  Widget _infoCard(BuildContext context, ColorScheme cs) {
+    final court = _detailData.court;
+    final textTheme = Theme.of(context).textTheme;
+    final location =
+        court.location.isNotEmpty ? court.location : 'Địa chỉ đang cập nhật';
+    final code = court.code.isNotEmpty ? court.code : 'Đang cập nhật';
+    final description = court.description?.trim();
+    final openingText = _buildOpeningHoursText(_detailData.openingHours);
+    final unitLabels = _detailData.units
+        .where((unit) => unit.label.trim().isNotEmpty && unit.isActive)
+        .map((unit) => unit.label.trim())
+        .toList(growable: false);
+
+    final avatarImage = court.coverImageUrl != null &&
+            court.coverImageUrl!.isNotEmpty
+        ? NetworkImage(court.coverImageUrl!)
+        : const AssetImage('assets/images/badminton_logo.jpg') as ImageProvider;
+
+    return Padding(
       padding: const EdgeInsets.all(16),
       child: Material(
         elevation: 5,
@@ -197,62 +238,232 @@ class _CourtDetailState extends State<CourtDetail> {
             border: Border.all(color: cs.outline, width: 1),
           ),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               ListTile(
-                leading: const CircleAvatar(
-                  backgroundImage:
-                      AssetImage('assets/images/badminton_logo.jpg'),
+                contentPadding: EdgeInsets.zero,
+                leading: CircleAvatar(
+                  backgroundImage: avatarImage,
                   radius: 28,
                 ),
-                title: const Text("Minh Nghĩa Badminton",
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Container(
-                  margin: const EdgeInsets.only(top: 6),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE7F5EE),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Text("Cầu lông",
-                      style: TextStyle(color: Color(0xFF0E5A3A))),
+                title: Text(
+                  court.name.isNotEmpty ? court.name : 'Tên sân đang cập nhật',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 4),
+                    Text('Mã sân: $code'),
+                    if (description != null && description.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        description,
+                        style: textTheme.bodySmall,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
                 ),
               ),
               const Divider(),
               Row(
-                children: const [
-                  Icon(Icons.place, size: 20),
-                  SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                        "55D Đ. Trần Nam Phú, Xuân Khánh, Ninh Kiều, Cần Thơ"),
-                  ),
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.place, size: 20),
+                  const SizedBox(width: 6),
+                  Expanded(child: Text(location)),
                 ],
               ),
               const SizedBox(height: 12),
+              if (openingText != null) ...[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.schedule, size: 20),
+                    const SizedBox(width: 6),
+                    Expanded(child: Text(openingText)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+              ],
               Row(
-                children: const [
-                  Icon(Icons.schedule, size: 20),
-                  SizedBox(width: 6),
-                  Text("05:00 - 22:00"),
+                children: [
+                  const Icon(Icons.sports_tennis, size: 20),
+                  const SizedBox(width: 6),
+                  Text(_formatCourtQuantity(court.courtQuantity)),
                 ],
               ),
+              if (unitLabels.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: unitLabels
+                      .map(
+                        (label) => Chip(
+                          label: Text(label),
+                          backgroundColor: cs.primary.withOpacity(0.1),
+                          side: BorderSide(color: cs.primary.withOpacity(0.4)),
+                          labelStyle: TextStyle(color: cs.primary),
+                        ),
+                      )
+                      .toList(growable: false),
+                ),
+              ],
+              if (_isLoading) ...[
+                const SizedBox(height: 16),
+                const LinearProgressIndicator(minHeight: 3),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorBanner(BuildContext context, ColorScheme cs) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Material(
+        color: cs.errorContainer,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Không thể tải đầy đủ thông tin sân.',
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(color: cs.onErrorContainer),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _errorMessage ?? '',
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(color: cs.onErrorContainer),
+              ),
               const SizedBox(height: 12),
-              Row(
-                children: const [
-                  Icon(Icons.call, size: 20),
-                  SizedBox(width: 6),
-                  Text(
-                    "0329672505",
-                    style: TextStyle(color: Colors.blue),
-                  ),
-                ],
+              FilledButton(
+                onPressed: _loadDetail,
+                style: FilledButton.styleFrom(
+                  backgroundColor: cs.onErrorContainer,
+                  foregroundColor: cs.errorContainer,
+                ),
+                child: const Text('Thử lại'),
               ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildHeaderImage(String? coverUrl) {
+    final placeholder = Container(
+      decoration: const BoxDecoration(
+        image: DecorationImage(
+          image: AssetImage('assets/images/court_cover.jpg'),
+          fit: BoxFit.cover,
+          alignment: Alignment.topCenter,
+        ),
+      ),
+    );
+
+    if (coverUrl == null || coverUrl.isEmpty) {
+      return placeholder;
+    }
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.network(
+          coverUrl,
+          fit: BoxFit.cover,
+          loadingBuilder: (context, child, progress) {
+            if (progress == null) return child;
+            return const Center(child: CircularProgressIndicator());
+          },
+          errorBuilder: (context, error, stackTrace) => placeholder,
+        ),
+        Container(color: Colors.black.withOpacity(0.15)),
+      ],
+    );
+  }
+
+  String _describeError(Object error, {required String fallback}) {
+    if (error is CourtServiceException) {
+      return error.message;
+    }
+
+    final message = error.toString();
+    if (message.startsWith('Exception:')) {
+      final trimmed = message.substring('Exception:'.length).trim();
+      if (trimmed.isNotEmpty) {
+        return trimmed;
+      }
+    }
+
+    if (message.isNotEmpty) {
+      return message;
+    }
+
+    return fallback;
+  }
+
+  List<String> _buildDefaultRules() {
+    return const [
+      'Đặt cọc trước với khung giờ cao điểm nếu được yêu cầu.',
+      'Hủy lịch trước 6 giờ để được hoàn cọc đầy đủ.',
+      'Mang giày thể thao phù hợp và giữ vệ sinh chung.',
+      'Không hút thuốc và hạn chế đồ uống có cồn trong khu vực sân.',
+      'Tuân thủ hướng dẫn của nhân viên và bảo vệ tài sản chung.',
+    ];
+  }
+
+  String? _buildOpeningHoursText(List<CourtOpeningHour> hours) {
+    final ranges = <String>[];
+    for (final hour in hours) {
+      final range = _formatTimeRange(hour.openTime, hour.closeTime);
+      if (range != null && range.isNotEmpty) {
+        ranges.add(range);
+      }
+    }
+
+    if (ranges.isEmpty) return null;
+    return ranges.join('\n');
+  }
+
+  String? _formatTimeRange(String open, String close) {
+    final cleanOpen = open.trim();
+    final cleanClose = close.trim();
+
+    if (cleanOpen.isEmpty && cleanClose.isEmpty) {
+      return null;
+    }
+
+    if (cleanOpen.isEmpty) {
+      return 'Đến $cleanClose';
+    }
+
+    if (cleanClose.isEmpty) {
+      return 'Từ $cleanOpen';
+    }
+
+    return '$cleanOpen - $cleanClose';
+  }
+
+  String _formatCourtQuantity(int quantity) {
+    if (quantity > 0) {
+      return '$quantity sân hoạt động';
+    }
+    return 'Đang cập nhật số lượng sân';
   }
 
   Widget _circleBtn({
@@ -269,12 +480,34 @@ class _CourtDetailState extends State<CourtDetail> {
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(8),
-          child: Icon(
-            icon,
-            color: cs.primary,
-          ),
+          child: Icon(icon, color: cs.primary),
         ),
       ),
     );
+  }
+}
+
+class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
+  final TabBar _tabBar;
+  _SliverTabBarDelegate(this._tabBar);
+
+  @override
+  double get minExtent => _tabBar.preferredSize.height;
+  @override
+  double get maxExtent => _tabBar.preferredSize.height;
+
+  @override
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      color: cs.surface,
+      child: _tabBar,
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant _SliverTabBarDelegate oldDelegate) {
+    return oldDelegate._tabBar != _tabBar;
   }
 }

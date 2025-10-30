@@ -2,7 +2,7 @@ import 'package:badminton_booking_app/pages/court/booking_page.dart';
 import 'package:badminton_booking_app/pages/court/court_page.dart';
 import 'package:badminton_booking_app/pages/home/home_page.dart';
 import 'package:badminton_booking_app/pages/user/profile_page.dart';
-import 'package:badminton_booking_app/pages/social_page.dart';
+import 'package:badminton_booking_app/pages/social/social_page.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:flutter/material.dart';
 

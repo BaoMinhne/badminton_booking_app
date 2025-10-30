@@ -15,7 +15,17 @@ Future<void> main() async {
 
   await dotenv.load(fileName: ".env");
   await initializeDateFormatting('vi_VN');
-  runApp(const MyApp());
+
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthManager()),
+        ChangeNotifierProvider(create: (_) => UserManager()),
+        ChangeNotifierProvider(create: (_) => CourtManager()),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -23,40 +33,65 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(
-          create: (ctx) => AuthManager(),
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: mainTheme,
+      home: const AppRoot(),
+    );
+  }
+}
+
+class AppRoot extends StatelessWidget {
+  const AppRoot({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<AuthManager>(
+      builder: (_, authManager, __) {
+        if (authManager.isChecking) {
+          return const SplashScreen();
+        }
+
+        if (authManager.isAuth) {
+          return const NavBarPage();
+        }
+
+        return const LoginPage();
+      },
+    );
+  }
+}
+
+class SplashScreen extends StatelessWidget {
+  const SplashScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final size = MediaQuery.of(context).size;
+    final logoSize = size.width * 0.5;
+
+    return Scaffold(
+      backgroundColor: colorScheme.background,
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(
+              "assets/images/logo_splash.png",
+              width: logoSize,
+              height: logoSize,
+            ),
+            Text(
+              "C O U R T I F Y",
+              style: TextStyle(
+                fontSize: 30,
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onBackground,
+              ),
+            ),
+          ],
         ),
-        ChangeNotifierProvider(
-          create: (ctx) => UserManager(),
-        ),
-        ChangeNotifierProvider(
-          create: (ctx) => CourtManager(),
-        ),
-      ],
-      child: Consumer<AuthManager>(
-        builder: (ctx, authManager, child) {
-          return MaterialApp(
-            debugShowCheckedModeBanner: false,
-            theme: mainTheme,
-            home: authManager.isAuth
-                ? NavBarPage()
-                : FutureBuilder<bool>(
-                    future: authManager.tryAutoLogin(),
-                    builder: (ctx, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Scaffold(
-                          body: Center(child: CircularProgressIndicator()),
-                        );
-                      }
-                      return snapshot.data == true
-                          ? NavBarPage()
-                          : const LoginPage();
-                    },
-                  ),
-          );
-        },
       ),
     );
   }

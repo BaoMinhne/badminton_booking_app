@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:pocketbase/pocketbase.dart';
 
 import '../models/user.dart';
@@ -6,14 +8,15 @@ import 'pocketbase_client.dart';
 
 class AuthService {
   void Function(User? user)? onAuthChange;
+  StreamSubscription<dynamic>? _authSubscription;
 
   AuthService({this.onAuthChange}) {
     if (onAuthChange != null) {
       getPocketbaseInstance().then((pb) {
-        pb.authStore.onChange.listen((event) {
-          onAuthChange!(event.record == null
-              ? null
-              : User.fromJson(event.record!.toJson()));
+        _authSubscription = pb.authStore.onChange.listen((event) {
+          onAuthChange!(
+            event.record == null ? null : User.fromJson(event.record!.toJson()),
+          );
         });
       });
     }
@@ -99,5 +102,10 @@ class AuthService {
     }
 
     return User.fromJson(model.toJson());
+  }
+
+  void dispose() {
+    _authSubscription?.cancel();
+    _authSubscription = null;
   }
 }

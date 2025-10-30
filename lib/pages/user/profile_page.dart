@@ -4,7 +4,6 @@ import 'package:badminton_booking_app/components/my_icon_button.dart';
 
 import 'package:badminton_booking_app/models/user_details.dart';
 import 'package:badminton_booking_app/pages/auth/auth_manager.dart';
-import 'package:badminton_booking_app/pages/auth/login_page.dart';
 import 'package:badminton_booking_app/pages/user/user_booking_history_page.dart';
 import 'package:badminton_booking_app/pages/user/user_detail.dart';
 import 'package:badminton_booking_app/pages/user/user_manager.dart';
@@ -317,18 +316,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               if (!confirm) return;
 
                               try {
-                                final authManager = context.read<AuthManager>();
-                                final navigator = Navigator.of(context);
-                                await authManager.logout();
-
-                                if (!mounted) return;
-
-                                // Xoá toàn bộ stack và quay về LoginPage
-                                navigator.pushAndRemoveUntil(
-                                  MaterialPageRoute(
-                                      builder: (_) => LoginPage()),
-                                  (route) => false,
-                                );
+                                await context.read<AuthManager>().logout();
                               } catch (e) {
                                 if (!mounted) return;
                                 await showErrorDialog(

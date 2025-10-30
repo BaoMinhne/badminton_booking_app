@@ -5,7 +5,6 @@ import 'package:badminton_booking_app/components/my_button.dart';
 import 'package:badminton_booking_app/components/my_text_field.dart';
 import 'package:badminton_booking_app/pages/auth/auth_manager.dart';
 import 'package:badminton_booking_app/pages/auth/login_page.dart';
-import 'package:badminton_booking_app/pages/nav_bar_page.dart';
 import 'package:badminton_booking_app/utils/dialog_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
@@ -58,20 +57,12 @@ class _SignUpPageState extends State<SignUpPage> {
       final phone = rawPhone.replaceAll(RegExp(r'\s+'), '');
       final username = nameController.text.trim();
 
-      // Sign user up
       await context.read<AuthManager>().signup(
             email,
             password,
             phone,
             username,
           );
-
-      if (!mounted) return;
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const NavBarPage()),
-      );
     } catch (e, st) {
       log('signup error: $e', stackTrace: st);
       if (!mounted) return;
@@ -200,12 +191,15 @@ class _SignUpPageState extends State<SignUpPage> {
                         ),
                         const SizedBox(height: 10),
                         MyTextfield(
-                          hintText: "Enter your username...",
+                          hintText: "Enter your Username...",
                           controller: nameController,
                           prefixIcon: const Icon(Icons.person),
                           validator: (v) {
                             if (v == null || v.trim().isEmpty) {
                               return 'Vui lòng nhập username';
+                            }
+                            if (v.trim().length < 3) {
+                              return 'Username phải có ít nhất 3 ký tự';
                             }
                             return null;
                           },
@@ -220,13 +214,13 @@ class _SignUpPageState extends State<SignUpPage> {
                         ),
                         const SizedBox(height: 10),
                         MyTextfield(
-                          hintText: "Enter your password...",
+                          hintText: "Enter your Password...",
                           controller: passwdController,
                           obscureText: true,
                           prefixIcon: const Icon(Icons.password),
                           validator: (v) {
                             if (v == null || v.length < 8) {
-                              return 'Mật khẩu tối thiểu 8 ký tự';
+                              return 'Password phải có ít nhất 8 ký tự';
                             }
                             return null;
                           },
@@ -235,71 +229,32 @@ class _SignUpPageState extends State<SignUpPage> {
 
                         // Confirm password field
                         const Text(
-                          'Comfirm Password',
+                          'Confirm Password',
                           style: TextStyle(
                               fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 10),
                         MyTextfield(
-                          hintText: "Confirm your password...",
+                          hintText: "Enter your Password again...",
                           controller: confirmPWController,
                           obscureText: true,
                           prefixIcon: const Icon(Icons.password),
                           validator: (v) {
-                            if (v == null || v.isEmpty) {
-                              return 'Vui lòng xác nhận mật khẩu';
+                            if (v == null || v.length < 8) {
+                              return 'Confirm Password phải có ít nhất 8 ký tự';
                             }
                             if (v != passwdController.text) {
-                              return 'Không khớp mật khẩu';
+                              return 'Password và Confirm password không khớp';
                             }
                             return null;
                           },
                         ),
                         const SizedBox(height: 20),
 
-                        // Navigate to Login page
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              "Already have an account?",
-                              style: TextStyle(
-                                color: Color(0xFF311937),
-                                fontSize: 17,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(width: 5),
-                            GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                        builder: (context) => LoginPage()));
-                              },
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  Text("Login Here",
-                                      style: TextStyle(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .primary,
-                                        fontSize: 17,
-                                        fontWeight: FontWeight.bold,
-                                      )),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 20),
-
-                        // Sign up button
                         ValueListenableBuilder<bool>(
                           valueListenable: _isSubmitting,
                           builder: (_, loading, __) => MyButton(
-                            text: loading ? "Signing Up..." : "Sign Up",
+                            text: loading ? "Wait a second..." : "Sign Up",
                             onTap: loading ? null : () => _submit(context),
                           ),
                         ),
@@ -308,6 +263,47 @@ class _SignUpPageState extends State<SignUpPage> {
                   ),
                 ),
               ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Already have an account?',
+                  style: TextStyle(
+                    color: const Color(0xFF311937),
+                    fontSize: 17,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(width: 5),
+                GestureDetector(
+                  onTap: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (_) => const LoginPage()),
+                    );
+                  },
+                  child: Row(
+                    children: [
+                      Text(
+                        'Login here',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      Icon(
+                        Icons.arrow_back,
+                        color: Theme.of(context).colorScheme.primary,
+                        size: 22,
+                      )
+                    ],
+                  ),
+                )
+              ],
             ),
             const SizedBox(height: 20),
           ],

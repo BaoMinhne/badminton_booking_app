@@ -3,7 +3,6 @@ import 'dart:developer';
 import 'package:badminton_booking_app/components/my_button.dart';
 import 'package:badminton_booking_app/components/my_text_field.dart';
 import 'package:badminton_booking_app/pages/auth/auth_manager.dart';
-import 'package:badminton_booking_app/pages/nav_bar_page.dart';
 import 'package:badminton_booking_app/pages/auth/sign_up_page.dart';
 import 'package:badminton_booking_app/utils/dialog_utils.dart';
 import 'package:flutter/material.dart';
@@ -20,16 +19,15 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwdController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey();
+  final ValueNotifier<bool> _isSubmitting = ValueNotifier<bool>(false);
 
   @override
   void dispose() {
     emailController.dispose();
     passwdController.dispose();
-
+    _isSubmitting.dispose();
     super.dispose();
   }
-
-  final _isSubmitting = ValueNotifier<bool>(false);
 
   Future<void> _submit(BuildContext context) async {
     if (!_formKey.currentState!.validate()) {
@@ -44,18 +42,10 @@ class _LoginPageState extends State<LoginPage> {
       final email = emailController.text.trim();
       final password = passwdController.text;
 
-      // Sign user up
       await context.read<AuthManager>().login(
             email,
             password,
           );
-
-      if (!mounted) return;
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const NavBarPage()),
-      );
     } catch (e, st) {
       log('login error: $e', stackTrace: st);
       if (!mounted) return;
@@ -198,51 +188,13 @@ class _LoginPageState extends State<LoginPage> {
                             fontSize: 17,
                             fontWeight: FontWeight.bold,
                           )),
+                      SizedBox(width: 5),
+                      Icon(Icons.arrow_forward,
+                          color: colorScheme.primary, size: 22),
                     ],
                   ),
-                ),
+                )
               ],
-            ),
-            const SizedBox(height: 40),
-            GestureDetector(
-              onTap: () {},
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 30),
-                child: Material(
-                  elevation: 2,
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 12),
-                    width: MediaQuery.of(context).size.width,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Image.asset(
-                          "assets/images/google_logo.png",
-                          height: 30,
-                          width: 30,
-                        ),
-                        const SizedBox(width: 12),
-                        const Text(
-                          'Sign in with Google',
-                          style: TextStyle(
-                            color: Colors.black54,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
             )
           ],
         ),

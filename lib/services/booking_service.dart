@@ -57,6 +57,7 @@ class BookingService {
 
     final escapedUserId = _escapeFilterValue(userId);
     final filterBuffer = StringBuffer("user_id='$escapedUserId'");
+    filterBuffer.write(" && (status='confirmed' || status='confirm')");
 
     if (startTimeInclusive != null) {
       final normalizedStart = startTimeInclusive.toUtc().toIso8601String();

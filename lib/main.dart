@@ -67,8 +67,32 @@ class SplashScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: CircularProgressIndicator()),
+    final colorScheme = Theme.of(context).colorScheme;
+    final size = MediaQuery.of(context).size;
+    final logoSize = size.width * 0.5;
+
+    return Scaffold(
+      backgroundColor: colorScheme.background,
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(
+              "assets/images/logo_splash.png",
+              width: logoSize,
+              height: logoSize,
+            ),
+            Text(
+              "C O U R T I F Y",
+              style: TextStyle(
+                fontSize: 30,
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onBackground,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

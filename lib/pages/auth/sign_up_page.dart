@@ -296,7 +296,7 @@ class _SignUpPageState extends State<SignUpPage> {
                       ),
                       const SizedBox(width: 5),
                       Icon(
-                        Icons.arrow_back,
+                        Icons.arrow_forward,
                         color: Theme.of(context).colorScheme.primary,
                         size: 22,
                       )

@@ -1,7 +1,7 @@
 import 'package:badminton_booking_app/components/my_post.dart';
 import 'package:badminton_booking_app/components/recruitment_post_card.dart';
-import 'package:badminton_booking_app/pages/social/chat_page.dart';
-import 'package:badminton_booking_app/pages/social/recruitment_form_page.dart';
+import 'package:badminton_booking_app/pages/social/chat/chat_page.dart';
+import 'package:badminton_booking_app/pages/social/recruitment/recruitment_page.dart';
 import 'package:flutter/material.dart';
 
 class SocialPage extends StatelessWidget {
@@ -13,7 +13,8 @@ class SocialPage extends StatelessWidget {
     _RecruitmentPost(
       hostName: 'Bảo Minh',
       createdAt: DateTime.now().subtract(const Duration(minutes: 15)),
-      description: 'Cần 2 bạn trình trung bình khá đánh đôi giao lưu. Team rất vui tính.',
+      description:
+          'Cần 2 bạn trình trung bình khá đánh đôi giao lưu. Team rất vui tính.',
       requiredPlayers: 4,
       joinedPlayers: 2,
       skillLevel: 'Trung bình khá',
@@ -179,10 +180,8 @@ class SocialPage extends StatelessWidget {
               children: [
                 Text(
                   'Chào mừng bạn!',
-                  style: Theme.of(context)
-                      .textTheme
-                      .headlineSmall
-                      ?.copyWith(color: cs.onPrimary, fontWeight: FontWeight.bold),
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: cs.onPrimary, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 10),
                 Text(
@@ -206,8 +205,8 @@ class SocialPage extends StatelessWidget {
                   style: FilledButton.styleFrom(
                     backgroundColor: cs.onPrimary,
                     foregroundColor: cs.primary,
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 12),
                   ),
                 ),
               ],

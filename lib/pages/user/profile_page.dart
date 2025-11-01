@@ -238,8 +238,8 @@ class _ProfilePageState extends State<ProfilePage> {
                           color: Theme.of(context).colorScheme.primary,
                         ),
                         MyIconButton(
-                          icon: Icons.verified,
-                          title: "Membership",
+                          icon: Icons.group,
+                          title: "Friends",
                           color: Theme.of(context).colorScheme.primary,
                         ),
                       ],
@@ -270,7 +270,8 @@ class _ProfilePageState extends State<ProfilePage> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => const UserBookingHistoryPage(),
+                                  builder: (_) =>
+                                      const UserBookingHistoryPage(),
                                 ),
                               );
                             },

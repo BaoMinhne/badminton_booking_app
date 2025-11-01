@@ -1,6 +1,6 @@
 import 'package:badminton_booking_app/components/my_post.dart';
 import 'package:badminton_booking_app/components/recruitment_post_card.dart';
-import 'package:badminton_booking_app/pages/social/chat/chat_page.dart';
+import 'package:badminton_booking_app/pages/social/chat/chat_home_page.dart';
 import 'package:badminton_booking_app/pages/social/recruitment/recruitment_page.dart';
 import 'package:flutter/material.dart';
 
@@ -57,7 +57,7 @@ class SocialPage extends StatelessWidget {
             tooltip: 'Tin nhắn',
             onPressed: () {
               Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => ChatPage()),
+                MaterialPageRoute(builder: (_) => ChatHomePage()),
               );
             },
           ),

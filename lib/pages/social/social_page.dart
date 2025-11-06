@@ -1,54 +1,49 @@
-import 'package:badminton_booking_app/components/my_post.dart';
-import 'package:badminton_booking_app/components/recruitment_post_card.dart';
-import 'package:badminton_booking_app/pages/social/chat/chat_home_page.dart';
-import 'package:badminton_booking_app/pages/social/recruitment/recruitment_page.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-class SocialPage extends StatelessWidget {
-  SocialPage({super.key});
+import '../../components/my_post.dart';
+import '../../components/recruitment_post_card.dart';
+import '../../providers/file_manager.dart';
+import 'chat/chat_home_page.dart';
+import 'create_post_page.dart';
+import 'recruitment/recruitment_page.dart';
+import 'social_manager.dart';
 
-  final DateTime _now = DateTime.now();
+class SocialPage extends StatefulWidget {
+  const SocialPage({super.key});
 
-  final List<_RecruitmentPost> _recruitmentPosts = [
-    _RecruitmentPost(
-      hostName: 'Bảo Minh',
-      createdAt: DateTime.now().subtract(const Duration(minutes: 15)),
-      description:
-          'Cần 2 bạn trình trung bình khá đánh đôi giao lưu. Team rất vui tính.',
-      requiredPlayers: 4,
-      joinedPlayers: 2,
-      skillLevel: 'Trung bình khá',
-      courtName: 'Sân Quận 7 - Court A',
-      playTime: DateTime.now().add(const Duration(hours: 2)),
-    ),
-    _RecruitmentPost(
-      hostName: 'Ngọc Anh',
-      createdAt: DateTime.now().subtract(const Duration(hours: 1, minutes: 10)),
-      description:
-          'Tuyển gấp 1 nữ trình trung bình để đánh đôi cố định sáng chủ nhật hàng tuần.',
-      requiredPlayers: 4,
-      joinedPlayers: 3,
-      skillLevel: 'Trung bình',
-      courtName: 'Sân Phú Nhuận - Court C',
-      playTime: DateTime.now().add(const Duration(days: 1, hours: 10)),
-    ),
-    _RecruitmentPost(
-      hostName: 'Văn Hòa',
-      createdAt: DateTime.now().subtract(const Duration(hours: 3)),
-      description:
-          'Nhóm mình chưa có sân, cần tuyển 3 bạn trình nâng cao lập team đi đánh giải.',
-      requiredPlayers: 5,
-      joinedPlayers: 1,
-      skillLevel: 'Nâng cao',
-    ),
-  ];
+  @override
+  State<SocialPage> createState() => _SocialPageState();
+}
+
+class _SocialPageState extends State<SocialPage> {
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      final manager = context.read<SocialFeedManager>();
+      manager.refreshAll();
+    });
+  }
+
+  Future<void> _refreshFeed() {
+    return context.read<SocialFeedManager>().refreshAll();
+  }
+
+  Future<void> _openCreatePost() async {
+    final fileManager = context.read<FileManager>();
+    fileManager.clear();
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const CreatePostPage()),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: cs.surfaceVariant.withOpacity(0.3),
+      backgroundColor: colorScheme.surfaceVariant.withOpacity(0.3),
       appBar: AppBar(
         title: const Text(
           'Cộng đồng cầu lông',
@@ -64,83 +59,146 @@ class SocialPage extends StatelessWidget {
               );
             },
           ),
+          IconButton(
+            icon: const Icon(Icons.post_add, size: 30),
+            tooltip: 'Tạo bài viết',
+            onPressed: _openCreatePost,
+          ),
           const SizedBox(width: 6),
         ],
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _openCreatePost,
+        icon: const Icon(Icons.post_add),
+        label: const Text('Đăng bài'),
+      ),
       body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                child: _buildWelcomeCard(context),
+        child: Consumer<SocialFeedManager>(
+          builder: (context, manager, _) {
+            final recruitmentPosts = manager.recruitmentPosts;
+            final posts = manager.posts;
+            final isLoading =
+                (manager.isLoadingPosts && manager.posts.isEmpty) ||
+                    (manager.isLoadingRecruitments &&
+                        manager.recruitmentPosts.isEmpty);
+
+            return RefreshIndicator(
+              onRefresh: _refreshFeed,
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                      child: _buildWelcomeCard(context),
+                    ),
+                  ),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+                      child: Text(
+                        'Bài tuyển thành viên',
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleLarge
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                  if (isLoading && recruitmentPosts.isEmpty)
+                    const SliverToBoxAdapter(
+                      child: Center(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 24),
+                          child: CircularProgressIndicator(),
+                        ),
+                      ),
+                    )
+                  else if (recruitmentPosts.isEmpty)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 16),
+                        child: Text(
+                          'Chưa có bài tuyển nào. Hãy là người đầu tiên đăng bài!',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ),
+                    )
+                  else
+                    SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final post = recruitmentPosts[index];
+                          return RecruitmentPostCard(
+                            hostName: post.authorName,
+                            createdTime: post.createdAt,
+                            requiredPlayers: post.requiredMembers,
+                            joinedPlayers: post.joinedMembers,
+                            description: post.content,
+                            skillLevel: post.skillLevel,
+                            courtName: post.courtName,
+                            playTime: post.eventTime,
+                            playStyle: _mapPlayStyle(post.playStyle),
+                            locationNote: post.locationNote,
+                            onJoin: () {},
+                          );
+                        },
+                        childCount: recruitmentPosts.length,
+                      ),
+                    ),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 24, 20, 4),
+                      child: Text(
+                        'Bảng tin cộng đồng',
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleLarge
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                  if (isLoading && posts.isEmpty)
+                    const SliverToBoxAdapter(
+                      child: Center(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 24),
+                          child: CircularProgressIndicator(),
+                        ),
+                      ),
+                    )
+                  else if (posts.isEmpty)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 16),
+                        child: Text(
+                          'Chưa có bài đăng nào. Hãy chia sẻ khoảnh khắc của bạn!',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ),
+                    )
+                  else
+                    SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final post = posts[index];
+                          return MyPost(
+                            userName: post.authorName,
+                            time: post.createdAt,
+                            content: post.content,
+                            imageUrls: post.imageUrls,
+                          );
+                        },
+                        childCount: posts.length,
+                      ),
+                    ),
+                  const SliverPadding(padding: EdgeInsets.only(bottom: 100)),
+                ],
               ),
-            ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
-                child: Text(
-                  'Bài tuyển thành viên',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleLarge
-                      ?.copyWith(fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-            SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  final post = _recruitmentPosts[index];
-                  return RecruitmentPostCard(
-                    hostName: post.hostName,
-                    createdTime: post.createdAt,
-                    requiredPlayers: post.requiredPlayers,
-                    joinedPlayers: post.joinedPlayers,
-                    description: post.description,
-                    skillLevel: post.skillLevel,
-                    courtName: post.courtName,
-                    playTime: post.playTime,
-                    onJoin: () {},
-                  );
-                },
-                childCount: _recruitmentPosts.length,
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 4),
-                child: Text(
-                  'Bảng tin cộng đồng',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleLarge
-                      ?.copyWith(fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-            SliverList(
-              delegate: SliverChildListDelegate.fixed([
-                MyPost(
-                  message: 'https://picsum.photos/seed/recruitment1/1200/600',
-                  userName: 'Bảo Minh',
-                  time: _now,
-                ),
-                MyPost(
-                  message:
-                      'Đánh giao hữu cuối tuần này ở Quận 2, ai rảnh thì join nhé!',
-                  userName: 'Ngọc Anh',
-                  time: _now.subtract(const Duration(hours: 5)),
-                ),
-                MyPost(
-                  message: 'https://picsum.photos/seed/recruitment2/1200/600',
-                  userName: 'Văn Hòa',
-                  time: _now.subtract(const Duration(hours: 9)),
-                ),
-              ]),
-            ),
-            SliverPadding(padding: const EdgeInsets.only(bottom: 100)),
-          ],
+            );
+          },
         ),
       ),
     );
@@ -199,50 +257,25 @@ class SocialPage extends StatelessWidget {
                   style: FilledButton.styleFrom(
                     backgroundColor: cs.onPrimary,
                     foregroundColor: cs.primary,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 12),
                   ),
                 ),
               ],
-            ),
-          ),
-          const SizedBox(width: 16),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: cs.onPrimary,
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: Icon(
-              Icons.sports_tennis,
-              size: 42,
-              color: cs.primary,
             ),
           ),
         ],
       ),
     );
   }
-}
 
-class _RecruitmentPost {
-  final String hostName;
-  final DateTime createdAt;
-  final int requiredPlayers;
-  final int joinedPlayers;
-  final String? skillLevel;
-  final String? description;
-  final String? courtName;
-  final DateTime? playTime;
-
-  const _RecruitmentPost({
-    required this.hostName,
-    required this.createdAt,
-    required this.requiredPlayers,
-    required this.joinedPlayers,
-    this.skillLevel,
-    this.description,
-    this.courtName,
-    this.playTime,
-  });
+  String? _mapPlayStyle(String? value) {
+    switch (value) {
+      case 'singles':
+        return 'Đánh đơn';
+      case 'doubles':
+        return 'Đánh đôi';
+      case 'mixed':
+        return 'Đánh đôi nam nữ';
+    }
+    return value;
+  }
 }

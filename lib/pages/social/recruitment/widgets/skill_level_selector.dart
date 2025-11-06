@@ -1,14 +1,24 @@
 import 'package:flutter/material.dart';
 
+class SkillLevelOption {
+  final String value;
+  final String label;
+
+  const SkillLevelOption({
+    required this.value,
+    required this.label,
+  });
+}
+
 class SkillLevelSelector extends StatelessWidget {
-  final List<String> skillLevels;
-  final String selectedLevel;
+  final List<SkillLevelOption> skillLevels;
+  final String selectedValue;
   final ValueChanged<String> onChanged;
 
   const SkillLevelSelector({
     super.key,
     required this.skillLevels,
-    required this.selectedLevel,
+    required this.selectedValue,
     required this.onChanged,
   });
 
@@ -26,11 +36,11 @@ class SkillLevelSelector extends StatelessWidget {
           spacing: 12,
           runSpacing: 12,
           children: skillLevels.map((level) {
-            final isSelected = selectedLevel == level;
+            final isSelected = selectedValue == level.value;
             return ChoiceChip(
-              label: Text(level),
+              label: Text(level.label),
               selected: isSelected,
-              onSelected: (_) => onChanged(level),
+              onSelected: (_) => onChanged(level.value),
               selectedColor: cs.primaryContainer,
               labelStyle: textTheme.bodyMedium?.copyWith(
                 color: isSelected ? cs.primary : cs.onSurface,

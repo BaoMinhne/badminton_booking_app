@@ -2,26 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 class MyPost extends StatelessWidget {
-  final String message;
   final String userName;
   final DateTime time;
+  final String? content;
+  final List<String> imageUrls;
   final VoidCallback? onLikePressed;
 
   const MyPost({
     super.key,
-    required this.message,
     required this.userName,
     required this.time,
+    this.content,
+    this.imageUrls = const <String>[],
     this.onLikePressed,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isImage = message.startsWith('http') ||
-        message.startsWith('https') &&
-            (message.contains('.jpg') ||
-                message.contains('.png') ||
-                message.contains('cloudinary'));
     final cs = Theme.of(context).colorScheme;
 
     return Padding(
@@ -87,29 +84,36 @@ class MyPost extends StatelessWidget {
                 ),
               ),
 
-              // Post message
-              isImage
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(0),
-                      child: Center(
-                        child: Image.network(
-                          message,
-                          fit: BoxFit.cover,
-                          width: MediaQuery.of(context).size.width,
-                        ),
-                      ),
-                    )
-                  : Padding(
-                      padding:
-                          const EdgeInsets.only(left: 20, top: 10, bottom: 10),
-                      child: Text(
-                        message,
-                        style: const TextStyle(
-                          color: Colors.black87,
-                          fontSize: 20,
-                        ),
-                      ),
+              if (content != null && content!.isNotEmpty)
+                Padding(
+                  padding:
+                      const EdgeInsets.only(left: 20, right: 20, bottom: 10),
+                  child: Text(
+                    content!,
+                    style: const TextStyle(
+                      color: Colors.black87,
+                      fontSize: 20,
                     ),
+                  ),
+                ),
+              if (imageUrls.isNotEmpty)
+                Column(
+                  children: imageUrls
+                      .map(
+                        (url) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(0),
+                            child: Image.network(
+                              url,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                            ),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
 
               // Action bar
               Padding(
@@ -126,14 +130,7 @@ class MyPost extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Text(
-                      '100',
-                      style: const TextStyle(
-                        color: Colors.black87,
-                        fontWeight: FontWeight.w400,
-                        fontSize: 18,
-                      ),
-                    ),
+                    const SizedBox(width: 8),
                     const SizedBox(width: 10),
                     IconButton(
                       icon: const Icon(Icons.comment_outlined,

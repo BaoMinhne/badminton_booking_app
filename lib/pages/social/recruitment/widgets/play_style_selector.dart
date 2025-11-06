@@ -1,14 +1,24 @@
 import 'package:flutter/material.dart';
 
+class PlayStyleOption {
+  final String value;
+  final String label;
+
+  const PlayStyleOption({
+    required this.value,
+    required this.label,
+  });
+}
+
 class PlayStyleSelector extends StatelessWidget {
-  final List<String> playStyles;
-  final String selectedStyle;
+  final List<PlayStyleOption> playStyles;
+  final String selectedValue;
   final ValueChanged<String> onChanged;
 
   const PlayStyleSelector({
     super.key,
     required this.playStyles,
-    required this.selectedStyle,
+    required this.selectedValue,
     required this.onChanged,
   });
 
@@ -26,11 +36,11 @@ class PlayStyleSelector extends StatelessWidget {
           spacing: 12,
           runSpacing: 12,
           children: playStyles.map((style) {
-            final isSelected = selectedStyle == style;
+            final isSelected = selectedValue == style.value;
             return ChoiceChip(
-              label: Text(style),
+              label: Text(style.label),
               selected: isSelected,
-              onSelected: (_) => onChanged(style),
+              onSelected: (_) => onChanged(style.value),
               selectedColor: cs.primaryContainer,
               labelStyle: textTheme.bodyMedium?.copyWith(
                 color: isSelected ? cs.primary : cs.onSurface,

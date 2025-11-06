@@ -1,16 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+class CourtOption {
+  final String id;
+  final String name;
+
+  const CourtOption({
+    required this.id,
+    required this.name,
+  });
+}
+
 class CourtInfoSection extends StatelessWidget {
-  final String selectedCourt;
-  final List<String> availableCourts;
+  final String? selectedCourtId;
+  final List<CourtOption> availableCourts;
   final DateTime selectedDateTime;
-  final ValueChanged<String> onCourtChanged;
+  final ValueChanged<String?> onCourtChanged;
   final VoidCallback onPickDateTime;
 
   const CourtInfoSection({
     super.key,
-    required this.selectedCourt,
+    required this.selectedCourtId,
     required this.availableCourts,
     required this.selectedDateTime,
     required this.onCourtChanged,
@@ -28,13 +38,17 @@ class CourtInfoSection extends StatelessWidget {
         Text('Thông tin sân đã đặt', style: textTheme.titleMedium),
         const SizedBox(height: 12),
         DropdownButtonFormField<String>(
-          value: selectedCourt,
+          value: selectedCourtId,
           decoration: _inputDecoration(cs, 'Chọn sân đã đặt'),
           items: availableCourts
               .map(
-                  (court) => DropdownMenuItem(value: court, child: Text(court)))
+                (court) => DropdownMenuItem(
+                  value: court.id,
+                  child: Text(court.name),
+                ),
+              )
               .toList(),
-          onChanged: (v) => v != null ? onCourtChanged(v) : null,
+          onChanged: onCourtChanged,
         ),
         const SizedBox(height: 16),
         GestureDetector(

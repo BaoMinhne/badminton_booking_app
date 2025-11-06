@@ -10,6 +10,8 @@ class RecruitmentPostCard extends StatelessWidget {
   final String? description;
   final String? courtName;
   final DateTime? playTime;
+  final String? playStyle;
+  final String? locationNote;
   final VoidCallback? onJoin;
 
   const RecruitmentPostCard({
@@ -22,6 +24,8 @@ class RecruitmentPostCard extends StatelessWidget {
     this.description,
     this.courtName,
     this.playTime,
+    this.playStyle,
+    this.locationNote,
     this.onJoin,
   });
 
@@ -95,16 +99,26 @@ class RecruitmentPostCard extends StatelessWidget {
                       color: cs.primaryContainer,
                       iconColor: cs.primary,
                     ),
-                  _InfoChip(
-                    icon: Icons.sports_tennis,
-                    label: 'Loại hình: Đánh đơn/đôi',
-                    color: cs.secondaryContainer,
-                    iconColor: cs.secondary,
-                  ),
+                  if (playStyle != null && playStyle!.isNotEmpty)
+                    _InfoChip(
+                      icon: Icons.sports_tennis,
+                      label: 'Lối chơi: $playStyle',
+                      color: cs.secondaryContainer,
+                      iconColor: cs.secondary,
+                    ),
                   if (courtName != null && courtName!.isNotEmpty)
                     _InfoChip(
                       icon: Icons.location_on_outlined,
                       label: 'Sân: $courtName',
+                      color: cs.tertiaryContainer,
+                      iconColor: cs.tertiary,
+                    ),
+                  if ((courtName == null || courtName!.isEmpty) &&
+                      locationNote != null &&
+                      locationNote!.isNotEmpty)
+                    _InfoChip(
+                      icon: Icons.location_on_outlined,
+                      label: locationNote!,
                       color: cs.tertiaryContainer,
                       iconColor: cs.tertiary,
                     ),

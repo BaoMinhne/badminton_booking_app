@@ -5,23 +5,33 @@ class RecruitmentPostCard extends StatelessWidget {
   final String hostName;
   final DateTime createdTime;
   final String? skillLevel;
-  final int requiredPlayers;
+  final String? playStyle;
+  final int? targetPlayers;
   final int joinedPlayers;
   final String? description;
   final String? courtName;
   final DateTime? playTime;
+  final String? hostAvatarUrl;
+  final bool isJoined;
+  final bool isJoinable;
+  final bool isJoining;
   final VoidCallback? onJoin;
 
   const RecruitmentPostCard({
     super.key,
     required this.hostName,
     required this.createdTime,
-    required this.requiredPlayers,
     required this.joinedPlayers,
+    this.targetPlayers,
     this.skillLevel,
+    this.playStyle,
     this.description,
     this.courtName,
     this.playTime,
+    this.hostAvatarUrl,
+    this.isJoined = false,
+    this.isJoinable = true,
+    this.isJoining = false,
     this.onJoin,
   });
 
@@ -29,10 +39,22 @@ class RecruitmentPostCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final totalSlots = requiredPlayers <= 0 ? joinedPlayers : requiredPlayers;
+    final totalSlots = targetPlayers == null || targetPlayers! <= 0
+        ? joinedPlayers
+        : targetPlayers!;
     final progress = totalSlots == 0
         ? 0.0
         : (joinedPlayers / totalSlots).clamp(0, 1).toDouble();
+    final isFull = targetPlayers != null && joinedPlayers >= targetPlayers!;
+    final isButtonDisabled =
+        !isJoinable || isJoined || isJoining || isFull || onJoin == null;
+    final buttonLabel = isFull
+        ? 'Đủ thành viên'
+        : isJoined
+            ? 'Đã tham gia'
+            : isJoining
+                ? 'Đang tham gia...'
+                : 'Tham gia';
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -60,16 +82,31 @@ class RecruitmentPostCard extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Đã có $joinedPlayers / $requiredPlayers thành viên',
+                      targetPlayers != null && targetPlayers! > 0
+                          ? 'Đã có $joinedPlayers / $targetPlayers thành viên'
+                          : 'Đã có $joinedPlayers thành viên',
                       style: textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
                   FilledButton.icon(
-                    onPressed: onJoin,
-                    icon: const Icon(Icons.add_circle_outline),
-                    label: const Text('Tham gia'),
+                    onPressed: isButtonDisabled ? null : onJoin,
+                    icon: isJoining
+                        ? SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: cs.onPrimary,
+                            ),
+                          )
+                        : Icon(
+                            isJoined || isFull
+                                ? Icons.check_circle_outline
+                                : Icons.add_circle_outline,
+                          ),
+                    label: Text(buttonLabel),
                   ),
                 ],
               ),
@@ -95,11 +132,18 @@ class RecruitmentPostCard extends StatelessWidget {
                       color: cs.primaryContainer,
                       iconColor: cs.primary,
                     ),
+                  if (playStyle != null && playStyle!.isNotEmpty)
+                    _InfoChip(
+                      icon: Icons.sports_tennis,
+                      label: 'Loại hình: $playStyle',
+                      color: cs.secondaryContainer,
+                      iconColor: cs.secondary,
+                    ),
                   _InfoChip(
-                    icon: Icons.sports_tennis,
-                    label: 'Loại hình: Đánh đơn/đôi',
-                    color: cs.secondaryContainer,
-                    iconColor: cs.secondary,
+                    icon: Icons.people_alt_outlined,
+                    label: 'Đã có $joinedPlayers người',
+                    color: cs.surfaceVariant,
+                    iconColor: cs.primary,
                   ),
                   if (courtName != null && courtName!.isNotEmpty)
                     _InfoChip(
@@ -133,13 +177,17 @@ class RecruitmentPostCard extends StatelessWidget {
         CircleAvatar(
           radius: 26,
           backgroundColor: cs.primary,
-          child: Text(
-            (hostName.isNotEmpty ? hostName[0] : '?').toUpperCase(),
-            style: textTheme.titleMedium?.copyWith(
-              color: cs.onPrimary,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          backgroundImage:
+              hostAvatarUrl != null ? NetworkImage(hostAvatarUrl!) : null,
+          child: hostAvatarUrl == null
+              ? Text(
+                  (hostName.isNotEmpty ? hostName[0] : '?').toUpperCase(),
+                  style: textTheme.titleMedium?.copyWith(
+                    color: cs.onPrimary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                )
+              : null,
         ),
         const SizedBox(width: 16),
         Expanded(

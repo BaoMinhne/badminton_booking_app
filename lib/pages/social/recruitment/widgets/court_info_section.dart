@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../models/booked_court_option.dart';
+
 class CourtInfoSection extends StatelessWidget {
-  final String selectedCourt;
-  final List<String> availableCourts;
+  final BookedCourtOption? selectedBooking;
+  final List<BookedCourtOption> availableBookings;
   final DateTime selectedDateTime;
-  final ValueChanged<String> onCourtChanged;
+  final ValueChanged<BookedCourtOption?> onBookingChanged;
   final VoidCallback onPickDateTime;
 
   const CourtInfoSection({
     super.key,
-    required this.selectedCourt,
-    required this.availableCourts,
+    required this.selectedBooking,
+    required this.availableBookings,
     required this.selectedDateTime,
-    required this.onCourtChanged,
+    required this.onBookingChanged,
     required this.onPickDateTime,
   });
 
@@ -27,14 +29,22 @@ class CourtInfoSection extends StatelessWidget {
       children: [
         Text('Thông tin sân đã đặt', style: textTheme.titleMedium),
         const SizedBox(height: 12),
-        DropdownButtonFormField<String>(
-          value: selectedCourt,
+        DropdownButtonFormField<BookedCourtOption>(
+          value: selectedBooking,
           decoration: _inputDecoration(cs, 'Chọn sân đã đặt'),
-          items: availableCourts
+          items: availableBookings
               .map(
-                  (court) => DropdownMenuItem(value: court, child: Text(court)))
+                (booking) => DropdownMenuItem<BookedCourtOption>(
+                  value: booking,
+                  child: Text(
+                    booking.label,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              )
               .toList(),
-          onChanged: (v) => v != null ? onCourtChanged(v) : null,
+          onChanged:
+              availableBookings.isEmpty ? null : (value) => onBookingChanged(value),
         ),
         const SizedBox(height: 16),
         GestureDetector(

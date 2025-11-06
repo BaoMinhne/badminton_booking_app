@@ -2,26 +2,29 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 class MyPost extends StatelessWidget {
-  final String message;
+  final String content;
   final String userName;
   final DateTime time;
+  final List<String> imageUrls;
+  final String? userAvatarUrl;
   final VoidCallback? onLikePressed;
 
   const MyPost({
     super.key,
-    required this.message,
+    required this.content,
     required this.userName,
     required this.time,
+    this.imageUrls = const [],
+    this.userAvatarUrl,
     this.onLikePressed,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isImage = message.startsWith('http') ||
-        message.startsWith('https') &&
-            (message.contains('.jpg') ||
-                message.contains('.png') ||
-                message.contains('cloudinary'));
+    final hasImages = imageUrls.isNotEmpty;
+    final primaryImage = hasImages ? imageUrls.first : null;
+    final trimmedContent = content.trim();
+    final hasContent = trimmedContent.isNotEmpty;
     final cs = Theme.of(context).colorScheme;
 
     return Padding(
@@ -44,17 +47,18 @@ class MyPost extends StatelessWidget {
                     top: 15, bottom: 15, left: 15, right: 15),
                 child: Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary,
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      child: const Icon(
-                        Icons.person,
-                        size: 35,
-                        color: Colors.white,
-                      ),
+                    CircleAvatar(
+                      radius: 26,
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      backgroundImage:
+                          userAvatarUrl != null ? NetworkImage(userAvatarUrl!) : null,
+                      child: userAvatarUrl == null
+                          ? const Icon(
+                              Icons.person,
+                              size: 28,
+                              color: Colors.white,
+                            )
+                          : null,
                     ),
                     const SizedBox(width: 15),
                     Column(
@@ -88,28 +92,28 @@ class MyPost extends StatelessWidget {
               ),
 
               // Post message
-              isImage
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(0),
-                      child: Center(
-                        child: Image.network(
-                          message,
-                          fit: BoxFit.cover,
-                          width: MediaQuery.of(context).size.width,
-                        ),
-                      ),
-                    )
-                  : Padding(
-                      padding:
-                          const EdgeInsets.only(left: 20, top: 10, bottom: 10),
-                      child: Text(
-                        message,
-                        style: const TextStyle(
-                          color: Colors.black87,
-                          fontSize: 20,
-                        ),
-                      ),
+              if (hasContent)
+                Padding(
+                  padding: const EdgeInsets.only(left: 20, top: 10, bottom: 10),
+                  child: Text(
+                    trimmedContent,
+                    style: const TextStyle(
+                      color: Colors.black87,
+                      fontSize: 18,
                     ),
+                  ),
+                ),
+              if (primaryImage != null)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(0),
+                  child: Center(
+                    child: Image.network(
+                      primaryImage,
+                      fit: BoxFit.cover,
+                      width: MediaQuery.of(context).size.width,
+                    ),
+                  ),
+                ),
 
               // Action bar
               Padding(

@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 
 class SubmitButton extends StatelessWidget {
   final VoidCallback onSubmit;
+  final bool isLoading;
 
   const SubmitButton({
     super.key,
     required this.onSubmit,
+    this.isLoading = false,
   });
 
   @override
@@ -13,9 +15,16 @@ class SubmitButton extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
 
     return FilledButton.icon(
-      onPressed: onSubmit,
-      icon: const Icon(Icons.send_rounded),
-      label: const Text('Đăng bài tuyển thành viên'),
+      onPressed: isLoading ? null : onSubmit,
+      icon: isLoading
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.send_rounded),
+      label:
+          Text(isLoading ? 'Đang đăng...' : 'Đăng bài tuyển thành viên'),
       style: FilledButton.styleFrom(
         minimumSize: const Size.fromHeight(54),
         textStyle: textTheme.titleMedium?.copyWith(

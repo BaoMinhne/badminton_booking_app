@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 
 class NoCourtInfoBox extends StatelessWidget {
-  const NoCourtInfoBox({super.key});
+  final String message;
+
+  const NoCourtInfoBox({
+    super.key,
+    this.message =
+        'Bạn chưa đặt sân — hãy nhập số lượng thành viên bạn muốn tuyển và mô tả yêu cầu để mọi người cùng tham gia.',
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +30,7 @@ class NoCourtInfoBox extends StatelessWidget {
           const SizedBox(width: 16),
           Expanded(
             child: Text(
-              'Bạn chưa đặt sân — hãy nhập số lượng thành viên bạn muốn tuyển và mô tả yêu cầu để mọi người cùng tham gia.',
+              message,
               style: textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
             ),
           ),

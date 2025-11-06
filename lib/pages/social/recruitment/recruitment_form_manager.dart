@@ -112,6 +112,12 @@ class RecruitmentFormManager with ChangeNotifier {
   }
 
   Future<RecruitmentPost> submit() async {
+    if (_hasBookedCourt && _selectedCourt == null) {
+      throw RecruitmentServiceException(
+        'Bạn chưa có sân trong ngày đã chọn. Vui lòng chọn lại thời gian hoặc tắt tùy chọn đã đặt sân.',
+      );
+    }
+
     _isSubmitting = true;
     notifyListeners();
 

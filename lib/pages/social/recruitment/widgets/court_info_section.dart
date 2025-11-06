@@ -38,16 +38,19 @@ class CourtInfoSection extends StatelessWidget {
             value: selectedCourtId,
             decoration: _inputDecoration(cs, 'Chọn sân đã đặt'),
             items: availableCourts
-                .map(
-                  (court) => DropdownMenuItem(
+                .map<DropdownMenuItem<String>>(
+                  (court) => DropdownMenuItem<String>(
                     value: court.id,
-                    child: Text(
-                      court.displayName,
-                      overflow: TextOverflow.ellipsis,
+                    child: Tooltip(
+                      message: court.displayName,
+                      child: Text(
+                        court.displayName,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ),
                 )
-                .toList(),
+                .toList(growable: false),
             onChanged: onCourtChanged,
           ),
         const SizedBox(height: 16),

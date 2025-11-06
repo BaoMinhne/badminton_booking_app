@@ -159,6 +159,7 @@ class _SocialPageState extends State<SocialPage> {
             playStyle: post.playStyle,
             courtName: post.courtName,
             playTime: post.eventTime,
+            locationNote: post.locationNote,
             onJoin: () async {
               try {
                 await manager.joinRecruitment(post.id);

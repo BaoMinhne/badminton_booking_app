@@ -10,6 +10,7 @@ class RecruitmentPostCard extends StatelessWidget {
   final String? description;
   final String? courtName;
   final DateTime? playTime;
+  final String? locationNote;
   final VoidCallback? onJoin;
   final String? playStyle;
   final bool isJoined;
@@ -26,6 +27,7 @@ class RecruitmentPostCard extends StatelessWidget {
     this.description,
     this.courtName,
     this.playTime,
+    this.locationNote,
     this.onJoin,
     this.playStyle,
     this.isJoined = false,
@@ -130,6 +132,13 @@ class RecruitmentPostCard extends StatelessWidget {
                       label: 'Sân: $courtName',
                       color: cs.tertiaryContainer,
                       iconColor: cs.tertiary,
+                    ),
+                  if ((locationNote ?? '').trim().isNotEmpty)
+                    _InfoChip(
+                      icon: Icons.map_outlined,
+                      label: 'Địa điểm: ${locationNote!.trim()}',
+                      color: cs.surfaceVariant,
+                      iconColor: cs.primary,
                     ),
                   if (playTime != null)
                     _InfoChip(

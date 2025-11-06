@@ -1,5 +1,6 @@
 import 'package:badminton_booking_app/models/chat_contact.dart';
 import 'package:badminton_booking_app/pages/social/chat/chat_page.dart';
+import 'package:badminton_booking_app/pages/social/chat/widgets/chat_header.dart';
 import 'package:badminton_booking_app/pages/social/chat/widgets/chat_section_header.dart';
 import 'package:badminton_booking_app/pages/social/chat/widgets/contact_list_tile.dart';
 import 'package:flutter/material.dart';
@@ -14,7 +15,7 @@ class ChatHomePage extends StatelessWidget {
       id: 'chat-1',
       name: 'Nhỏ quậy lắm chiều',
       avatarText: 'NC',
-      lastMessage: 'Bạn: chờ nwng l đi mà nwng !',
+      lastMessage: 'Bạn: hehe hehe <3 tối qua đánh cầu nhe bạn',
       lastMessageTimeLabel: '1 phút',
       unreadCount: 2,
       isOnline: true,
@@ -53,7 +54,7 @@ class ChatHomePage extends StatelessWidget {
       id: 'chat-6',
       name: 'Hua Tan Datt',
       avatarText: 'HD',
-      lastMessage: 'Game báo done',
+      lastMessage: 'Game bào điên',
       lastMessageTimeLabel: '5 giờ',
     ),
   ];
@@ -99,6 +100,34 @@ class ChatHomePage extends StatelessWidget {
     ),
   ];
 
+  TabBar _buildTabs(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+
+    return TabBar(
+      tabs: const [
+        Tab(text: 'Đoạn chat'),
+        Tab(text: 'Bạn bè'),
+      ],
+      // Chữ tab đang chọn
+      labelStyle: tt.titleSmall?.copyWith(
+        fontWeight: FontWeight.w700,
+        fontSize: 16, // ← tăng kích thước chữ
+      ),
+      // Chữ tab chưa chọn
+      unselectedLabelStyle: tt.titleSmall?.copyWith(
+        fontSize: 16, // ← giữ cùng size cho đồng đều
+        fontWeight: FontWeight.w500,
+      ),
+      labelColor: cs.onPrimary,
+      unselectedLabelColor: cs.onPrimary.withOpacity(0.65),
+      indicator: UnderlineTabIndicator(
+        borderSide: BorderSide(color: cs.onPrimary, width: 2.4),
+        insets: const EdgeInsets.symmetric(horizontal: 16),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -106,27 +135,14 @@ class ChatHomePage extends StatelessWidget {
       length: 2,
       child: Scaffold(
         backgroundColor: const Color(0xFFF4F6FB),
-        appBar: AppBar(
-          elevation: 0,
-          title: const Text('Tin nhắn'),
-          actions: [
-            IconButton(
-              tooltip: 'Thêm bạn',
-              icon: const Icon(Icons.person_add_alt_1_rounded),
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const AddFriendPage()),
-                );
-              },
-            ),
-            const SizedBox(width: 4),
-          ],
-          bottom: const TabBar(
-            tabs: [
-              Tab(text: 'Đoạn chat'),
-              Tab(text: 'Bạn bè'),
-            ],
-          ),
+        appBar: ChatHeader(
+          title: 'Danh sách trò chuyện',
+          onAddFriend: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const AddFriendPage()),
+            );
+          }, // hoặc null nếu chưa dùng
+          bottom: _buildTabs(context), // TabBar hiển thị ngay dưới title
         ),
         floatingActionButton: FloatingActionButton.extended(
           onPressed: () {

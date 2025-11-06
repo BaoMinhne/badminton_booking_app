@@ -50,10 +50,13 @@ class SocialPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: cs.surfaceVariant.withOpacity(0.3),
       appBar: AppBar(
-        title: const Text('Cộng đồng cầu lông'),
+        title: const Text(
+          'Cộng đồng cầu lông',
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.chat_bubble_outline_rounded),
+            icon: const Icon(Icons.group, size: 30),
             tooltip: 'Tin nhắn',
             onPressed: () {
               Navigator.of(context).push(
@@ -63,15 +66,6 @@ class SocialPage extends StatelessWidget {
           ),
           const SizedBox(width: 6),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const RecruitmentFormPage()),
-          );
-        },
-        icon: const Icon(Icons.post_add_rounded),
-        label: const Text('Đăng tuyển thành viên'),
       ),
       body: SafeArea(
         child: CustomScrollView(

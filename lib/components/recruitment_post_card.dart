@@ -11,6 +11,10 @@ class RecruitmentPostCard extends StatelessWidget {
   final String? courtName;
   final DateTime? playTime;
   final VoidCallback? onJoin;
+  final String? playStyle;
+  final bool isJoined;
+  final bool isOwner;
+  final bool isJoinLoading;
 
   const RecruitmentPostCard({
     super.key,
@@ -23,6 +27,10 @@ class RecruitmentPostCard extends StatelessWidget {
     this.courtName,
     this.playTime,
     this.onJoin,
+    this.playStyle,
+    this.isJoined = false,
+    this.isOwner = false,
+    this.isJoinLoading = false,
   });
 
   @override
@@ -67,9 +75,23 @@ class RecruitmentPostCard extends StatelessWidget {
                     ),
                   ),
                   FilledButton.icon(
-                    onPressed: onJoin,
-                    icon: const Icon(Icons.add_circle_outline),
-                    label: const Text('Tham gia'),
+                    onPressed: (isJoined || isOwner || isJoinLoading)
+                        ? null
+                        : onJoin,
+                    icon: isJoinLoading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(isJoined ? Icons.check_circle : Icons.add_circle_outline),
+                    label: Text(
+                      isOwner
+                          ? 'Bài của bạn'
+                          : isJoined
+                              ? 'Đã tham gia'
+                              : 'Tham gia',
+                    ),
                   ),
                 ],
               ),
@@ -95,12 +117,13 @@ class RecruitmentPostCard extends StatelessWidget {
                       color: cs.primaryContainer,
                       iconColor: cs.primary,
                     ),
-                  _InfoChip(
-                    icon: Icons.sports_tennis,
-                    label: 'Loại hình: Đánh đơn/đôi',
-                    color: cs.secondaryContainer,
-                    iconColor: cs.secondary,
-                  ),
+                  if (playStyle != null && playStyle!.isNotEmpty)
+                    _InfoChip(
+                      icon: Icons.sports_tennis,
+                      label: 'Lối chơi: $playStyle',
+                      color: cs.secondaryContainer,
+                      iconColor: cs.secondary,
+                    ),
                   if (courtName != null && courtName!.isNotEmpty)
                     _InfoChip(
                       icon: Icons.location_on_outlined,
@@ -221,6 +244,7 @@ class _InfoChip extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                   color: Theme.of(context).colorScheme.onSurface,
                 ),
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),

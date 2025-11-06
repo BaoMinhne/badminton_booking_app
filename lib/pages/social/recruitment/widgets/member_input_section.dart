@@ -26,7 +26,6 @@ class MemberInputSection extends StatelessWidget {
               onPressed: () {
                 if (memberCount > 1) {
                   onChanged(memberCount - 1);
-                  controller.text = (memberCount - 1).toString();
                 }
               },
               icon: const Icon(Icons.remove_circle_outline),
@@ -56,7 +55,6 @@ class MemberInputSection extends StatelessWidget {
             IconButton(
               onPressed: () {
                 onChanged(memberCount + 1);
-                controller.text = (memberCount + 1).toString();
               },
               icon: const Icon(Icons.add_circle_outline),
             ),

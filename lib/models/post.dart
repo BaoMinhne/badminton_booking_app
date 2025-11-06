@@ -58,16 +58,23 @@ class Post {
       return null;
     }
 
-    final expandedAuthor = expand['author'];
-
-    if (expandedAuthor is RecordModel) {
-      return _AuthorInfo.fromRecord(client, expandedAuthor);
+    final authorRecord = _firstRecord(expand['author']);
+    if (authorRecord == null) {
+      return null;
     }
 
-    if (expandedAuthor is List) {
-      for (final item in expandedAuthor) {
+    return _AuthorInfo.fromRecord(client, authorRecord);
+  }
+
+  static RecordModel? _firstRecord(dynamic value) {
+    if (value is RecordModel) {
+      return value;
+    }
+
+    if (value is List) {
+      for (final dynamic item in value) {
         if (item is RecordModel) {
-          return _AuthorInfo.fromRecord(client, item);
+          return item;
         }
       }
     }

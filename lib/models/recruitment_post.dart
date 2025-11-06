@@ -86,42 +86,26 @@ class RecruitmentPost {
 
   static _AuthorInfo? _extractAuthor(RecordModel record) {
     final expand = record.expand;
-    if (expand == null) return null;
-    final expandedAuthor = expand['author'];
+    if (expand == null || expand.isEmpty) return null;
 
-    if (expandedAuthor is RecordModel) {
-      return _AuthorInfo.fromRecord(expandedAuthor);
+    final authorRecord = _firstRecord(expand['author']);
+    if (authorRecord == null) {
+      return null;
     }
 
-    if (expandedAuthor is List) {
-      for (final item in expandedAuthor) {
-        if (item is RecordModel) {
-          return _AuthorInfo.fromRecord(item);
-        }
-      }
-    }
-
-    return null;
+    return _AuthorInfo.fromRecord(authorRecord);
   }
 
   static _CourtInfo? _extractCourt(RecordModel record) {
     final expand = record.expand;
-    if (expand == null) return null;
-    final expandedCourt = expand['court'];
+    if (expand == null || expand.isEmpty) return null;
 
-    if (expandedCourt is RecordModel) {
-      return _CourtInfo.fromRecord(expandedCourt);
+    final courtRecord = _firstRecord(expand['court']);
+    if (courtRecord == null) {
+      return null;
     }
 
-    if (expandedCourt is List) {
-      for (final item in expandedCourt) {
-        if (item is RecordModel) {
-          return _CourtInfo.fromRecord(item);
-        }
-      }
-    }
-
-    return null;
+    return _CourtInfo.fromRecord(courtRecord);
   }
 
   static int _parseInt(dynamic value) {
@@ -153,6 +137,22 @@ class RecruitmentPost {
     }
     return null;
   }
+}
+
+RecordModel? _firstRecord(dynamic value) {
+  if (value is RecordModel) {
+    return value;
+  }
+
+  if (value is List) {
+    for (final dynamic item in value) {
+      if (item is RecordModel) {
+        return item;
+      }
+    }
+  }
+
+  return null;
 }
 
 class _AuthorInfo {

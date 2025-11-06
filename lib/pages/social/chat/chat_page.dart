@@ -5,7 +5,16 @@ import 'package:badminton_booking_app/pages/social/chat/widgets/chat_message_lis
 import 'package:flutter/material.dart';
 
 class ChatPage extends StatefulWidget {
-  const ChatPage({super.key});
+  const ChatPage({
+    super.key,
+    this.contactName = 'Nguyễn Minh',
+    this.avatarText = 'NM',
+    this.isContactOnline = true,
+  });
+
+  final String contactName;
+  final String avatarText;
+  final bool isContactOnline;
 
   @override
   State<ChatPage> createState() => _ChatPageState();
@@ -73,9 +82,9 @@ class _ChatPageState extends State<ChatPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6FB),
       appBar: ChatAppBar(
-        name: 'Nguyễn Minh',
-        isOnline: true,
-        avatarText: 'NM',
+        name: widget.contactName,
+        isOnline: widget.isContactOnline,
+        avatarText: widget.avatarText,
         onCall: () {},
         onVideoCall: () {},
       ),

@@ -22,50 +22,69 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+
     return AppBar(
-      titleSpacing: 0,
-      elevation: 0,
       backgroundColor: cs.primary,
+      elevation: 0,
+      centerTitle: false,
+      titleSpacing: 0,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back),
+        icon: const Icon(Icons.arrow_back_rounded),
+        color: cs.onPrimary,
         onPressed: () => Navigator.of(context).maybePop(),
       ),
+      actionsIconTheme: IconThemeData(color: cs.onPrimary),
       title: Row(
         children: [
           CircleAvatar(
+            radius: 18,
             backgroundColor: cs.onPrimary.withOpacity(.2),
             child: Text(
               avatarText,
               style: TextStyle(
                 color: cs.onPrimary,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
           const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 2),
-              Text(
-                isOnline ? 'Đang hoạt động' : 'Ngoại tuyến',
-                style: TextStyle(
-                    fontSize: 12, color: cs.onPrimary.withOpacity(.7)),
-              ),
-            ],
+
+          // ⬇️ Phần chữ được co giãn và cắt "..." khi hết chỗ
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min, // giữ chiều cao gọn
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis, // cắt "..."
+                  style: TextStyle(
+                    color: cs.onPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 20,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  isOnline ? 'Đang hoạt động' : 'Ngoại tuyến',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: cs.onPrimary.withOpacity(.72),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
       actions: [
+        IconButton(onPressed: onCall, icon: const Icon(Icons.call_rounded)),
         IconButton(
-          onPressed: onCall,
-          icon: const Icon(Icons.call_rounded),
-        ),
-        IconButton(
-          onPressed: onVideoCall,
-          icon: const Icon(Icons.videocam_rounded),
-        ),
+            onPressed: onVideoCall, icon: const Icon(Icons.videocam_rounded)),
         const SizedBox(width: 6),
       ],
     );

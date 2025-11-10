@@ -77,16 +77,17 @@ class RecruitmentPostCard extends StatelessWidget {
                     ),
                   ),
                   FilledButton.icon(
-                    onPressed: (isJoined || isOwner || isJoinLoading)
-                        ? null
-                        : onJoin,
+                    onPressed:
+                        (isJoined || isOwner || isJoinLoading) ? null : onJoin,
                     icon: isJoinLoading
                         ? const SizedBox(
                             width: 18,
                             height: 18,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : Icon(isJoined ? Icons.check_circle : Icons.add_circle_outline),
+                        : Icon(isJoined
+                            ? Icons.check_circle
+                            : Icons.add_circle_outline),
                     label: Text(
                       isOwner
                           ? 'Bài của bạn'
@@ -133,18 +134,11 @@ class RecruitmentPostCard extends StatelessWidget {
                       color: cs.tertiaryContainer,
                       iconColor: cs.tertiary,
                     ),
-                  if ((locationNote ?? '').trim().isNotEmpty)
-                    _InfoChip(
-                      icon: Icons.map_outlined,
-                      label: 'Địa điểm: ${locationNote!.trim()}',
-                      color: cs.surfaceVariant,
-                      iconColor: cs.primary,
-                    ),
                   if (playTime != null)
                     _InfoChip(
                       icon: Icons.access_time,
                       label:
-                          'Giờ đánh: ${DateFormat('HH:mm dd/MM').format(playTime!)}',
+                          'Giờ đánh: ${DateFormat('HH:mm - dd/MM').format(playTime!)}',
                       color: cs.surfaceVariant,
                       iconColor: cs.primary,
                     ),
@@ -187,7 +181,8 @@ class RecruitmentPostCard extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 DateFormat('dd/MM/yyyy HH:mm').format(createdTime),
-                style: textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                style:
+                    textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
               ),
             ],
           ),

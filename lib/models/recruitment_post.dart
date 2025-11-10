@@ -31,17 +31,19 @@ class RecruitmentPost {
     final authorData = authorRecord?.data;
     final authorId = (data['author'] as String?) ?? authorRecord?.id ?? '';
     final authorName = _sanitizeName(
-      (authorData?['username'] as String?) ??
-          (authorData?['email'] as String?) ??
-          'Người chơi',
-    );
+          (authorData?['username'] as String?) ??
+              (authorData?['email'] as String?),
+          // Bỏ fallback 'Người chơi' ở trong này
+        ) ??
+        'Người chơi';
 
     final courtRecord = _resolveExpandedRecord(record.expand?['court']);
     final courtData = courtRecord?.data;
     final courtName = _sanitizeName(courtData?['name'] as String?);
 
     final applicantUserIds = applicants
-        .map((rec) => (rec.data['user'] as String?) ?? rec.getStringValue('user'))
+        .map((rec) =>
+            (rec.data['user'] as String?) ?? rec.getStringValue('user'))
         .where((id) => id != null && id.isNotEmpty)
         .cast<String>()
         .toList();

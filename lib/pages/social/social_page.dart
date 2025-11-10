@@ -1,3 +1,4 @@
+import 'package:badminton_booking_app/components/create_post.dart';
 import 'package:badminton_booking_app/components/my_post.dart';
 import 'package:badminton_booking_app/components/recruitment_post_card.dart';
 import 'package:badminton_booking_app/models/community_post.dart';
@@ -6,6 +7,7 @@ import 'package:badminton_booking_app/pages/social/chat/chat_home_page.dart';
 import 'package:badminton_booking_app/pages/social/create_post_page.dart';
 import 'package:badminton_booking_app/pages/social/recruitment/recruitment_page.dart';
 import 'package:badminton_booking_app/pages/social/social_manager.dart';
+import 'package:badminton_booking_app/pages/user/user_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -47,6 +49,9 @@ class _SocialPageState extends State<SocialPage> {
     final cs = Theme.of(context).colorScheme;
     final manager = context.watch<SocialManager>();
 
+    final userManager = context.watch<UserManager>();
+    final avatarUrl = userManager.avatarUrl;
+
     return Scaffold(
       backgroundColor: cs.surfaceVariant.withOpacity(0.3),
       appBar: AppBar(
@@ -55,6 +60,11 @@ class _SocialPageState extends State<SocialPage> {
           style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.add_circle_outline),
+            tooltip: 'Đăng bài',
+            onPressed: () => _openCreatePost(context),
+          ),
           IconButton(
             icon: const Icon(Icons.group, size: 30),
             tooltip: 'Tin nhắn',
@@ -67,11 +77,6 @@ class _SocialPageState extends State<SocialPage> {
           const SizedBox(width: 6),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openCreatePost(context),
-        icon: const Icon(Icons.add),
-        label: const Text('Đăng bài'),
-      ),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () => _refreshAll(manager),
@@ -81,6 +86,36 @@ class _SocialPageState extends State<SocialPage> {
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
                   child: _buildWelcomeCard(context),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+                  child: CreatePostBar(
+                    // ấn vào ô nhập -> mở trang tạo post
+                    onCreatePost: () => _openCreatePost(context),
+
+                    // 3 action dưới—nếu chưa có picker thì cứ gọi trang tạo post luôn
+                    onPickPhoto: () => _openCreatePost(context),
+                    onInviteFriends: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const RecruitmentFormPage(),
+                        ),
+                      );
+                    },
+
+                    // Avatar (nếu có)
+                    avatarImageProvider:
+                        (avatarUrl != null && avatarUrl.isNotEmpty)
+                            ? NetworkImage(avatarUrl)
+                            : null, // hoặc để null
+
+                    // Tuỳ chỉnh giao diện
+                    hintText: 'Bạn đang nghĩ gì thế?',
+                    elevation: 5.0,
+                    // compact: true, // nếu muốn chỉ hiện 1 hàng (ẩn 3 action)
+                  ),
                 ),
               ),
               SliverToBoxAdapter(

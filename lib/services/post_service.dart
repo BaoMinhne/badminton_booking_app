@@ -79,7 +79,7 @@ class PostService {
           'content': content.trim(),
           'is_active': true,
         },
-        files: files.isEmpty ? null : files,
+        files: files,
       );
 
       return CommunityPost.fromRecord(record, pocketBase);

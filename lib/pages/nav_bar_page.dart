@@ -3,8 +3,10 @@ import 'package:badminton_booking_app/pages/court/court_page.dart';
 import 'package:badminton_booking_app/pages/home/home_page.dart';
 import 'package:badminton_booking_app/pages/user/profile_page.dart';
 import 'package:badminton_booking_app/pages/social/social_page.dart';
+import 'package:badminton_booking_app/pages/user/user_manager.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class NavBarPage extends StatefulWidget {
   const NavBarPage({super.key});
@@ -21,6 +23,10 @@ class _NavBarPageState extends State<NavBarPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<UserManager>().loadMe(); // nạp cache lần đầu
+    });
     _pages = [
       HomePage(),
       SocialPage(),

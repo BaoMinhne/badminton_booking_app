@@ -1,147 +1,331 @@
+import 'package:badminton_booking_app/components/create_post.dart';
 import 'package:badminton_booking_app/components/my_post.dart';
 import 'package:badminton_booking_app/components/recruitment_post_card.dart';
+import 'package:badminton_booking_app/models/community_post.dart';
+import 'package:badminton_booking_app/models/recruitment_post.dart';
 import 'package:badminton_booking_app/pages/social/chat/chat_home_page.dart';
+import 'package:badminton_booking_app/pages/social/create_post_page.dart';
 import 'package:badminton_booking_app/pages/social/recruitment/recruitment_page.dart';
+import 'package:badminton_booking_app/pages/social/social_manager.dart';
+import 'package:badminton_booking_app/pages/user/user_manager.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-class SocialPage extends StatelessWidget {
-  SocialPage({super.key});
+class SocialPage extends StatefulWidget {
+  const SocialPage({super.key});
 
-  final DateTime _now = DateTime.now();
+  @override
+  State<SocialPage> createState() => _SocialPageState();
+}
 
-  final List<_RecruitmentPost> _recruitmentPosts = [
-    _RecruitmentPost(
-      hostName: 'Bảo Minh',
-      createdAt: DateTime.now().subtract(const Duration(minutes: 15)),
-      description:
-          'Cần 2 bạn trình trung bình khá đánh đôi giao lưu. Team rất vui tính.',
-      requiredPlayers: 4,
-      joinedPlayers: 2,
-      skillLevel: 'Trung bình khá',
-      courtName: 'Sân Quận 7 - Court A',
-      playTime: DateTime.now().add(const Duration(hours: 2)),
-    ),
-    _RecruitmentPost(
-      hostName: 'Ngọc Anh',
-      createdAt: DateTime.now().subtract(const Duration(hours: 1, minutes: 10)),
-      description:
-          'Tuyển gấp 1 nữ trình trung bình để đánh đôi cố định sáng chủ nhật hàng tuần.',
-      requiredPlayers: 4,
-      joinedPlayers: 3,
-      skillLevel: 'Trung bình',
-      courtName: 'Sân Phú Nhuận - Court C',
-      playTime: DateTime.now().add(const Duration(days: 1, hours: 10)),
-    ),
-    _RecruitmentPost(
-      hostName: 'Văn Hòa',
-      createdAt: DateTime.now().subtract(const Duration(hours: 3)),
-      description:
-          'Nhóm mình chưa có sân, cần tuyển 3 bạn trình nâng cao lập team đi đánh giải.',
-      requiredPlayers: 5,
-      joinedPlayers: 1,
-      skillLevel: 'Nâng cao',
-    ),
-  ];
+class _SocialPageState extends State<SocialPage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<SocialManager>().loadInitial();
+    });
+  }
+
+  Future<void> _openCreatePost(BuildContext context) async {
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const CreatePostPage()),
+    );
+    if (result == true && mounted) {
+      await context.read<SocialManager>().refreshPosts();
+    }
+  }
+
+  Future<void> _refreshAll(SocialManager manager) async {
+    await Future.wait([
+      manager.refreshPosts(),
+      manager.refreshRecruitments(),
+    ]);
+  }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final manager = context.watch<SocialManager>();
 
-    return Scaffold(
-      backgroundColor: cs.surfaceVariant.withOpacity(0.3),
-      appBar: AppBar(
-        title: const Text(
-          'Cộng đồng cầu lông',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.group, size: 30),
-            tooltip: 'Tin nhắn',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => ChatHomePage()),
-              );
-            },
+    final userManager = context.watch<UserManager>();
+    final avatarUrl = userManager.avatarUrl;
+
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        backgroundColor: cs.surfaceVariant.withOpacity(0.3),
+        appBar: AppBar(
+          title: const Text(
+            'Cộng đồng cầu lông',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(width: 6),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.add_circle_outline),
+              tooltip: 'Đăng bài',
+              onPressed: () => _openCreatePost(context),
+            ),
+            IconButton(
+              icon: const Icon(Icons.group, size: 30),
+              tooltip: 'Tin nhắn',
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => ChatHomePage()),
+                );
+              },
+            ),
+            const SizedBox(width: 6),
+          ],
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: 'Posts'),
+              Tab(text: 'Recruitment'),
+            ],
+          ),
+        ),
+        body: SafeArea(
+          child: TabBarView(
+            children: [
+              _buildPostsTab(context, manager, avatarUrl),
+              _buildRecruitmentTab(context, manager),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPostsTab(
+    BuildContext context,
+    SocialManager manager,
+    String? avatarUrl,
+  ) {
+    return RefreshIndicator(
+      onRefresh: manager.refreshPosts,
+      child: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+              child: _buildCreatePostCard(context, avatarUrl),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Text(
+                'Bảng tin cộng đồng',
+                style: Theme.of(context)
+                    .textTheme
+                    .titleLarge
+                    ?.copyWith(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 12)),
+          _buildCommunityPosts(manager),
+          const SliverPadding(padding: EdgeInsets.only(bottom: 120)),
         ],
       ),
-      body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                child: _buildWelcomeCard(context),
+    );
+  }
+
+  Widget _buildRecruitmentTab(BuildContext context, SocialManager manager) {
+    return RefreshIndicator(
+      onRefresh: manager.refreshRecruitments,
+      child: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildWelcomeCard(context),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Bài tuyển thành viên',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                ],
               ),
             ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
-                child: Text(
-                  'Bài tuyển thành viên',
+          ),
+          _buildRecruitmentSection(manager),
+          const SliverPadding(padding: EdgeInsets.only(bottom: 120)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCreatePostCard(BuildContext context, String? avatarUrl) {
+    final cs = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 16,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Chia sẻ điều mới mẻ',
                   style: Theme.of(context)
                       .textTheme
-                      .titleLarge
-                      ?.copyWith(fontWeight: FontWeight.bold),
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w600),
                 ),
-              ),
+                TextButton.icon(
+                  onPressed: () => _openCreatePost(context),
+                  icon: const Icon(Icons.edit_outlined),
+                  label: const Text('Viết bài'),
+                ),
+              ],
             ),
-            SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  final post = _recruitmentPosts[index];
-                  return RecruitmentPostCard(
-                    hostName: post.hostName,
-                    createdTime: post.createdAt,
-                    requiredPlayers: post.requiredPlayers,
-                    joinedPlayers: post.joinedPlayers,
-                    description: post.description,
-                    skillLevel: post.skillLevel,
-                    courtName: post.courtName,
-                    playTime: post.playTime,
-                    onJoin: () {},
-                  );
-                },
-                childCount: _recruitmentPosts.length,
-              ),
+            const SizedBox(height: 12),
+            CreatePostBar(
+              onCreatePost: () => _openCreatePost(context),
+              onPickPhoto: () => _openCreatePost(context),
+              onInviteFriends: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const RecruitmentFormPage(),
+                  ),
+                );
+              },
+              avatarImageProvider:
+                  (avatarUrl != null && avatarUrl.isNotEmpty)
+                      ? NetworkImage(avatarUrl)
+                      : null,
+              hintText: 'Bạn đang nghĩ gì thế?',
+              elevation: 0,
             ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 4),
-                child: Text(
-                  'Bảng tin cộng đồng',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleLarge
-                      ?.copyWith(fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-            SliverList(
-              delegate: SliverChildListDelegate.fixed([
-                MyPost(
-                  message: 'https://picsum.photos/seed/recruitment1/1200/600',
-                  userName: 'Bảo Minh',
-                  time: _now,
-                ),
-                MyPost(
-                  message:
-                      'Đánh giao hữu cuối tuần này ở Quận 2, ai rảnh thì join nhé!',
-                  userName: 'Ngọc Anh',
-                  time: _now.subtract(const Duration(hours: 5)),
-                ),
-                MyPost(
-                  message: 'https://picsum.photos/seed/recruitment2/1200/600',
-                  userName: 'Văn Hòa',
-                  time: _now.subtract(const Duration(hours: 9)),
-                ),
-              ]),
-            ),
-            SliverPadding(padding: const EdgeInsets.only(bottom: 100)),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildRecruitmentSection(SocialManager manager) {
+    if (manager.isLoadingRecruitments && manager.recruitmentPosts.isEmpty) {
+      return const SliverToBoxAdapter(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 32),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
+    if (manager.recruitmentError != null && manager.recruitmentPosts.isEmpty) {
+      return SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          child: _ErrorBox(message: manager.recruitmentError!),
+        ),
+      );
+    }
+
+    if (manager.recruitmentPosts.isEmpty) {
+      return const SliverToBoxAdapter(
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          child: Text('Chưa có bài tuyển nào. Hãy là người đầu tiên đăng bài!'),
+        ),
+      );
+    }
+
+    return SliverList(
+      delegate: SliverChildBuilderDelegate(
+        (context, index) {
+          final RecruitmentPost post = manager.recruitmentPosts[index];
+          return RecruitmentPostCard(
+            hostName: post.authorName,
+            createdTime: post.createdAt,
+            requiredPlayers: post.requiredPlayers,
+            joinedPlayers: post.joinedPlayers,
+            description: post.description,
+            skillLevel: post.skillLevel,
+            playStyle: post.playStyle,
+            courtName: post.courtName,
+            playTime: post.eventTime,
+            locationNote: post.locationNote,
+            onJoin: () async {
+              try {
+                await manager.joinRecruitment(post.id);
+              } catch (error) {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(error.toString())),
+                );
+              }
+            },
+            isJoined: post.isJoined,
+            isOwner: post.isOwner,
+            isJoinLoading: manager.isJoining(post.id),
+          );
+        },
+        childCount: manager.recruitmentPosts.length,
+      ),
+    );
+  }
+
+  Widget _buildCommunityPosts(SocialManager manager) {
+    if (manager.isLoadingPosts && manager.posts.isEmpty) {
+      return const SliverToBoxAdapter(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 32),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
+    if (manager.postError != null && manager.posts.isEmpty) {
+      return SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          child: _ErrorBox(message: manager.postError!),
+        ),
+      );
+    }
+
+    if (manager.posts.isEmpty) {
+      return const SliverToBoxAdapter(
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          child: Text('Bảng tin đang trống. Đăng bài đầu tiên ngay nào!'),
+        ),
+      );
+    }
+
+    return SliverList(
+      delegate: SliverChildBuilderDelegate(
+        (context, index) {
+          final CommunityPost post = manager.posts[index];
+          return MyPost(
+            content: post.content,
+            userName: post.authorName,
+            time: post.createdAt,
+            imageUrls: post.imageUrls,
+          );
+        },
+        childCount: manager.posts.length,
       ),
     );
   }
@@ -225,24 +409,35 @@ class SocialPage extends StatelessWidget {
   }
 }
 
-class _RecruitmentPost {
-  final String hostName;
-  final DateTime createdAt;
-  final int requiredPlayers;
-  final int joinedPlayers;
-  final String? skillLevel;
-  final String? description;
-  final String? courtName;
-  final DateTime? playTime;
+class _ErrorBox extends StatelessWidget {
+  const _ErrorBox({required this.message});
 
-  const _RecruitmentPost({
-    required this.hostName,
-    required this.createdAt,
-    required this.requiredPlayers,
-    required this.joinedPlayers,
-    this.skillLevel,
-    this.description,
-    this.courtName,
-    this.playTime,
-  });
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cs.errorContainer,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.error_outline, color: cs.onErrorContainer),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(color: cs.onErrorContainer),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

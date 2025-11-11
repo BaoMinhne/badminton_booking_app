@@ -52,101 +52,172 @@ class _SocialPageState extends State<SocialPage> {
     final userManager = context.watch<UserManager>();
     final avatarUrl = userManager.avatarUrl;
 
-    return Scaffold(
-      backgroundColor: cs.surfaceVariant.withOpacity(0.3),
-      appBar: AppBar(
-        title: const Text(
-          'Cộng đồng cầu lông',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        backgroundColor: cs.surfaceVariant.withOpacity(0.3),
+        appBar: AppBar(
+          title: const Text(
+            'Cộng đồng cầu lông',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.add_circle_outline),
+              tooltip: 'Đăng bài',
+              onPressed: () => _openCreatePost(context),
+            ),
+            IconButton(
+              icon: const Icon(Icons.group, size: 30),
+              tooltip: 'Tin nhắn',
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => ChatHomePage()),
+                );
+              },
+            ),
+            const SizedBox(width: 6),
+          ],
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: 'Posts'),
+              Tab(text: 'Recruitment'),
+            ],
+          ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add_circle_outline),
-            tooltip: 'Đăng bài',
-            onPressed: () => _openCreatePost(context),
+        body: SafeArea(
+          child: TabBarView(
+            children: [
+              _buildPostsTab(context, manager, avatarUrl),
+              _buildRecruitmentTab(context, manager),
+            ],
           ),
-          IconButton(
-            icon: const Icon(Icons.group, size: 30),
-            tooltip: 'Tin nhắn',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => ChatHomePage()),
-              );
-            },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPostsTab(
+    BuildContext context,
+    SocialManager manager,
+    String? avatarUrl,
+  ) {
+    return RefreshIndicator(
+      onRefresh: manager.refreshPosts,
+      child: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+              child: _buildCreatePostCard(context, avatarUrl),
+            ),
           ),
-          const SizedBox(width: 6),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Text(
+                'Bảng tin cộng đồng',
+                style: Theme.of(context)
+                    .textTheme
+                    .titleLarge
+                    ?.copyWith(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 12)),
+          _buildCommunityPosts(manager),
+          const SliverPadding(padding: EdgeInsets.only(bottom: 120)),
         ],
       ),
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: () => _refreshAll(manager),
-          child: CustomScrollView(
-            slivers: [
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                  child: _buildWelcomeCard(context),
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
-                  child: CreatePostBar(
-                    // ấn vào ô nhập -> mở trang tạo post
-                    onCreatePost: () => _openCreatePost(context),
+    );
+  }
 
-                    // 3 action dưới—nếu chưa có picker thì cứ gọi trang tạo post luôn
-                    onPickPhoto: () => _openCreatePost(context),
-                    onInviteFriends: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const RecruitmentFormPage(),
-                        ),
-                      );
-                    },
-
-                    // Avatar (nếu có)
-                    avatarImageProvider:
-                        (avatarUrl != null && avatarUrl.isNotEmpty)
-                            ? NetworkImage(avatarUrl)
-                            : null, // hoặc để null
-
-                    // Tuỳ chỉnh giao diện
-                    hintText: 'Bạn đang nghĩ gì thế?',
-                    elevation: 5.0,
-                    // compact: true, // nếu muốn chỉ hiện 1 hàng (ẩn 3 action)
-                  ),
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
-                  child: Text(
+  Widget _buildRecruitmentTab(BuildContext context, SocialManager manager) {
+    return RefreshIndicator(
+      onRefresh: manager.refreshRecruitments,
+      child: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildWelcomeCard(context),
+                  const SizedBox(height: 24),
+                  Text(
                     'Bài tuyển thành viên',
                     style: Theme.of(context)
                         .textTheme
                         .titleLarge
                         ?.copyWith(fontWeight: FontWeight.bold),
                   ),
-                ),
+                ],
               ),
-              _buildRecruitmentSection(manager),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 4),
-                  child: Text(
-                    'Bảng tin cộng đồng',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleLarge
-                        ?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-              _buildCommunityPosts(manager),
-              const SliverPadding(padding: EdgeInsets.only(bottom: 120)),
-            ],
+            ),
           ),
+          _buildRecruitmentSection(manager),
+          const SliverPadding(padding: EdgeInsets.only(bottom: 120)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCreatePostCard(BuildContext context, String? avatarUrl) {
+    final cs = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 16,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Chia sẻ điều mới mẻ',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                TextButton.icon(
+                  onPressed: () => _openCreatePost(context),
+                  icon: const Icon(Icons.edit_outlined),
+                  label: const Text('Viết bài'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            CreatePostBar(
+              onCreatePost: () => _openCreatePost(context),
+              onPickPhoto: () => _openCreatePost(context),
+              onInviteFriends: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const RecruitmentFormPage(),
+                  ),
+                );
+              },
+              avatarImageProvider:
+                  (avatarUrl != null && avatarUrl.isNotEmpty)
+                      ? NetworkImage(avatarUrl)
+                      : null,
+              hintText: 'Bạn đang nghĩ gì thế?',
+              elevation: 0,
+            ),
+          ],
         ),
       ),
     );

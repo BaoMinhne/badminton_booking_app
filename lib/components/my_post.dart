@@ -178,25 +178,42 @@ class _MyPostState extends State<MyPost> {
         ),
 
         // Likes (optional)
-        if ((widget.likesCount ?? 0) > 0)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Text(
-              '${widget.likesCount} lượt thích',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-            ),
-          ),
+        Row(
+          children: [
+            // Likes
+            if ((widget.likesCount ?? 0) > 0)
+              Padding(
+                padding: const EdgeInsets.only(left: 12, right: 4),
+                child: Text(
+                  '${widget.likesCount} lượt thích',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+              ),
 
-        if ((widget.commentsCount ?? 0) > 0)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-            child: Text(
-              '${widget.commentsCount} bình luận',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ),
+            // Dot separator — chỉ hiện khi có likes và comments
+            if ((widget.likesCount ?? 0) > 0 && (widget.commentsCount ?? 0) > 0)
+              Padding(
+                padding: const EdgeInsets.only(left: 12, right: 4),
+                child: Icon(
+                  Icons.circle,
+                  size: 5,
+                  color: Theme.of(context).hintColor,
+                ),
+              ),
+
+            // Comments
+            if ((widget.commentsCount ?? 0) > 0)
+              Padding(
+                padding: const EdgeInsets.only(left: 12, right: 4),
+                child: Text(
+                  '${widget.commentsCount} bình luận',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
+          ],
+        ),
 
         // Caption: Username + content (like Instagram)
         if (widget.content.trim().isNotEmpty) ...[

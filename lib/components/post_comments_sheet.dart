@@ -72,6 +72,7 @@ class _PostCommentsSheetState extends State<PostCommentsSheet> {
     final media = MediaQuery.of(context);
     final height = media.size.height * 0.65;
     final bottomInset = media.viewInsets.bottom;
+    final cs = Theme.of(context).colorScheme;
 
     return SafeArea(
       top: false,
@@ -80,13 +81,15 @@ class _PostCommentsSheetState extends State<PostCommentsSheet> {
         builder: (context, _) {
           final comments = widget.manager.commentsFor(widget.postId);
           final isLoading = widget.manager.isLoadingComments(widget.postId);
-          final isSubmitting = widget.manager.isSubmittingComment(widget.postId);
+          final isSubmitting =
+              widget.manager.isSubmittingComment(widget.postId);
 
           return Container(
             padding: EdgeInsets.fromLTRB(16, 12, 16, 12 + bottomInset),
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surface,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(20)),
             ),
             child: SizedBox(
               height: height,
@@ -106,7 +109,8 @@ class _PostCommentsSheetState extends State<PostCommentsSheet> {
                     child: isLoading
                         ? const Center(child: CircularProgressIndicator())
                         : comments.isEmpty
-                            ? const Center(child: Text('Chưa có bình luận nào.'))
+                            ? const Center(
+                                child: Text('Chưa có bình luận nào.'))
                             : ListView.separated(
                                 padding: EdgeInsets.zero,
                                 itemCount: comments.length,
@@ -141,9 +145,14 @@ class _PostCommentsSheetState extends State<PostCommentsSheet> {
                             ? const SizedBox(
                                 height: 18,
                                 width: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2.2),
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2.2),
                               )
-                            : const Icon(Icons.send_rounded, size: 20),
+                            : Icon(
+                                Icons.send_rounded,
+                                size: 20,
+                                color: cs.onPrimary,
+                              ),
                       ),
                     ],
                   ),

@@ -47,6 +47,8 @@ class _SocialPageState extends State<SocialPage> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+
     final manager = context.watch<SocialManager>();
 
     final userManager = context.watch<UserManager>();
@@ -78,11 +80,27 @@ class _SocialPageState extends State<SocialPage> {
             ),
             const SizedBox(width: 6),
           ],
-          bottom: const TabBar(
+          bottom: TabBar(
             tabs: [
               Tab(text: 'Posts'),
               Tab(text: 'Recruitment'),
             ],
+            // Chữ tab đang chọn
+            labelStyle: tt.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              fontSize: 16, // ← tăng kích thước chữ
+            ),
+            // Chữ tab chưa chọn
+            unselectedLabelStyle: tt.titleSmall?.copyWith(
+              fontSize: 16, // ← giữ cùng size cho đồng đều
+              fontWeight: FontWeight.w500,
+            ),
+            labelColor: cs.onPrimary,
+            unselectedLabelColor: cs.onPrimary.withOpacity(0.65),
+            indicator: UnderlineTabIndicator(
+              borderSide: BorderSide(color: cs.onPrimary, width: 2.4),
+              insets: const EdgeInsets.symmetric(horizontal: 16),
+            ),
           ),
         ),
         body: SafeArea(
@@ -210,10 +228,9 @@ class _SocialPageState extends State<SocialPage> {
                   ),
                 );
               },
-              avatarImageProvider:
-                  (avatarUrl != null && avatarUrl.isNotEmpty)
-                      ? NetworkImage(avatarUrl)
-                      : null,
+              avatarImageProvider: (avatarUrl != null && avatarUrl.isNotEmpty)
+                  ? NetworkImage(avatarUrl)
+                  : null,
               hintText: 'Bạn đang nghĩ gì thế?',
               elevation: 0,
             ),
@@ -378,7 +395,7 @@ class _SocialPageState extends State<SocialPage> {
                       ),
                     );
                   },
-                  icon: const Icon(Icons.flash_on_rounded),
+                  icon: Icon(Icons.flash_on_rounded, color: cs.primary),
                   label: const Text('Tạo bài tuyển ngay'),
                   style: FilledButton.styleFrom(
                     backgroundColor: cs.onPrimary,

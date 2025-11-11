@@ -309,6 +309,7 @@ class _SocialPageState extends State<SocialPage> {
           return RecruitmentPostCard(
             hostName: post.authorName,
             createdTime: post.createdAt,
+            hostAvatarUrl: post.authorAvatarUrl,
             requiredPlayers: post.requiredPlayers,
             joinedPlayers: post.joinedPlayers,
             description: post.description,

@@ -32,11 +32,16 @@ class CommunityPost {
 
     final authorRecord = resolveExpandedRecord(record.expand?['author']);
     final authorData = authorRecord?.data;
-    final displayName = sanitizeDisplayName(
-      (authorData?['username'] as String?) ??
-          (authorData?['email'] as String?) ??
-          'Người dùng',
-    );
+    final authorId = (data['author'] as String?) ?? authorRecord?.id ?? '';
+    final isOwner =
+        authorId.isNotEmpty && authorId == pocketBase.authStore.record?.id;
+    final displayName = isOwner
+        ? 'Bạn'
+        : sanitizeDisplayName(
+            (authorData?['username'] as String?) ??
+                (authorData?['email'] as String?) ??
+                'Người dùng',
+          );
     final avatarUrl = resolveFileUrl(
       pocketBase,
       authorRecord,
@@ -45,7 +50,7 @@ class CommunityPost {
 
     return CommunityPost(
       id: record.id,
-      authorId: (data['author'] as String?) ?? authorRecord?.id ?? '',
+      authorId: authorId,
       authorName: displayName,
       authorAvatarUrl: avatarUrl,
       content: (data['content'] as String?)?.trim() ?? '',

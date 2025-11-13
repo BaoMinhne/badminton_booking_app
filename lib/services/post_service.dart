@@ -146,7 +146,8 @@ class PostService {
           pocketBase,
           postId: postId,
           userId: userId,
-        ))?.id;
+        ))
+            ?.id;
 
     if (recordId == null) {
       throw PostServiceException('Bạn chưa thích bài viết này.');
@@ -164,11 +165,12 @@ class PostService {
   Future<List<PostComment>> fetchComments(String postId) async {
     final pocketBase = await getPocketbaseInstance();
     try {
-      final result = await pocketBase.collection(postCommentsCollection).getFullList(
-            filter: 'post = "$postId"',
-            expand: 'author',
-            sort: 'created',
-          );
+      final result =
+          await pocketBase.collection(postCommentsCollection).getFullList(
+                filter: 'post = "$postId"',
+                expand: 'author',
+                sort: 'created',
+              );
       return result
           .map((record) => PostComment.fromRecord(record, pocketBase))
           .toList(growable: false);
@@ -177,6 +179,34 @@ class PostService {
     } catch (_) {
       throw PostServiceException('Không thể tải bình luận.');
     }
+  }
+
+  Future<CommunityPost?> fetchPostById(String id) async {
+    final pocketBase = await getPocketbaseInstance();
+    try {
+      final record = await pocketBase.collection(postsCollection).getOne(
+            id,
+            expand: 'author',
+          );
+      return recordToCommunityPost(record, pocketBase);
+    } on ClientException catch (error) {
+      if (error.statusCode == 404) {
+        return null;
+      }
+      throw PostServiceException(_mapClientError(error));
+    } catch (_) {
+      throw PostServiceException(
+        'Không thể tải bài viết. Vui lòng thử lại sau.',
+      );
+    }
+  }
+
+  Future<CommunityPost> recordToCommunityPost(
+    RecordModel record,
+    PocketBase pocketBase,
+  ) async {
+    final post = CommunityPost.fromRecord(record, pocketBase);
+    return _attachPostMeta(post, pocketBase);
   }
 
   Future<PostComment> createComment({
@@ -229,11 +259,12 @@ class PostService {
             perPage: userId != null ? 200 : 1,
             filter: 'post = "${post.id}"',
           );
-      final commentsFuture = pocketBase.collection(postCommentsCollection).getList(
-            page: 1,
-            perPage: 1,
-            filter: 'post = "${post.id}"',
-          );
+      final commentsFuture =
+          pocketBase.collection(postCommentsCollection).getList(
+                page: 1,
+                perPage: 1,
+                filter: 'post = "${post.id}"',
+              );
 
       final likesResult = await likesFuture;
       final commentsResult = await commentsFuture;
@@ -281,9 +312,10 @@ class PostService {
     required String userId,
   }) async {
     try {
-      final record = await pocketBase.collection(postLikesCollection).getFirstListItem(
-            'post = "$postId" && user = "$userId"',
-          );
+      final record =
+          await pocketBase.collection(postLikesCollection).getFirstListItem(
+                'post = "$postId" && user = "$userId"',
+              );
       return record;
     } on ClientException catch (error) {
       if (error.statusCode == 404) {

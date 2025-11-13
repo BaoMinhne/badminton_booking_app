@@ -1,6 +1,9 @@
+import 'dart:async';
 import 'dart:io';
 
+import 'package:badminton_booking_app/services/pocketbase_client.dart';
 import 'package:flutter/foundation.dart';
+import 'package:pocketbase/pocketbase.dart';
 
 import '../../models/community_post.dart';
 import '../../models/post_comment.dart';
@@ -11,10 +14,15 @@ import '../../services/recruitment_service.dart';
 class SocialManager with ChangeNotifier {
   SocialManager()
       : _postService = PostService(),
-        _recruitmentService = RecruitmentService();
+        _recruitmentService = RecruitmentService() {
+    _initializeRealtime();
+  }
 
   final PostService _postService;
   final RecruitmentService _recruitmentService;
+  // use if RecordSubscription isn't present in your SDK
+  UnsubscribeFunc? _postsUnsubscribe;
+  bool _isDisposed = false;
 
   bool _isLoadingPosts = false;
   bool _isLoadingRecruitments = false;
@@ -31,7 +39,8 @@ class SocialManager with ChangeNotifier {
   final Set<String> _loadingComments = <String>{};
   final Set<String> _submittingComments = <String>{};
   final Set<String> _loadedComments = <String>{};
-  final Map<String, List<PostComment>> _postComments = <String, List<PostComment>>{};
+  final Map<String, List<PostComment>> _postComments =
+      <String, List<PostComment>>{};
 
   bool get isLoadingPosts => _isLoadingPosts;
   bool get isLoadingRecruitments => _isLoadingRecruitments;
@@ -43,10 +52,12 @@ class SocialManager with ChangeNotifier {
   String? get postError => _postError;
   String? get recruitmentError => _recruitmentError;
 
-  bool isJoining(String recruitmentId) => _joiningRecruitments.contains(recruitmentId);
+  bool isJoining(String recruitmentId) =>
+      _joiningRecruitments.contains(recruitmentId);
   bool isLikingPost(String postId) => _likingPosts.contains(postId);
   bool isLoadingComments(String postId) => _loadingComments.contains(postId);
-  bool isSubmittingComment(String postId) => _submittingComments.contains(postId);
+  bool isSubmittingComment(String postId) =>
+      _submittingComments.contains(postId);
   List<PostComment> commentsFor(String postId) =>
       _postComments[postId] ?? const <PostComment>[];
 
@@ -55,6 +66,35 @@ class SocialManager with ChangeNotifier {
       refreshPosts(),
       refreshRecruitments(),
     ]);
+  }
+
+  void _initializeRealtime() {
+    unawaited(_setupPostsRealtime());
+  }
+
+  Future<void> _setupPostsRealtime() async {
+    try {
+      final pocketBase = await getPocketbaseInstance();
+
+      // Hủy subscription cũ (nếu có)
+      final oldUnsub = _postsUnsubscribe;
+      _postsUnsubscribe = null;
+      if (oldUnsub != null) {
+        await oldUnsub(); // gọi function
+      }
+
+      _postsUnsubscribe =
+          await pocketBase.collection(PostService.postsCollection).subscribe(
+                '*',
+                _handlePostRealtimeEvent,
+                expand: 'author', // string, không phải List
+              );
+    } catch (error, stackTrace) {
+      if (kDebugMode) {
+        debugPrint('Failed to initialize posts realtime subscription: $error');
+        debugPrint(stackTrace.toString());
+      }
+    }
   }
 
   Future<void> refreshPosts() async {
@@ -191,7 +231,8 @@ class SocialManager with ChangeNotifier {
         content: content,
       );
 
-      final comments = List<PostComment>.from(commentsFor(postId))..add(comment);
+      final comments = List<PostComment>.from(commentsFor(postId))
+        ..add(comment);
       _postComments[postId] = comments;
 
       final index = _posts.indexWhere((post) => post.id == postId);
@@ -232,5 +273,72 @@ class SocialManager with ChangeNotifier {
     final posts = List<CommunityPost>.from(_posts);
     posts[index] = updated;
     _posts = posts;
+  }
+
+  Future<void> _handlePostRealtimeEvent(RecordSubscriptionEvent event) async {
+    if (_isDisposed) {
+      return;
+    }
+
+    final record = event.record;
+    if (record == null) {
+      return;
+    }
+
+    try {
+      switch (event.action) {
+        case 'delete':
+          _removePost(record.id);
+          break;
+        case 'create':
+        case 'update':
+          final isActive = record.data['is_active'] != false;
+          if (!isActive) {
+            _removePost(record.id);
+            break;
+          }
+
+          final pocketBase = await getPocketbaseInstance();
+          final post =
+              await _postService.recordToCommunityPost(record, pocketBase);
+          final index = _posts.indexWhere((existing) => existing.id == post.id);
+          if (index == -1) {
+            _posts = [post, ..._posts];
+          } else {
+            _updatePostAt(index, post);
+          }
+          break;
+        default:
+          break;
+      }
+    } catch (error, stackTrace) {
+      if (kDebugMode) {
+        debugPrint('Failed to process realtime event: $error');
+        debugPrint(stackTrace.toString());
+      }
+    } finally {
+      if (!_isDisposed) {
+        notifyListeners();
+      }
+    }
+  }
+
+  void _removePost(String postId) {
+    final previousLength = _posts.length;
+    _posts = _posts.where((post) => post.id != postId).toList(growable: false);
+    if (previousLength != _posts.length) {
+      _postComments.remove(postId);
+    }
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    final unsub = _postsUnsubscribe;
+    _postsUnsubscribe = null;
+    if (unsub != null) {
+      unawaited(unsub()); // gọi function để unsubscribe
+    }
+    super.dispose();
   }
 }

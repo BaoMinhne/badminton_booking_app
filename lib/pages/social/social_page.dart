@@ -116,7 +116,7 @@ class _SocialPageState extends State<SocialPage> {
           ],
           bottom: TabBar(
             tabs: [
-              Tab(text: 'Posts'),
+              Tab(text: 'Community'),
               Tab(text: 'Recruitment'),
             ],
             // Chữ tab đang chọn
@@ -379,10 +379,8 @@ class _SocialPageState extends State<SocialPage> {
             isLiked: post.isLiked,
             likesCount: post.likesCount,
             commentsCount: post.commentsCount,
-            onLikePressed: () =>
-                _handleLikePressed(context, manager, post),
-            onCommentPressed: () =>
-                _openCommentsSheet(context, manager, post),
+            onLikePressed: () => _handleLikePressed(context, manager, post),
+            onCommentPressed: () => _openCommentsSheet(context, manager, post),
           );
         },
         childCount: manager.posts.length,

@@ -1,15 +1,22 @@
 import 'package:pocketbase/pocketbase.dart';
 
+import '../utils/pocketbase_utils.dart';
+
 class CommunityPost {
   const CommunityPost({
     required this.id,
     required this.authorId,
     required this.authorName,
+    required this.authorAvatarUrl,
     required this.content,
     required this.imageUrls,
     required this.isActive,
     required this.createdAt,
     required this.updatedAt,
+    this.likesCount = 0,
+    this.isLiked = false,
+    this.likeRecordId,
+    this.commentsCount = 0,
   });
 
   factory CommunityPost.fromRecord(RecordModel record, PocketBase pocketBase) {
@@ -23,18 +30,29 @@ class CommunityPost {
       imageUrls.add(url);
     }
 
-    final authorRecord = _resolveExpandedRecord(record.expand?['author']);
+    final authorRecord = resolveExpandedRecord(record.expand?['author']);
     final authorData = authorRecord?.data;
-    final displayName = _sanitizeName(
-      (authorData?['username'] as String?) ??
-          (authorData?['email'] as String?) ??
-          'Người dùng',
+    final authorId = (data['author'] as String?) ?? authorRecord?.id ?? '';
+    final isOwner =
+        authorId.isNotEmpty && authorId == pocketBase.authStore.record?.id;
+    final displayName = isOwner
+        ? 'Bạn'
+        : sanitizeDisplayName(
+            (authorData?['username'] as String?) ??
+                (authorData?['email'] as String?) ??
+                'Người dùng',
+          );
+    final avatarUrl = resolveFileUrl(
+      pocketBase,
+      authorRecord,
+      authorData?['avatar'],
     );
 
     return CommunityPost(
       id: record.id,
-      authorId: (data['author'] as String?) ?? authorRecord?.id ?? '',
+      authorId: authorId,
       authorName: displayName,
+      authorAvatarUrl: avatarUrl,
       content: (data['content'] as String?)?.trim() ?? '',
       imageUrls: imageUrls,
       isActive: data['is_active'] == true,
@@ -46,13 +64,52 @@ class CommunityPost {
   final String id;
   final String authorId;
   final String authorName;
+  final String? authorAvatarUrl;
   final String content;
   final List<String> imageUrls;
   final bool isActive;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final int likesCount;
+  final bool isLiked;
+  final String? likeRecordId;
+  final int commentsCount;
 
   bool get hasImages => imageUrls.isNotEmpty;
+
+  CommunityPost copyWith({
+    String? id,
+    String? authorId,
+    String? authorName,
+    String? authorAvatarUrl,
+    String? content,
+    List<String>? imageUrls,
+    bool? isActive,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    int? likesCount,
+    bool? isLiked,
+    Object? likeRecordId = _unset,
+    int? commentsCount,
+  }) {
+    return CommunityPost(
+      id: id ?? this.id,
+      authorId: authorId ?? this.authorId,
+      authorName: authorName ?? this.authorName,
+      authorAvatarUrl: authorAvatarUrl ?? this.authorAvatarUrl,
+      content: content ?? this.content,
+      imageUrls: imageUrls ?? this.imageUrls,
+      isActive: isActive ?? this.isActive,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      likesCount: likesCount ?? this.likesCount,
+      isLiked: isLiked ?? this.isLiked,
+      likeRecordId: likeRecordId == _unset
+          ? this.likeRecordId
+          : likeRecordId as String?,
+      commentsCount: commentsCount ?? this.commentsCount,
+    );
+  }
 }
 
 List<String> _normalizeFileList(dynamic value) {
@@ -69,24 +126,4 @@ List<String> _normalizeFileList(dynamic value) {
   return const [];
 }
 
-RecordModel? _resolveExpandedRecord(dynamic expanded) {
-  if (expanded is RecordModel) {
-    return expanded;
-  }
-  if (expanded is List) {
-    for (final item in expanded) {
-      if (item is RecordModel) {
-        return item;
-      }
-    }
-  }
-  return null;
-}
-
-String _sanitizeName(String? value) {
-  final trimmed = value?.trim();
-  if (trimmed == null || trimmed.isEmpty) {
-    return 'Người dùng';
-  }
-  return trimmed;
-}
+const Object _unset = Object();

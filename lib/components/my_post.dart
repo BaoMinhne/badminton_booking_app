@@ -7,18 +7,21 @@ class MyPost extends StatefulWidget {
     required this.userName,
     required this.time,
     this.imageUrls = const [],
+    this.avatarUrl,
     this.onLikePressed,
     this.onCommentPressed,
     this.onSharePressed,
     this.onSavePressed,
     this.isLiked = false,
     this.likesCount,
+    this.commentsCount,
   });
 
   final String content;
   final String userName;
   final DateTime time;
   final List<String> imageUrls;
+  final String? avatarUrl;
 
   // Actions
   final VoidCallback? onLikePressed;
@@ -29,6 +32,7 @@ class MyPost extends StatefulWidget {
   // UI state (optional)
   final bool isLiked;
   final int? likesCount;
+  final int? commentsCount;
 
   @override
   State<MyPost> createState() => _MyPostState();
@@ -37,13 +41,11 @@ class MyPost extends StatefulWidget {
 class _MyPostState extends State<MyPost> {
   late final PageController _pageController;
   int _currentIndex = 0;
-  late bool _liked;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController();
-    _liked = widget.isLiked;
   }
 
   @override
@@ -69,16 +71,22 @@ class _MyPostState extends State<MyPost> {
             children: [
               CircleAvatar(
                 radius: 20,
-                backgroundColor: cs.primary,
-                child: Text(
-                  widget.userName.isNotEmpty
-                      ? widget.userName[0].toUpperCase()
-                      : 'U',
-                  style: TextStyle(
-                    color: cs.onPrimary,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
+                backgroundColor:
+                    widget.avatarUrl == null ? cs.primary : Colors.transparent,
+                backgroundImage: widget.avatarUrl != null
+                    ? NetworkImage(widget.avatarUrl!)
+                    : null,
+                child: widget.avatarUrl == null
+                    ? Text(
+                        widget.userName.isNotEmpty
+                            ? widget.userName[0].toUpperCase()
+                            : 'U',
+                        style: TextStyle(
+                          color: cs.onPrimary,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      )
+                    : null,
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -135,14 +143,13 @@ class _MyPostState extends State<MyPost> {
             children: [
               IconButton(
                 onPressed: () {
-                  setState(() => _liked = !_liked);
                   widget.onLikePressed?.call();
                 },
                 icon: Icon(
-                  _liked ? Icons.favorite : Icons.favorite_border,
+                  widget.isLiked ? Icons.favorite : Icons.favorite_border,
                   size: 30,
                 ),
-                color: _liked ? Colors.red : cs.onSurface,
+                color: widget.isLiked ? Colors.red : cs.onSurface,
               ),
               IconButton(
                 onPressed: widget.onCommentPressed,
@@ -171,16 +178,42 @@ class _MyPostState extends State<MyPost> {
         ),
 
         // Likes (optional)
-        if ((widget.likesCount ?? 0) > 0)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Text(
-              '${widget.likesCount} lượt thích',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-            ),
-          ),
+        Row(
+          children: [
+            // Likes
+            if ((widget.likesCount ?? 0) > 0)
+              Padding(
+                padding: const EdgeInsets.only(left: 12, right: 4),
+                child: Text(
+                  '${widget.likesCount} lượt thích',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+              ),
+
+            // Dot separator — chỉ hiện khi có likes và comments
+            if ((widget.likesCount ?? 0) > 0 && (widget.commentsCount ?? 0) > 0)
+              Padding(
+                padding: const EdgeInsets.only(left: 12, right: 4),
+                child: Icon(
+                  Icons.circle,
+                  size: 5,
+                  color: Theme.of(context).hintColor,
+                ),
+              ),
+
+            // Comments
+            if ((widget.commentsCount ?? 0) > 0)
+              Padding(
+                padding: const EdgeInsets.only(left: 12, right: 4),
+                child: Text(
+                  '${widget.commentsCount} bình luận',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
+          ],
+        ),
 
         // Caption: Username + content (like Instagram)
         if (widget.content.trim().isNotEmpty) ...[

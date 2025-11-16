@@ -1,11 +1,14 @@
 import 'package:badminton_booking_app/utils/recruitment_dictionary.dart';
 import 'package:pocketbase/pocketbase.dart';
 
+import '../utils/pocketbase_utils.dart';
+
 class RecruitmentPost {
   const RecruitmentPost({
     required this.id,
     required this.authorId,
     required this.authorName,
+    required this.authorAvatarUrl,
     required this.description,
     required this.requiredPlayers,
     required this.joinedPlayers,
@@ -30,12 +33,21 @@ class RecruitmentPost {
     final authorRecord = _resolveExpandedRecord(record.expand?['author']);
     final authorData = authorRecord?.data;
     final authorId = (data['author'] as String?) ?? authorRecord?.id ?? '';
-    final authorName = _sanitizeName(
-          (authorData?['username'] as String?) ??
-              (authorData?['email'] as String?),
-          // Bỏ fallback 'Người chơi' ở trong này
-        ) ??
-        'Người chơi';
+    final loggedInUserId = currentUserId ?? pocketBase.authStore.record?.id;
+    final isOwner = authorId == loggedInUserId;
+    final authorName = isOwner
+        ? 'Bạn'
+        : _sanitizeName(
+              (authorData?['username'] as String?) ??
+                  (authorData?['email'] as String?),
+              // Bỏ fallback 'Người chơi' ở trong này
+            ) ??
+            'Người chơi';
+    final authorAvatarUrl = resolveFileUrl(
+      pocketBase,
+      authorRecord,
+      authorData?['avatar'],
+    );
 
     final courtRecord = _resolveExpandedRecord(record.expand?['court']);
     final courtData = courtRecord?.data;
@@ -49,12 +61,13 @@ class RecruitmentPost {
         .toList();
 
     final joinedCount = applicantUserIds.length + 1; // tính cả chủ bài
-    final hasJoined = applicantUserIds.contains(currentUserId);
+    final hasJoined = applicantUserIds.contains(loggedInUserId);
 
     return RecruitmentPost(
       id: record.id,
       authorId: authorId,
       authorName: authorName,
+      authorAvatarUrl: authorAvatarUrl,
       description: (data['content'] as String?)?.trim() ?? '',
       requiredPlayers: (data['need_members'] as int?) ?? 0,
       joinedPlayers: joinedCount,
@@ -66,8 +79,8 @@ class RecruitmentPost {
       createdAt: DateTime.parse(data['created'] as String),
       eventTime: _tryParseDateTime(data['event_time']),
       courtName: courtName,
-      isJoined: hasJoined || authorId == currentUserId,
-      isOwner: authorId == currentUserId,
+      isJoined: hasJoined || authorId == loggedInUserId,
+      isOwner: isOwner,
       locationNote: (data['location_note'] as String?)?.trim(),
     );
   }
@@ -75,6 +88,7 @@ class RecruitmentPost {
   final String id;
   final String authorId;
   final String authorName;
+  final String? authorAvatarUrl;
   final String description;
   final int requiredPlayers;
   final int joinedPlayers;
@@ -90,11 +104,13 @@ class RecruitmentPost {
   RecruitmentPost copyWith({
     int? joinedPlayers,
     bool? isJoined,
+    String? authorAvatarUrl,
   }) {
     return RecruitmentPost(
       id: id,
       authorId: authorId,
       authorName: authorName,
+      authorAvatarUrl: authorAvatarUrl ?? this.authorAvatarUrl,
       description: description,
       requiredPlayers: requiredPlayers,
       joinedPlayers: joinedPlayers ?? this.joinedPlayers,

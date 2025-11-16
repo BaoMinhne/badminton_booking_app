@@ -5,6 +5,7 @@ class RecruitmentPostCard extends StatelessWidget {
   final String hostName;
   final DateTime createdTime;
   final String? skillLevel;
+  final String? hostAvatarUrl;
   final int requiredPlayers;
   final int joinedPlayers;
   final String? description;
@@ -24,6 +25,7 @@ class RecruitmentPostCard extends StatelessWidget {
     required this.requiredPlayers,
     required this.joinedPlayers,
     this.skillLevel,
+    this.hostAvatarUrl,
     this.description,
     this.courtName,
     this.playTime,
@@ -158,14 +160,19 @@ class RecruitmentPostCard extends StatelessWidget {
       children: [
         CircleAvatar(
           radius: 26,
-          backgroundColor: cs.primary,
-          child: Text(
-            (hostName.isNotEmpty ? hostName[0] : '?').toUpperCase(),
-            style: textTheme.titleMedium?.copyWith(
-              color: cs.onPrimary,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          backgroundColor:
+              hostAvatarUrl == null ? cs.primary : Colors.transparent,
+          backgroundImage:
+              hostAvatarUrl != null ? NetworkImage(hostAvatarUrl!) : null,
+          child: hostAvatarUrl == null
+              ? Text(
+                  (hostName.isNotEmpty ? hostName[0] : '?').toUpperCase(),
+                  style: textTheme.titleMedium?.copyWith(
+                    color: cs.onPrimary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                )
+              : null,
         ),
         const SizedBox(width: 16),
         Expanded(

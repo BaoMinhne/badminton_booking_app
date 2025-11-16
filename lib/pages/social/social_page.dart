@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:badminton_booking_app/components/create_post.dart';
 import 'package:badminton_booking_app/components/my_post.dart';
+import 'package:badminton_booking_app/components/post_comments_sheet.dart';
 import 'package:badminton_booking_app/components/recruitment_post_card.dart';
 import 'package:badminton_booking_app/models/community_post.dart';
 import 'package:badminton_booking_app/models/recruitment_post.dart';
@@ -44,6 +47,37 @@ class _SocialPageState extends State<SocialPage> {
     ]);
   }
 
+  void _handleLikePressed(
+    BuildContext context,
+    SocialManager manager,
+    CommunityPost post,
+  ) {
+    unawaited(
+      manager.toggleLike(post.id).catchError((error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.toString())),
+        );
+      }),
+    );
+  }
+
+  Future<void> _openCommentsSheet(
+    BuildContext context,
+    SocialManager manager,
+    CommunityPost post,
+  ) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => PostCommentsSheet(
+        postId: post.id,
+        manager: manager,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -82,7 +116,7 @@ class _SocialPageState extends State<SocialPage> {
           ],
           bottom: TabBar(
             tabs: [
-              Tab(text: 'Posts'),
+              Tab(text: 'Community'),
               Tab(text: 'Recruitment'),
             ],
             // Chữ tab đang chọn
@@ -275,6 +309,7 @@ class _SocialPageState extends State<SocialPage> {
           return RecruitmentPostCard(
             hostName: post.authorName,
             createdTime: post.createdAt,
+            hostAvatarUrl: post.authorAvatarUrl,
             requiredPlayers: post.requiredPlayers,
             joinedPlayers: post.joinedPlayers,
             description: post.description,
@@ -340,6 +375,12 @@ class _SocialPageState extends State<SocialPage> {
             userName: post.authorName,
             time: post.createdAt,
             imageUrls: post.imageUrls,
+            avatarUrl: post.authorAvatarUrl,
+            isLiked: post.isLiked,
+            likesCount: post.likesCount,
+            commentsCount: post.commentsCount,
+            onLikePressed: () => _handleLikePressed(context, manager, post),
+            onCommentPressed: () => _openCommentsSheet(context, manager, post),
           );
         },
         childCount: manager.posts.length,

@@ -97,26 +97,19 @@ class PostManager extends ChangeNotifier {
 
     try {
       if (post.isLiked) {
+        // chỉ call API, không update _posts
         await _postService.unlikePost(
           postId: postId,
           likeRecordId: post.likeRecordId,
         );
-        final newCount = post.likesCount > 0 ? post.likesCount - 1 : 0;
-        final updated = post.copyWith(
-          isLiked: false,
-          likesCount: newCount,
-          likeRecordId: null,
-        );
-        _updatePostAt(index, updated);
       } else {
-        final likeRecordId = await _postService.likePost(postId);
-        final updated = post.copyWith(
-          isLiked: true,
-          likesCount: post.likesCount + 1,
-          likeRecordId: likeRecordId,
-        );
-        _updatePostAt(index, updated);
+        await _postService.likePost(postId);
+        // không cần trả về likeRecordId ở đây nữa,
+        // realtime sẽ set lại chính xác
       }
+      // Realtime _handlePostLikeEvent sẽ:
+      // - tăng/giảm likesCount
+      // - set isLiked & likeRecordId đúng cho user hiện tại
     } on PostServiceException catch (error) {
       _postError = error.message;
       rethrow;
@@ -160,22 +153,15 @@ class PostManager extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final comment = await _postService.createComment(
+      // Chỉ gọi API, KHÔNG đụng vào _postComments hay _posts nữa
+      await _postService.createComment(
         postId: postId,
         content: content,
       );
 
-      final comments = List<PostComment>.from(commentsFor(postId))
-        ..add(comment);
-      _postComments[postId] = comments;
-
-      final index = _posts.indexWhere((post) => post.id == postId);
-      if (index != -1) {
-        final post = _posts[index];
-        final updated =
-            post.copyWith(commentsCount: post.commentsCount + 1);
-        _updatePostAt(index, updated);
-      }
+      // Realtime "create" sẽ tự:
+      // - tăng commentsCount trong _handlePostCommentEvent
+      // - thêm PostComment vào _postComments nếu chưa tồn tại
     } on PostServiceException catch (error) {
       _postError = error.message;
       rethrow;
@@ -249,10 +235,10 @@ class PostManager extends ChangeNotifier {
       _commentsUnsubscribe = await pocketBase
           .collection(PostService.postCommentsCollection)
           .subscribe(
-        '*',
-        _handlePostCommentEvent,
-        expand: 'author',
-      );
+            '*',
+            _handlePostCommentEvent,
+            expand: 'author',
+          );
     } catch (error, stackTrace) {
       if (kDebugMode) {
         debugPrint(
@@ -346,10 +332,9 @@ class PostManager extends ChangeNotifier {
             isLiked: currentUserId != null && currentUserId == likeUserId
                 ? true
                 : post.isLiked,
-            likeRecordId:
-                currentUserId != null && currentUserId == likeUserId
-                    ? record.id
-                    : post.likeRecordId,
+            likeRecordId: currentUserId != null && currentUserId == likeUserId
+                ? record.id
+                : post.likeRecordId,
           );
           _updatePostAt(index, updated);
           break;
@@ -360,10 +345,9 @@ class PostManager extends ChangeNotifier {
             isLiked: currentUserId != null && currentUserId == likeUserId
                 ? false
                 : post.isLiked,
-            likeRecordId:
-                currentUserId != null && currentUserId == likeUserId
-                    ? null
-                    : post.likeRecordId,
+            likeRecordId: currentUserId != null && currentUserId == likeUserId
+                ? null
+                : post.likeRecordId,
           );
           _updatePostAt(index, updated);
           break;
@@ -418,10 +402,17 @@ class PostManager extends ChangeNotifier {
         case 'create':
           final newCount = post.commentsCount + 1;
           _updatePostAt(index, post.copyWith(commentsCount: newCount));
+
           if (hasLoadedComments && updatedComment != null) {
-            final comments = List<PostComment>.from(commentsFor(postId))
-              ..add(updatedComment);
-            _postComments[postId] = comments;
+            final comments = List<PostComment>.from(commentsFor(postId));
+
+            final alreadyExists = comments
+                .any((c) => c.id == updatedComment!.id); // kiểm tra trùng
+
+            if (!alreadyExists) {
+              comments.add(updatedComment!);
+              _postComments[postId] = comments;
+            }
           }
           break;
         case 'update':
@@ -476,21 +467,35 @@ class PostManager extends ChangeNotifier {
   }
 
   String? _extractRelationId(RecordModel record, String field) {
-    final dataValue = record.data[field];
+    // 1. Lấy thẳng id từ data nếu có
+    final Object? dataValue = record.data[field];
     if (dataValue is String && dataValue.isNotEmpty) {
       return dataValue;
     }
 
-    final expanded = record.expand?[field];
+    // 2. Lấy từ expand (map có thể null)
+    final expandMap = record.expand;
+    if (expandMap == null) {
+      return null;
+    }
+
+    final Object? expanded = expandMap[field];
+
+    // Trường hợp expand là 1 RecordModel
     if (expanded is RecordModel) {
       return expanded.id;
     }
-    if (expanded is List && expanded.isNotEmpty) {
-      final first = expanded.first;
-      if (first is RecordModel) {
-        return first.id;
+
+    // Trường hợp expand là list RecordModel
+    if (expanded is List) {
+      if (expanded.isNotEmpty) {
+        final first = expanded.first;
+        if (first is RecordModel) {
+          return first.id;
+        }
       }
     }
+
     return null;
   }
 

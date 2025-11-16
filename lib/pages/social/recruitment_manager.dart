@@ -85,14 +85,13 @@ class RecruitmentManager extends ChangeNotifier {
       _postsUnsubscribe = await pocketBase
           .collection(RecruitmentService.recruitmentPostsCollection)
           .subscribe(
-        '*',
-        _handleRecruitmentPostEvent,
-        expand: 'author,court',
-      );
+            '*',
+            _handleRecruitmentPostEvent,
+            expand: 'author,court',
+          );
     } catch (error, stackTrace) {
       if (kDebugMode) {
-        debugPrint(
-            'Failed to initialize recruitment posts realtime: $error');
+        debugPrint('Failed to initialize recruitment posts realtime: $error');
         debugPrint(stackTrace.toString());
       }
     }
@@ -111,10 +110,10 @@ class RecruitmentManager extends ChangeNotifier {
       _applicantsUnsubscribe = await pocketBase
           .collection(RecruitmentService.recruitmentApplicantsCollection)
           .subscribe(
-        '*',
-        _handleRecruitmentApplicantEvent,
-        expand: 'user,recruitment',
-      );
+            '*',
+            _handleRecruitmentApplicantEvent,
+            expand: 'user,recruitment',
+          );
     } catch (error, stackTrace) {
       if (kDebugMode) {
         debugPrint(
@@ -253,21 +252,35 @@ class RecruitmentManager extends ChangeNotifier {
   }
 
   String? _extractRelationId(RecordModel record, String field) {
-    final dataValue = record.data[field];
+    // 1. Lấy thẳng id từ data nếu có
+    final Object? dataValue = record.data[field];
     if (dataValue is String && dataValue.isNotEmpty) {
       return dataValue;
     }
 
-    final expanded = record.expand?[field];
+    // 2. Lấy từ expand (map có thể null)
+    final expandMap = record.expand;
+    if (expandMap == null) {
+      return null;
+    }
+
+    final Object? expanded = expandMap[field];
+
+    // Trường hợp expand là 1 RecordModel
     if (expanded is RecordModel) {
       return expanded.id;
     }
-    if (expanded is List && expanded.isNotEmpty) {
-      final first = expanded.first;
-      if (first is RecordModel) {
-        return first.id;
+
+    // Trường hợp expand là list RecordModel
+    if (expanded is List) {
+      if (expanded.isNotEmpty) {
+        final first = expanded.first;
+        if (first is RecordModel) {
+          return first.id;
+        }
       }
     }
+
     return null;
   }
 

@@ -1,104 +1,31 @@
 import 'package:badminton_booking_app/models/chat_contact.dart';
+import 'package:badminton_booking_app/pages/social/chat/add_friend_page.dart';
+import 'package:badminton_booking_app/pages/social/chat/chat_manager.dart';
+import 'package:badminton_booking_app/pages/social/chat/friend_manager.dart';
 import 'package:badminton_booking_app/pages/social/chat/chat_page.dart';
 import 'package:badminton_booking_app/pages/social/chat/widgets/chat_header.dart';
 import 'package:badminton_booking_app/pages/social/chat/widgets/chat_section_header.dart';
 import 'package:badminton_booking_app/pages/social/chat/widgets/contact_list_tile.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-import 'add_friend_page.dart';
-
-class ChatHomePage extends StatelessWidget {
+class ChatHomePage extends StatefulWidget {
   const ChatHomePage({super.key});
 
-  static const List<ChatContact> _activeChats = [
-    ChatContact(
-      id: 'chat-1',
-      name: 'Nhỏ quậy lắm chiều',
-      avatarText: 'NC',
-      lastMessage: 'Bạn: hehe hehe <3 tối qua đánh cầu nhe bạn',
-      lastMessageTimeLabel: '1 phút',
-      unreadCount: 2,
-      isOnline: true,
-    ),
-    ChatContact(
-      id: 'chat-2',
-      name: 'Bến Đò Không Người Lái Đó',
-      avatarText: 'BD',
-      lastMessage: 'Bạn: tìm được con trai thất lạc nên khóc...',
-      lastMessageTimeLabel: '15 phút',
-    ),
-    ChatContact(
-      id: 'chat-3',
-      name: 'Cf chủ nhật',
-      avatarText: 'CF',
-      lastMessage: '😊 😌',
-      lastMessageTimeLabel: '30 phút',
-      isOnline: true,
-    ),
-    ChatContact(
-      id: 'chat-4',
-      name: 'Trần Gia Thạnh',
-      avatarText: 'TT',
-      lastMessage: 'Đã gửi cho bạn một ảnh',
-      lastMessageTimeLabel: '1 giờ',
-    ),
-    ChatContact(
-      id: 'chat-5',
-      name: 'Khu Tự Trị Dữ Đồ',
-      avatarText: 'KD',
-      lastMessage: 'Bé thỏ mới uống: Mà deokdame đáng cháy vcl',
-      lastMessageTimeLabel: '2 giờ',
-      unreadCount: 1,
-    ),
-    ChatContact(
-      id: 'chat-6',
-      name: 'Hua Tan Datt',
-      avatarText: 'HD',
-      lastMessage: 'Game bào điên',
-      lastMessageTimeLabel: '5 giờ',
-    ),
-  ];
+  @override
+  State<ChatHomePage> createState() => _ChatHomePageState();
+}
 
-  static const List<ChatContact> _friends = [
-    ChatContact(
-      id: 'friend-1',
-      name: 'Nhỏ quậy lắm chiều',
-      avatarText: 'NC',
-      statusMessage: 'Bạn: chờ nứng l đi mà nứng !',
-      isOnline: true,
-    ),
-    ChatContact(
-      id: 'friend-2',
-      name: 'Bến Đò Không Người Lái Đó',
-      avatarText: 'BD',
-      statusMessage: 'Bạn: tìm được con trai thất lạc nên khóc...',
-    ),
-    ChatContact(
-      id: 'friend-3',
-      name: 'Cf chủ nhật',
-      avatarText: 'CF',
-      statusMessage: 'Bạn bè để cà phê thôi nha 😌',
-      isOnline: true,
-    ),
-    ChatContact(
-      id: 'friend-4',
-      name: 'Trần Gia Thạnh',
-      avatarText: 'TT',
-      statusMessage: 'Luôn sẵn sàng cho một set đôi',
-    ),
-    ChatContact(
-      id: 'friend-5',
-      name: 'Khu Tự Trị Dữ Đồ',
-      avatarText: 'KD',
-      statusMessage: 'Tối nay đánh tăng 2 nhen',
-    ),
-    ChatContact(
-      id: 'friend-6',
-      name: 'Hua Tan Datt',
-      avatarText: 'HD',
-      statusMessage: 'Game báo done',
-    ),
-  ];
+class _ChatHomePageState extends State<ChatHomePage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<FriendManager>().loadInitial();
+      context.read<ChatManager>().refreshRooms();
+    });
+  }
 
   TabBar _buildTabs(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -131,6 +58,10 @@ class ChatHomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final friendManager = context.watch<FriendManager>();
+    final chatManager = context.watch<ChatManager>();
+    final activeChats = chatManager.activeChats;
+    final friends = friendManager.friendContacts;
     return DefaultTabController(
       length: 2,
       child: Scaffold(
@@ -155,106 +86,156 @@ class ChatHomePage extends StatelessWidget {
         ),
         body: TabBarView(
           children: [
-            _buildActiveChatList(context),
-            _buildFriendList(context, cs),
+            _buildActiveChatList(context, chatManager, activeChats),
+            _buildFriendList(context, cs, friendManager, friends),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildActiveChatList(BuildContext context) {
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
-      itemCount: _activeChats.length + 1,
-      itemBuilder: (context, index) {
-        if (index == 0) {
-          return const Padding(
-            padding: EdgeInsets.only(bottom: 12),
-            child: ChatSectionHeader(
-              title: 'Đang trò chuyện',
-              subtitle: 'Danh sách những người bạn đang nhắn tin gần đây',
-            ),
-          );
-        }
+  Widget _buildActiveChatList(
+    BuildContext context,
+    ChatManager manager,
+    List<ChatContact> contacts,
+  ) {
+    return RefreshIndicator(
+      onRefresh: manager.refreshRooms,
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
+        itemCount: contacts.length + 1,
+        itemBuilder: (context, index) {
+          if (index == 0) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const ChatSectionHeader(
+                    title: 'Đang trò chuyện',
+                    subtitle: 'Danh sách những người bạn đang nhắn tin gần đây',
+                  ),
+                  if (manager.isLoadingRooms && contacts.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 24),
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  else if (contacts.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16),
+                      child: Text(
+                        'Chưa có cuộc trò chuyện nào. Hãy nhắn tin với bạn bè để bắt đầu!',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                ],
+              ),
+            );
+          }
 
-        final contact = _activeChats[index - 1];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: ContactListTile.chat(
-            contact: contact,
-            onTap: () => _openChat(context, contact),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildFriendList(BuildContext context, ColorScheme cs) {
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
-      itemCount: _friends.length + 1,
-      itemBuilder: (context, index) {
-        if (index == 0) {
+          final contact = contacts[index - 1];
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const ChatSectionHeader(
-                  title: 'Tất cả bạn bè',
-                  subtitle: 'Bấm vào biểu tượng chat để mở cuộc trò chuyện',
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(18),
-                    color: cs.primaryContainer.withOpacity(0.3),
-                  ),
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Icon(Icons.search_rounded, color: cs.primary),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Tìm kiếm bạn bè nhanh chóng',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.copyWith(color: cs.primary),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            child: ContactListTile.chat(
+              contact: contact,
+              onTap: () => _openChat(context, contact),
             ),
           );
-        }
-
-        final contact = _friends[index - 1];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: ContactListTile.friend(
-            contact: contact,
-            onTap: () => _openChat(context, contact),
-            onChatPressed: () => _openChat(context, contact),
-          ),
-        );
-      },
+        },
+      ),
     );
   }
 
-  void _openChat(BuildContext context, ChatContact contact) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => ChatPage(
-          contactName: contact.name,
-          isContactOnline: contact.isOnline,
-          avatarText: contact.avatarText,
-        ),
+  Widget _buildFriendList(
+    BuildContext context,
+    ColorScheme cs,
+    FriendManager manager,
+    List<ChatContact> contacts,
+  ) {
+    return RefreshIndicator(
+      onRefresh: () async {
+        await manager.refreshFriends();
+      },
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
+        itemCount: contacts.length + 1,
+        itemBuilder: (context, index) {
+          if (index == 0) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const ChatSectionHeader(
+                    title: 'Tất cả bạn bè',
+                    subtitle: 'Bấm vào biểu tượng chat để mở cuộc trò chuyện',
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(18),
+                      color: cs.primaryContainer.withOpacity(0.3),
+                    ),
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Icon(Icons.search_rounded, color: cs.primary),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            manager.isLoadingFriends && contacts.isEmpty
+                                ? 'Đang tải danh sách bạn bè...'
+                                : 'Tìm kiếm bạn bè nhanh chóng',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(color: cs.primary),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          final contact = contacts[index - 1];
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: ContactListTile.friend(
+              contact: contact,
+              onTap: () => _openChat(context, contact),
+              onChatPressed: () => _openChat(context, contact),
+            ),
+          );
+        },
       ),
     );
+  }
+
+  Future<void> _openChat(BuildContext context, ChatContact contact) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    try {
+      final chatManager = context.read<ChatManager>();
+      final roomId = contact.roomId ?? (await chatManager.ensureRoom(contact.id)).id;
+      final updatedContact = contact.roomId == null
+          ? contact.copyWith(roomId: roomId)
+          : contact;
+      if (!mounted) return;
+      navigator.push(
+        MaterialPageRoute(
+          builder: (_) => ChatPage(
+            roomId: roomId,
+            contact: updatedContact,
+          ),
+        ),
+      );
+    } catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    }
   }
 }

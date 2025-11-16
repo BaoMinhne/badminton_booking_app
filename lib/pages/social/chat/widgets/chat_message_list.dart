@@ -4,10 +4,14 @@ import 'package:flutter/material.dart';
 
 class ChatMessageList extends StatelessWidget {
   final List<ChatMessage> messages;
+  final String peerInitial;
+  final String? peerAvatarUrl;
 
   const ChatMessageList({
     super.key,
     required this.messages,
+    required this.peerInitial,
+    this.peerAvatarUrl,
   });
 
   @override
@@ -28,6 +32,8 @@ class ChatMessageList extends StatelessWidget {
           message: message,
           showAvatar: !message.isMe && isFirstFromAuthor,
           showSeen: isLastFromMe,
+          peerInitial: peerInitial,
+          peerAvatarUrl: peerAvatarUrl,
         );
       },
       separatorBuilder: (_, __) => const SizedBox(height: 8),

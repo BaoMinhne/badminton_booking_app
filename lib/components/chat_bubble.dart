@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
+
 import '../models/chat_message.dart';
 
 class ChatBubble extends StatelessWidget {
   final ChatMessage message;
   final bool showAvatar;
   final bool showSeen;
+  final String? peerInitial;
+  final String? peerAvatarUrl;
 
   const ChatBubble({
     super.key,
     required this.message,
     this.showAvatar = false,
     this.showSeen = false,
+    this.peerInitial,
+    this.peerAvatarUrl,
   });
 
   @override
@@ -39,7 +44,14 @@ class ChatBubble extends StatelessWidget {
                 child: CircleAvatar(
                   radius: 16,
                   backgroundColor: cs.primary,
-                  child: const Text('NM', style: TextStyle(fontSize: 12)),
+                  backgroundImage:
+                      peerAvatarUrl != null ? NetworkImage(peerAvatarUrl!) : null,
+                  child: peerAvatarUrl == null
+                      ? Text(
+                          (peerInitial ?? '?').toUpperCase(),
+                          style: const TextStyle(fontSize: 12),
+                        )
+                      : null,
                 ),
               ),
               const SizedBox(width: 8),
@@ -78,7 +90,7 @@ class ChatBubble extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            message.time,
+                            message.timeLabel,
                             style: Theme.of(context)
                                 .textTheme
                                 .labelSmall

@@ -1,10 +1,18 @@
 import 'package:badminton_booking_app/models/chat_contact.dart';
+import 'package:badminton_booking_app/models/friend_request.dart';
+import 'package:badminton_booking_app/pages/social/chat/friend_manager.dart';
 import 'package:badminton_booking_app/pages/social/chat/widgets/contact_list_tile.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-class AddFriendPage extends StatelessWidget {
+class AddFriendPage extends StatefulWidget {
   const AddFriendPage({super.key});
 
+  @override
+  State<AddFriendPage> createState() => _AddFriendPageState();
+}
+
+class _AddFriendPageState extends State<AddFriendPage> {
   static const List<ChatContact> _suggestedFriends = [
     ChatContact(
       id: 'suggest-1',
@@ -28,9 +36,19 @@ class AddFriendPage extends StatelessWidget {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<FriendManager>().refreshRequests();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
+    final manager = context.watch<FriendManager>();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6FB),
@@ -49,6 +67,10 @@ class AddFriendPage extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             _buildSearchField(cs),
+            const SizedBox(height: 24),
+            _buildIncomingRequests(context, manager),
+            const SizedBox(height: 24),
+            _buildOutgoingRequests(context, manager),
             const SizedBox(height: 24),
             Text(
               'Gợi ý kết bạn',
@@ -144,6 +166,120 @@ class AddFriendPage extends StatelessWidget {
             child: const Text('Khám phá nhóm mới'),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildIncomingRequests(BuildContext context, FriendManager manager) {
+    final theme = Theme.of(context);
+    final requests = manager.incomingRequests;
+    if (manager.isLoadingRequests && requests.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (requests.isEmpty) {
+      return Text(
+        'Không có lời mời kết bạn nào.',
+        style: theme.textTheme.bodyMedium,
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Lời mời kết bạn',
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 12),
+        ...requests.map((request) => _buildRequestTile(
+              context,
+              manager,
+              request,
+              isIncoming: true,
+            )),
+      ],
+    );
+  }
+
+  Widget _buildOutgoingRequests(BuildContext context, FriendManager manager) {
+    final theme = Theme.of(context);
+    final requests = manager.outgoingRequests;
+    if (requests.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Đã gửi',
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 12),
+        ...requests.map((request) => _buildRequestTile(
+              context,
+              manager,
+              request,
+              isIncoming: false,
+            )),
+      ],
+    );
+  }
+
+  Widget _buildRequestTile(
+    BuildContext context,
+    FriendManager manager,
+    FriendRequest request,
+    {required bool isIncoming},
+  ) {
+    final userSummary =
+        isIncoming ? request.fromUser : request.toUser;
+    final contact = manager.contactFromSummary(userSummary);
+    if (contact == null) {
+      return const SizedBox.shrink();
+    }
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ContactListTile.friend(
+              contact: contact,
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                if (isIncoming) ...[
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () => manager.acceptRequest(request.id),
+                      child: const Text('Đồng ý'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => manager.rejectRequest(request.id),
+                      child: const Text('Từ chối'),
+                    ),
+                  ),
+                ] else ...[
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => manager.cancelRequest(request.id),
+                      child: const Text('Huỷ yêu cầu'),
+                    ),
+                  ),
+                ]
+              ],
+            )
+          ],
+        ),
       ),
     );
   }

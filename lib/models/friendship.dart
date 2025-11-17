@@ -33,8 +33,13 @@ class Friendship {
     final updatedAt = DateTime.tryParse(record.getStringValue('updated')) ??
         createdAt;
 
-    final userARecord = record.expand['user_a'] as RecordModel?;
-    final userBRecord = record.expand['user_b'] as RecordModel?;
+    final userAList = record.expand['user_a'] as List<RecordModel>?;
+    final userBList = record.expand['user_b'] as List<RecordModel>?;
+
+    final userARecord =
+        (userAList != null && userAList.isNotEmpty) ? userAList.first : null;
+    final userBRecord =
+        (userBList != null && userBList.isNotEmpty) ? userBList.first : null;
 
     return Friendship(
       id: record.id,

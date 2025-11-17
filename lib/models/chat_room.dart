@@ -47,9 +47,17 @@ class ChatRoom {
     RecordModel record,
     PocketBase pocketBase,
   ) {
-    final userARecord = record.expand['user_a'] as RecordModel?;
-    final userBRecord = record.expand['user_b'] as RecordModel?;
-    final lastSenderRecord = record.expand['last_sender'] as RecordModel?;
+    final userAList = record.expand['user_a'] as List<RecordModel>?;
+    final userBList = record.expand['user_b'] as List<RecordModel>?;
+    final lastSenderList = record.expand['last_sender'] as List<RecordModel>?;
+
+    final userARecord =
+        (userAList != null && userAList.isNotEmpty) ? userAList.first : null;
+    final userBRecord =
+        (userBList != null && userBList.isNotEmpty) ? userBList.first : null;
+    final lastSenderRecord = (lastSenderList != null && lastSenderList.isNotEmpty)
+        ? lastSenderList.first
+        : null;
 
     return ChatRoom(
       id: record.id,

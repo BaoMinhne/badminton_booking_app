@@ -43,8 +43,15 @@ class FriendRequest {
     final updatedAt = DateTime.tryParse(record.getStringValue('updated')) ??
         createdAt;
 
-    final fromUserRecord = record.expand['from_user'] as RecordModel?;
-    final toUserRecord = record.expand['to_user'] as RecordModel?;
+    final fromUserList = record.expand['from_user'] as List<RecordModel>?;
+    final toUserList = record.expand['to_user'] as List<RecordModel>?;
+
+    final fromUserRecord = (fromUserList != null && fromUserList.isNotEmpty)
+        ? fromUserList.first
+        : null;
+    final toUserRecord = (toUserList != null && toUserList.isNotEmpty)
+        ? toUserList.first
+        : null;
 
     return FriendRequest(
       id: record.id,

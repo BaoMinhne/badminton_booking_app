@@ -1,5 +1,6 @@
 import 'package:badminton_booking_app/pages/court/court_manager.dart';
 import 'package:badminton_booking_app/pages/nav_bar_page.dart';
+import 'package:badminton_booking_app/pages/social/chat/friend_manager.dart';
 import 'package:badminton_booking_app/pages/social/social_manager.dart';
 import 'package:badminton_booking_app/pages/user/user_manager.dart';
 import 'package:flutter/material.dart';
@@ -24,6 +25,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => UserManager()),
         ChangeNotifierProvider(create: (_) => CourtManager()),
         ChangeNotifierProvider(create: (_) => SocialManager()),
+        ChangeNotifierProvider(create: (_) => FriendManager()),
       ],
       child: const MyApp(),
     ),

@@ -1,6 +1,9 @@
 import 'package:badminton_booking_app/models/chat_contact.dart';
 import 'package:badminton_booking_app/pages/social/chat/widgets/contact_list_tile.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import 'package:badminton_booking_app/pages/social/chat/friend_manager.dart';
 
 class AddFriendPage extends StatelessWidget {
   const AddFriendPage({super.key});
@@ -48,26 +51,30 @@ class AddFriendPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            _buildSearchField(cs),
+            _buildSearchField(context, cs),
             const SizedBox(height: 24),
-            Text(
-              'Gợi ý kết bạn',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+            Consumer<FriendManager>(
+              builder: (context, manager, _) {
+                if (manager.hasQuery) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Kết quả tìm kiếm',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildSearchResultList(context, manager),
+                    ],
+                  );
+                }
+
+                return _buildSuggestedFriendsSection(theme);
+              },
             ),
-            const SizedBox(height: 12),
-            ..._suggestedFriends.map(
-              (contact) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: ContactListTile.suggestion(
-                  contact: contact,
-                  onTap: () {},
-                  onChatPressed: () {},
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 24),
             _buildCommunityCard(context),
           ],
         ),
@@ -75,7 +82,8 @@ class AddFriendPage extends StatelessWidget {
     );
   }
 
-  Widget _buildSearchField(ColorScheme cs) {
+  Widget _buildSearchField(BuildContext context, ColorScheme cs) {
+    final isSearching = context.watch<FriendManager>().isSearching;
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
@@ -89,12 +97,124 @@ class AddFriendPage extends StatelessWidget {
         ],
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: const TextField(
+      child: TextField(
+        onChanged: (value) => context.read<FriendManager>().searchFriends(value),
         decoration: InputDecoration(
-          icon: Icon(Icons.search_rounded),
+          icon: const Icon(Icons.search_rounded),
           border: InputBorder.none,
           hintText: 'Nhập tên, số điện thoại hoặc mã thành viên',
+          suffixIcon: isSearching
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: Padding(
+                    padding: EdgeInsets.all(8),
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              : null,
         ),
+      ),
+    );
+  }
+
+  Widget _buildSearchResultList(BuildContext context, FriendManager manager) {
+    if (manager.isSearching) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 32),
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (manager.searchError != null) {
+      return _buildInfoMessage(
+        context,
+        icon: Icons.error_outline,
+        message: manager.searchError!,
+      );
+    }
+
+    if (manager.searchResults.isEmpty) {
+      return _buildInfoMessage(
+        context,
+        icon: Icons.search_off_outlined,
+        message: 'Không tìm thấy người dùng nào phù hợp từ từ khóa hiện tại.',
+      );
+    }
+
+    return Column(
+      children: manager.searchResults
+          .map(
+            (candidate) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: ContactListTile.suggestion(
+                contact: candidate.toChatContact(),
+                onTap: () {},
+                onChatPressed: () {},
+              ),
+            ),
+          )
+          .toList(growable: false),
+    );
+  }
+
+  Widget _buildSuggestedFriendsSection(ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Gợi ý kết bạn',
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 12),
+        ..._suggestedFriends.map(
+          (contact) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: ContactListTile.suggestion(
+              contact: contact,
+              onTap: () {},
+              onChatPressed: () {},
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInfoMessage(
+    BuildContext context, {
+    required IconData icon,
+    required String message,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        color: cs.surface,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Icon(icon, color: cs.primary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
+        ],
       ),
     );
   }

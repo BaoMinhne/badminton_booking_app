@@ -4,8 +4,10 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:pocketbase/pocketbase.dart';
 
+import '../models/friend_candidate.dart';
 import '../models/user.dart';
 import '../models/user_details.dart';
+import '../utils/pocketbase_utils.dart';
 import 'pocketbase_client.dart';
 
 class UserDetailsService {
@@ -156,5 +158,65 @@ class UserDetailsService {
         : pb.files.getUrl(updated, avatarName).toString();
 
     return UserDetails.fromJson(data, avatarUrl: avatarUrl);
+  }
+
+  Future<List<FriendCandidate>> searchFriendCandidates(
+    String keyword, {
+    int page = 1,
+    int perPage = 20,
+  }) async {
+    final trimmedKeyword = keyword.trim();
+    if (trimmedKeyword.isEmpty) {
+      return const <FriendCandidate>[];
+    }
+
+    final pocketBase = await getPocketbaseInstance();
+    final sanitizedKeyword = trimmedKeyword.replaceAll("'", r"\'");
+    final likeQuery = '%$sanitizedKeyword%';
+    final filterConditions = [
+      "user_id.username ~ \"$likeQuery\"",
+      "user_id.email ~ \"$likeQuery\"",
+      "user_id.phone ~ \"$likeQuery\"",
+    ];
+    final filter = '(${filterConditions.join(' || ')})';
+
+    try {
+      final result = await pocketBase.collection(collection).getList(
+            page: page,
+            perPage: perPage,
+            filter: filter,
+            expand: 'user_id',
+          );
+
+      return result.items.map((record) {
+        final userRecord = resolveExpandedRecord(record.expand?['user_id']);
+        Map<String, dynamic>? userData;
+        if (userRecord != null) {
+          userData = userRecord.toJson();
+        } else if (record.data['user_id'] is Map<String, dynamic>) {
+          userData = (record.data['user_id'] as Map<String, dynamic>);
+        }
+
+        final user = userData != null
+            ? User.fromJson(userData)
+            : User(
+                id: (record.data['user_id'] as String?) ?? '',
+                username: '',
+                email: '',
+                phone: '',
+              );
+
+        final data = record.toJson();
+        final avatarName = (data['avatar'] as String?) ?? '';
+        final avatarUrl = avatarName.isEmpty
+            ? null
+            : pocketBase.files.getUrl(record, avatarName).toString();
+        final details = UserDetails.fromJson(data, avatarUrl: avatarUrl);
+
+        return FriendCandidate(user: user, details: details);
+      }).toList(growable: false);
+    } catch (error) {
+      throw Exception('searchFriendCandidates error: $error');
+    }
   }
 }

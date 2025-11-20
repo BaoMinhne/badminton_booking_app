@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:pocketbase/pocketbase.dart';
 
+import '../models/friend_search_result.dart';
 import '../models/user.dart';
 import '../models/user_details.dart';
 import 'pocketbase_client.dart';
@@ -45,6 +46,14 @@ class UserDetailsService {
   Future<UserDetails?> getByUserId(String userId) async {
     try {
       final pb = await getPocketbaseInstance();
+      return await getByUserIdWithClient(pb, userId);
+    } catch (e) {
+      throw Exception('getByUserId error: $e');
+    }
+  }
+
+  Future<UserDetails?> getByUserIdWithClient(PocketBase pb, String userId) async {
+    try {
       final rec = await pb.collection(collection).getFirstListItem(
             "user_id='$userId'",
           );
@@ -105,6 +114,32 @@ class UserDetailsService {
     final myId = await getCurrentUserId();
     if (myId == null) return null;
     return getByUserId(myId);
+  }
+
+  Future<List<FriendSearchResult>> searchUsers(String keyword) async {
+    final term = keyword.trim();
+    if (term.isEmpty) return const <FriendSearchResult>[];
+
+    final pb = await getPocketbaseInstance();
+    final sanitized = term.replaceAll("'", "\\'");
+
+    final result = await pb.collection('users').getList(
+          filter:
+              "username ~ '%$sanitized%' || email ~ '%$sanitized%' || phone ~ '%$sanitized%'",
+          perPage: 20,
+        );
+
+    final detailFutures = result.items.map((userRecord) async {
+      final user = User.fromJson(userRecord.toJson());
+      try {
+        final details = await getByUserIdWithClient(pb, user.id);
+        return FriendSearchResult(user: user, details: details);
+      } catch (_) {
+        return FriendSearchResult(user: user);
+      }
+    });
+
+    return Future.wait(detailFutures);
   }
 
   Future<UserDetails> updateMyDetails({

@@ -4,8 +4,10 @@ import 'package:badminton_booking_app/pages/social/chat/widgets/chat_header.dart
 import 'package:badminton_booking_app/pages/social/chat/widgets/chat_section_header.dart';
 import 'package:badminton_booking_app/pages/social/chat/widgets/contact_list_tile.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import 'add_friend_page.dart';
+import 'friend_manager.dart';
 
 class ChatHomePage extends StatelessWidget {
   const ChatHomePage({super.key});
@@ -139,7 +141,12 @@ class ChatHomePage extends StatelessWidget {
           title: 'Danh sách trò chuyện',
           onAddFriend: () {
             Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const AddFriendPage()),
+              MaterialPageRoute(
+                builder: (_) => ChangeNotifierProvider(
+                  create: (_) => FriendManager(),
+                  child: const AddFriendPage(),
+                ),
+              ),
             );
           }, // hoặc null nếu chưa dùng
           bottom: _buildTabs(context), // TabBar hiển thị ngay dưới title
@@ -147,7 +154,12 @@ class ChatHomePage extends StatelessWidget {
         floatingActionButton: FloatingActionButton.extended(
           onPressed: () {
             Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const AddFriendPage()),
+              MaterialPageRoute(
+                builder: (_) => ChangeNotifierProvider(
+                  create: (_) => FriendManager(),
+                  child: const AddFriendPage(),
+                ),
+              ),
             );
           },
           icon: const Icon(Icons.person_add_alt),

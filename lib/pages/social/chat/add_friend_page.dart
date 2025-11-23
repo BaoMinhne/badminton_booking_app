@@ -1,6 +1,8 @@
 import 'package:badminton_booking_app/models/chat_contact.dart';
+import 'package:badminton_booking_app/pages/social/chat/friend_manager.dart';
 import 'package:badminton_booking_app/pages/social/chat/widgets/contact_list_tile.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class AddFriendPage extends StatelessWidget {
   const AddFriendPage({super.key});
@@ -31,6 +33,7 @@ class AddFriendPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
+    final friendManager = context.watch<FriendManager>();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6FB),
@@ -48,7 +51,10 @@ class AddFriendPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            _buildSearchField(cs),
+            _buildSearchField(cs, friendManager),
+            const SizedBox(height: 16),
+            if (friendManager.currentQuery.trim().isNotEmpty)
+              _buildSearchResults(friendManager, theme),
             const SizedBox(height: 24),
             Text(
               'Gợi ý kết bạn',
@@ -75,27 +81,99 @@ class AddFriendPage extends StatelessWidget {
     );
   }
 
-  Widget _buildSearchField(ColorScheme cs) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        color: cs.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: const TextField(
+  Widget _buildSearchField(ColorScheme cs, FriendManager friendManager) {
+    return SizedBox(
+      height: 60,
+      child: TextField(
+        onChanged: friendManager.searchDebounced,
+        cursorColor: cs.primary,
+        style: TextStyle(
+          fontSize: 18,
+          color: cs.onSurface,
+        ),
         decoration: InputDecoration(
-          icon: Icon(Icons.search_rounded),
-          border: InputBorder.none,
-          hintText: 'Nhập tên, số điện thoại hoặc mã thành viên',
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(vertical: 8),
+          prefixIcon: Icon(
+            Icons.search_rounded,
+            size: 24,
+            color: Colors.grey.shade600,
+          ),
+          hintText: 'Tìm kiếm bạn bè',
+          hintStyle: TextStyle(
+            fontSize: 18,
+            color: Colors.grey.shade600,
+          ),
+          filled: true,
+          fillColor: cs.secondary.withOpacity(0.1),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(999),
+            borderSide: BorderSide(
+              color: cs.outline,
+              width: 1,
+            ),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(999),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(999),
+            borderSide: BorderSide(
+              color: cs.primary,
+              width: 2,
+            ),
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildSearchResults(
+    FriendManager friendManager,
+    ThemeData theme,
+  ) {
+    if (friendManager.isSearching) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (friendManager.error != null) {
+      return Text(friendManager.error!, style: theme.textTheme.bodyMedium);
+    }
+
+    if (friendManager.searchResults.isEmpty) {
+      return Text(
+        'Không tìm thấy người dùng phù hợp.',
+        style: theme.textTheme.bodyMedium,
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Kết quả tìm kiếm',
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 12),
+        ...friendManager.searchResults.map(
+          (result) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: ContactListTile.suggestion(
+              contact: ChatContact(
+                id: result.user.id,
+                name: result.displayName,
+                avatarText: result.initials,
+                statusMessage: result.subtitle.isEmpty ? null : result.subtitle,
+              ),
+              onTap: () {},
+              onChatPressed: () {},
+            ),
+          ),
+        ),
+      ],
     );
   }
 

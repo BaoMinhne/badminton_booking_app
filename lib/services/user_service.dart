@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:pocketbase/pocketbase.dart';
 
+import '../models/friend_search_result.dart';
 import '../models/user.dart';
 import '../models/user_details.dart';
 import 'pocketbase_client.dart';
@@ -45,14 +46,26 @@ class UserDetailsService {
   Future<UserDetails?> getByUserId(String userId) async {
     try {
       final pb = await getPocketbaseInstance();
-      final rec = await pb.collection(collection).getFirstListItem(
-            "user_id='$userId'",
-          );
+      return await getByUserIdWithClient(pb, userId);
+    } catch (e) {
+      throw Exception('getByUserId error: $e');
+    }
+  }
+
+  Future<UserDetails?> getByUserIdWithClient(
+    PocketBase pb,
+    String userId,
+  ) async {
+    try {
+      // Luôn đảm bảo có record user_details (có thì lấy, chưa có thì tạo)
+      final rec = await _ensureUserDetails(pb, userId);
+
       final data = rec.toJson();
       final avatarName = (data['avatar'] as String?) ?? '';
       final avatarUrl = avatarName.isEmpty
           ? null
           : pb.files.getUrl(rec, avatarName).toString();
+
       return UserDetails.fromJson(data, avatarUrl: avatarUrl);
     } catch (e) {
       throw Exception('getByUserId error: $e');
@@ -107,6 +120,38 @@ class UserDetailsService {
     return getByUserId(myId);
   }
 
+  Future<List<FriendSearchResult>> searchUsers(String keyword) async {
+    final term = keyword.trim();
+    if (term.isEmpty) return const <FriendSearchResult>[];
+
+    final pb = await getPocketbaseInstance();
+    final currentUserId = pb.authStore.record?.id;
+    final sanitized = term.replaceAll("'", "\\'");
+
+    final result = await pb.collection('users').getList(
+      filter: """
+      (username ~ '%$sanitized%' 
+      || email ~ '%$sanitized%' 
+      || phone ~ '%$sanitized%')
+      && role = 'user'
+      ${currentUserId != null ? "&& id != '$currentUserId'" : ""}
+    """,
+      perPage: 20,
+    );
+
+    final detailFutures = result.items.map((userRecord) async {
+      final user = User.fromJson(userRecord.toJson());
+      try {
+        final details = await getByUserIdWithClient(pb, user.id);
+        return FriendSearchResult(user: user, details: details);
+      } catch (_) {
+        return FriendSearchResult(user: user);
+      }
+    });
+
+    return Future.wait(detailFutures);
+  }
+
   Future<UserDetails> updateMyDetails({
     String? fullname,
     String? level,
@@ -124,18 +169,15 @@ class UserDetailsService {
     final record = await _ensureUserDetails(pb, userId);
 
     final String? sanitizedFullname =
-        fullname != null && fullname.trim().isNotEmpty
-            ? fullname.trim()
-            : null;
+        fullname != null && fullname.trim().isNotEmpty ? fullname.trim() : null;
     final String? sanitizedLevel =
         level != null && level.trim().isNotEmpty ? level.trim() : null;
     final String? sanitizedGender =
         gender != null && gender.trim().isNotEmpty ? gender.trim() : null;
-    final List<String> sanitizedPlayStyles =
-        (playStyles ?? const <String>[])
-            .where((style) => style.trim().isNotEmpty)
-            .map((style) => style.trim())
-            .toList();
+    final List<String> sanitizedPlayStyles = (playStyles ?? const <String>[])
+        .where((style) => style.trim().isNotEmpty)
+        .map((style) => style.trim())
+        .toList();
 
     final updated = await pb.collection(collection).update(
       record.id,

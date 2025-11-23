@@ -7,6 +7,7 @@ import 'package:badminton_booking_app/components/recruitment_post_card.dart';
 import 'package:badminton_booking_app/models/community_post.dart';
 import 'package:badminton_booking_app/models/recruitment_post.dart';
 import 'package:badminton_booking_app/pages/social/chat/chat_home_page.dart';
+import 'package:badminton_booking_app/pages/social/chat/friend_manager.dart';
 import 'package:badminton_booking_app/pages/social/create_post_page.dart';
 import 'package:badminton_booking_app/pages/social/recruitment/recruitment_page.dart';
 import 'package:badminton_booking_app/pages/social/social_manager.dart';
@@ -108,7 +109,12 @@ class _SocialPageState extends State<SocialPage> {
               tooltip: 'Tin nhắn',
               onPressed: () {
                 Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => ChatHomePage()),
+                  MaterialPageRoute(
+                    builder: (_) => ChangeNotifierProvider(
+                      create: (_) => FriendManager()..loadFriends(),
+                      child: const ChatHomePage(),
+                    ),
+                  ),
                 );
               },
             ),

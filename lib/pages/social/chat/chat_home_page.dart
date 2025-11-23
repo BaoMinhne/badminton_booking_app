@@ -61,47 +61,6 @@ class ChatHomePage extends StatelessWidget {
     ),
   ];
 
-  static const List<ChatContact> _friends = [
-    ChatContact(
-      id: 'friend-1',
-      name: 'Nhỏ quậy lắm chiều',
-      avatarText: 'NC',
-      statusMessage: 'Bạn: chờ nứng l đi mà nứng !',
-      isOnline: true,
-    ),
-    ChatContact(
-      id: 'friend-2',
-      name: 'Bến Đò Không Người Lái Đó',
-      avatarText: 'BD',
-      statusMessage: 'Bạn: tìm được con trai thất lạc nên khóc...',
-    ),
-    ChatContact(
-      id: 'friend-3',
-      name: 'Cf chủ nhật',
-      avatarText: 'CF',
-      statusMessage: 'Bạn bè để cà phê thôi nha 😌',
-      isOnline: true,
-    ),
-    ChatContact(
-      id: 'friend-4',
-      name: 'Trần Gia Thạnh',
-      avatarText: 'TT',
-      statusMessage: 'Luôn sẵn sàng cho một set đôi',
-    ),
-    ChatContact(
-      id: 'friend-5',
-      name: 'Khu Tự Trị Dữ Đồ',
-      avatarText: 'KD',
-      statusMessage: 'Tối nay đánh tăng 2 nhen',
-    ),
-    ChatContact(
-      id: 'friend-6',
-      name: 'Hua Tan Datt',
-      avatarText: 'HD',
-      statusMessage: 'Game báo done',
-    ),
-  ];
-
   TabBar _buildTabs(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
@@ -132,6 +91,7 @@ class ChatHomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final friendManager = context.watch<FriendManager>();
     final cs = Theme.of(context).colorScheme;
     return DefaultTabController(
       length: 2,
@@ -142,8 +102,8 @@ class ChatHomePage extends StatelessWidget {
           onAddFriend: () {
             Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (_) => ChangeNotifierProvider(
-                  create: (_) => FriendManager(),
+                builder: (_) => ChangeNotifierProvider.value(
+                  value: friendManager,
                   child: const AddFriendPage(),
                 ),
               ),
@@ -155,8 +115,8 @@ class ChatHomePage extends StatelessWidget {
           onPressed: () {
             Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (_) => ChangeNotifierProvider(
-                  create: (_) => FriendManager(),
+                builder: (_) => ChangeNotifierProvider.value(
+                  value: friendManager,
                   child: const AddFriendPage(),
                 ),
               ),
@@ -168,7 +128,7 @@ class ChatHomePage extends StatelessWidget {
         body: TabBarView(
           children: [
             _buildActiveChatList(context),
-            _buildFriendList(context, cs),
+            _buildFriendList(context, cs, friendManager),
           ],
         ),
       ),
@@ -202,20 +162,35 @@ class ChatHomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildFriendList(BuildContext context, ColorScheme cs) {
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
-      itemCount: _friends.length + 1,
-      itemBuilder: (context, index) {
-        if (index == 0) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildFriendList(
+    BuildContext context,
+    ColorScheme cs,
+    FriendManager friendManager,
+  ) {
+    return RefreshIndicator(
+      onRefresh: friendManager.loadFriends,
+      child: Builder(
+        builder: (context) {
+          if (friendManager.isLoadingFriends) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (friendManager.friendError != null) {
+            return ListView(
+              padding: const EdgeInsets.all(24),
+              children: [
+                Text(friendManager.friendError!),
+              ],
+            );
+          }
+
+          if (friendManager.friends.isEmpty) {
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
               children: [
                 const ChatSectionHeader(
                   title: 'Tất cả bạn bè',
-                  subtitle: 'Bấm vào biểu tượng chat để mở cuộc trò chuyện',
+                  subtitle: 'Bấm vào Thêm bạn bè để bắt đầu kết nối',
                 ),
                 const SizedBox(height: 12),
                 Container(
@@ -230,7 +205,7 @@ class ChatHomePage extends StatelessWidget {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'Tìm kiếm bạn bè nhanh chóng',
+                          'Chưa có bạn bè nào. Hãy gửi lời mời kết bạn ngay! ',
                           style: Theme.of(context)
                               .textTheme
                               .bodyMedium
@@ -241,20 +216,64 @@ class ChatHomePage extends StatelessWidget {
                   ),
                 ),
               ],
-            ),
-          );
-        }
+            );
+          }
 
-        final contact = _friends[index - 1];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: ContactListTile.friend(
-            contact: contact,
-            onTap: () => _openChat(context, contact),
-            onChatPressed: () => _openChat(context, contact),
-          ),
-        );
-      },
+          return ListView.builder(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
+            itemCount: friendManager.friends.length + 1,
+            itemBuilder: (context, index) {
+              if (index == 0) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const ChatSectionHeader(
+                        title: 'Tất cả bạn bè',
+                        subtitle: 'Bấm vào biểu tượng chat để mở cuộc trò chuyện',
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(18),
+                          color: cs.primaryContainer.withOpacity(0.3),
+                        ),
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            Icon(Icons.search_rounded, color: cs.primary),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Tìm kiếm bạn bè nhanh chóng',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(color: cs.primary),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              final contact = friendManager.friends[index - 1];
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: ContactListTile.friend(
+                  contact: contact,
+                  onTap: () => _openChat(context, contact),
+                  onChatPressed: () => _openChat(context, contact),
+                ),
+              );
+            },
+          );
+        },
+      ),
     );
   }
 

@@ -3,6 +3,7 @@ import 'package:badminton_booking_app/pages/social/chat/friend_manager.dart';
 import 'package:badminton_booking_app/pages/social/chat/widgets/contact_list_tile.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:badminton_booking_app/services/friend_service.dart';
 
 class AddFriendPage extends StatelessWidget {
   const AddFriendPage({super.key});
@@ -169,12 +170,42 @@ class AddFriendPage extends StatelessWidget {
                 statusMessage: result.subtitle.isEmpty ? null : result.subtitle,
               ),
               onTap: () {},
-              onChatPressed: () {},
+              actionLabel: _actionLabel(friendManager, result.user.id),
+              isActionEnabled:
+                  _actionHandler(friendManager, result.user.id) != null,
+              isBusy: friendManager.isPendingAction(result.user.id),
+              onChatPressed:
+                  _actionHandler(friendManager, result.user.id),
             ),
           ),
         ),
       ],
     );
+  }
+
+  String _actionLabel(FriendManager manager, String userId) {
+    final relation = manager.relationFor(userId).status;
+    return switch (relation) {
+      FriendRelationStatus.none => 'Kết bạn',
+      FriendRelationStatus.requestSent => 'Đã gửi',
+      FriendRelationStatus.incomingRequest => 'Chấp nhận',
+      FriendRelationStatus.friends => 'Bạn bè',
+    };
+  }
+
+  VoidCallback? _actionHandler(FriendManager manager, String userId) {
+    final relation = manager.relationFor(userId).status;
+    if (manager.isPendingAction(userId)) return null;
+
+    switch (relation) {
+      case FriendRelationStatus.none:
+        return () => manager.sendFriendRequest(userId);
+      case FriendRelationStatus.incomingRequest:
+        return () => manager.acceptRequest(userId);
+      case FriendRelationStatus.requestSent:
+      case FriendRelationStatus.friends:
+        return null;
+    }
   }
 
   Widget _buildCommunityCard(BuildContext context) {

@@ -10,6 +10,9 @@ class ContactListTile extends StatelessWidget {
     required this.type,
     this.onTap,
     this.onChatPressed,
+    this.actionLabel,
+    this.isActionEnabled = true,
+    this.isBusy = false,
   });
 
   factory ContactListTile.chat({
@@ -45,6 +48,9 @@ class ContactListTile extends StatelessWidget {
     required ChatContact contact,
     VoidCallback? onTap,
     VoidCallback? onChatPressed,
+    String? actionLabel,
+    bool isActionEnabled = true,
+    bool isBusy = false,
   }) {
     return ContactListTile._(
       key: key,
@@ -52,6 +58,9 @@ class ContactListTile extends StatelessWidget {
       type: _ContactTileType.suggestion,
       onTap: onTap,
       onChatPressed: onChatPressed,
+      actionLabel: actionLabel,
+      isActionEnabled: isActionEnabled,
+      isBusy: isBusy,
     );
   }
 
@@ -59,6 +68,9 @@ class ContactListTile extends StatelessWidget {
   final _ContactTileType type;
   final VoidCallback? onTap;
   final VoidCallback? onChatPressed;
+  final String? actionLabel;
+  final bool isActionEnabled;
+  final bool isBusy;
 
   @override
   Widget build(BuildContext context) {
@@ -188,8 +200,14 @@ class ContactListTile extends StatelessWidget {
         );
       case _ContactTileType.suggestion:
         return FilledButton(
-          onPressed: onChatPressed,
-          child: const Text('Kết bạn'),
+          onPressed: isActionEnabled ? onChatPressed : null,
+          child: isBusy
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Text(actionLabel ?? 'Kết bạn'),
         );
     }
   }

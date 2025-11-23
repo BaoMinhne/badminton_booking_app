@@ -23,10 +23,7 @@ class _NavBarPageState extends State<NavBarPage> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      context.read<UserManager>().loadMe(); // nạp cache lần đầu
-    });
+
     _pages = [
       HomePage(),
       SocialPage(),

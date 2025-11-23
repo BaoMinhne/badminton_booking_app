@@ -2,8 +2,12 @@ import 'package:badminton_booking_app/models/friend_search_result.dart';
 import 'package:badminton_booking_app/services/user_service.dart';
 import 'package:flutter/foundation.dart';
 
+import 'dart:async';
+
 class FriendManager extends ChangeNotifier {
   FriendManager() : _userDetailsService = UserDetailsService();
+
+  Timer? _searchDebounce;
 
   final UserDetailsService _userDetailsService;
 
@@ -16,6 +20,20 @@ class FriendManager extends ChangeNotifier {
   bool get isSearching => _isSearching;
   String get currentQuery => _currentQuery;
   String? get error => _error;
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    super.dispose();
+  }
+
+  void searchDebounced(String keyword) {
+    _searchDebounce?.cancel();
+
+    _searchDebounce = Timer(const Duration(milliseconds: 600), () {
+      search(keyword);
+    });
+  }
 
   Future<void> search(String keyword) async {
     _currentQuery = keyword;

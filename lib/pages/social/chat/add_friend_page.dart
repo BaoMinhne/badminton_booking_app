@@ -82,25 +82,48 @@ class AddFriendPage extends StatelessWidget {
   }
 
   Widget _buildSearchField(ColorScheme cs, FriendManager friendManager) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        color: cs.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+    return SizedBox(
+      height: 60,
       child: TextField(
-        onChanged: friendManager.search,
-        decoration: const InputDecoration(
-          icon: Icon(Icons.search_rounded),
-          border: InputBorder.none,
-          hintText: 'Nhập tên, số điện thoại hoặc mã thành viên',
+        onChanged: friendManager.searchDebounced,
+        cursorColor: cs.primary,
+        style: TextStyle(
+          fontSize: 18,
+          color: cs.onSurface,
+        ),
+        decoration: InputDecoration(
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(vertical: 8),
+          prefixIcon: Icon(
+            Icons.search_rounded,
+            size: 24,
+            color: Colors.grey.shade600,
+          ),
+          hintText: 'Tìm kiếm bạn bè',
+          hintStyle: TextStyle(
+            fontSize: 18,
+            color: Colors.grey.shade600,
+          ),
+          filled: true,
+          fillColor: cs.secondary.withOpacity(0.1),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(999),
+            borderSide: BorderSide(
+              color: cs.outline,
+              width: 1,
+            ),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(999),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(999),
+            borderSide: BorderSide(
+              color: cs.primary,
+              width: 2,
+            ),
+          ),
         ),
       ),
     );
@@ -143,9 +166,7 @@ class AddFriendPage extends StatelessWidget {
                 id: result.user.id,
                 name: result.displayName,
                 avatarText: result.initials,
-                statusMessage: result.subtitle.isEmpty
-                    ? null
-                    : result.subtitle,
+                statusMessage: result.subtitle.isEmpty ? null : result.subtitle,
               ),
               onTap: () {},
               onChatPressed: () {},

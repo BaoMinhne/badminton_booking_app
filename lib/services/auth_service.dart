@@ -46,7 +46,37 @@ class AuthService {
     final pb = await getPocketbaseInstance();
 
     try {
-      // 1) Tạo user auth
+      // ============================
+      // 1) Kiểm tra email tồn tại chưa
+      // ============================
+      try {
+        await pb.collection('users').getFirstListItem(
+              "email = '$email'",
+            );
+        throw Exception("Email đã được sử dụng.");
+      } catch (e) {
+        if (e is! ClientException || e.response['code'] != 404) {
+          rethrow; // lỗi thật không phải 404 → quăng lỗi
+        }
+      }
+
+      // ============================
+      // 2) Kiểm tra phone tồn tại chưa
+      // ============================
+      try {
+        await pb.collection('users').getFirstListItem(
+              "phone = '$phone'",
+            );
+        throw Exception("Số điện thoại đã được sử dụng.");
+      } catch (e) {
+        if (e is! ClientException || e.response['code'] != 404) {
+          rethrow; // lỗi thật không phải 404 → quăng lỗi
+        }
+      }
+
+      // ============================
+      // 3) Tạo user mới
+      // ============================
       await pb.collection('users').create(body: {
         'email': email,
         'password': password,
@@ -56,20 +86,30 @@ class AuthService {
         'role': 'user',
       });
 
+      // ============================
+      // 4) Đăng nhập luôn sau khi tạo
+      // ============================
       final authResult =
           await pb.collection('users').authWithPassword(email, password);
       final userRecord = authResult.record;
 
+      // ============================
+      // 5) Tạo user_details nếu chưa có
+      // ============================
       await _ensureUserDetailsRecord(pb, userRecord.id);
 
+      // ============================
+      // 6) Gửi email verify
+      // ============================
       await pb.collection('users').requestVerification(email);
 
       return User.fromJson(userRecord.toJson());
     } catch (error) {
       if (error is ClientException) {
-        throw Exception(error.response['message']);
+        final msg = error.response['message'] ?? 'Có lỗi xảy ra.';
+        throw Exception(msg);
       }
-      throw Exception('An error occurred');
+      throw Exception(error.toString());
     }
   }
 

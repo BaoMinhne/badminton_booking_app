@@ -52,16 +52,20 @@ class UserDetailsService {
     }
   }
 
-  Future<UserDetails?> getByUserIdWithClient(PocketBase pb, String userId) async {
+  Future<UserDetails?> getByUserIdWithClient(
+    PocketBase pb,
+    String userId,
+  ) async {
     try {
-      final rec = await pb.collection(collection).getFirstListItem(
-            "user_id='$userId'",
-          );
+      // Luôn đảm bảo có record user_details (có thì lấy, chưa có thì tạo)
+      final rec = await _ensureUserDetails(pb, userId);
+
       final data = rec.toJson();
       final avatarName = (data['avatar'] as String?) ?? '';
       final avatarUrl = avatarName.isEmpty
           ? null
           : pb.files.getUrl(rec, avatarName).toString();
+
       return UserDetails.fromJson(data, avatarUrl: avatarUrl);
     } catch (e) {
       throw Exception('getByUserId error: $e');
@@ -121,13 +125,19 @@ class UserDetailsService {
     if (term.isEmpty) return const <FriendSearchResult>[];
 
     final pb = await getPocketbaseInstance();
+    final currentUserId = pb.authStore.record?.id;
     final sanitized = term.replaceAll("'", "\\'");
 
     final result = await pb.collection('users').getList(
-          filter:
-              "username ~ '%$sanitized%' || email ~ '%$sanitized%' || phone ~ '%$sanitized%'",
-          perPage: 20,
-        );
+      filter: """
+      (username ~ '%$sanitized%' 
+      || email ~ '%$sanitized%' 
+      || phone ~ '%$sanitized%')
+      && role = 'user'
+      ${currentUserId != null ? "&& id != '$currentUserId'" : ""}
+    """,
+      perPage: 20,
+    );
 
     final detailFutures = result.items.map((userRecord) async {
       final user = User.fromJson(userRecord.toJson());
@@ -159,18 +169,15 @@ class UserDetailsService {
     final record = await _ensureUserDetails(pb, userId);
 
     final String? sanitizedFullname =
-        fullname != null && fullname.trim().isNotEmpty
-            ? fullname.trim()
-            : null;
+        fullname != null && fullname.trim().isNotEmpty ? fullname.trim() : null;
     final String? sanitizedLevel =
         level != null && level.trim().isNotEmpty ? level.trim() : null;
     final String? sanitizedGender =
         gender != null && gender.trim().isNotEmpty ? gender.trim() : null;
-    final List<String> sanitizedPlayStyles =
-        (playStyles ?? const <String>[])
-            .where((style) => style.trim().isNotEmpty)
-            .map((style) => style.trim())
-            .toList();
+    final List<String> sanitizedPlayStyles = (playStyles ?? const <String>[])
+        .where((style) => style.trim().isNotEmpty)
+        .map((style) => style.trim())
+        .toList();
 
     final updated = await pb.collection(collection).update(
       record.id,

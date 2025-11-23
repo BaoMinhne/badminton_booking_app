@@ -30,10 +30,23 @@ class UserManager with ChangeNotifier {
     if (_isLoading) return;
     _isLoading = true;
     notifyListeners();
+
     try {
       _currentUser = await _userService.getCurrentUser();
       final uid = await _userService.getCurrentUserId();
-      _myDetails = (uid != null) ? await _userService.getByUserId(uid) : null;
+
+      if (uid != null) {
+        try {
+          _myDetails = await _userService.getByUserId(uid);
+        } catch (e) {
+          if (kDebugMode) {
+            print('loadMe getByUserId error: $e');
+          }
+          _myDetails = null;
+        }
+      } else {
+        _myDetails = null;
+      }
     } finally {
       _isLoading = false;
       notifyListeners();

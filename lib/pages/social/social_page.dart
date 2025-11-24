@@ -12,8 +12,7 @@ import 'package:badminton_booking_app/pages/social/recruitment/recruitment_page.
 import 'package:badminton_booking_app/pages/social/social_manager.dart';
 import 'package:badminton_booking_app/pages/user/user_manager.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-
+import 'package:badminton_booking_app/pages/social/chat/friend_list_manager.dart';
 import 'package:badminton_booking_app/pages/social/chat/friend_request_manager.dart';
 import 'package:provider/provider.dart';
 
@@ -112,9 +111,16 @@ class _SocialPageState extends State<SocialPage> {
               onPressed: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (_) => ChangeNotifierProvider(
-                      create: (_) =>
-                          FriendRequestManager()..loadIncomingRequests(),
+                    builder: (_) => MultiProvider(
+                      providers: [
+                        ChangeNotifierProvider(
+                          create: (_) =>
+                              FriendRequestManager()..loadIncomingRequests(),
+                        ),
+                        ChangeNotifierProvider(
+                          create: (_) => FriendListManager()..loadFriends(),
+                        ),
+                      ],
                       child: const ChatHomePage(),
                     ),
                   ),

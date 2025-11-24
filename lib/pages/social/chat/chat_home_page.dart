@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'add_friend_page.dart';
+import 'friend_list_manager.dart';
 import 'friend_manager.dart';
 import 'friend_request_manager.dart';
 
@@ -65,47 +66,6 @@ class _ChatHomePageState extends State<ChatHomePage> {
       avatarText: 'HD',
       lastMessage: 'Game bào điên',
       lastMessageTimeLabel: '5 giờ',
-    ),
-  ];
-
-  static const List<ChatContact> _friends = [
-    ChatContact(
-      id: 'friend-1',
-      name: 'Nhỏ quậy lắm chiều',
-      avatarText: 'NC',
-      statusMessage: 'Bạn: chờ nứng l đi mà nứng !',
-      isOnline: true,
-    ),
-    ChatContact(
-      id: 'friend-2',
-      name: 'Bến Đò Không Người Lái Đó',
-      avatarText: 'BD',
-      statusMessage: 'Bạn: tìm được con trai thất lạc nên khóc...',
-    ),
-    ChatContact(
-      id: 'friend-3',
-      name: 'Cf chủ nhật',
-      avatarText: 'CF',
-      statusMessage: 'Bạn bè để cà phê thôi nha 😌',
-      isOnline: true,
-    ),
-    ChatContact(
-      id: 'friend-4',
-      name: 'Trần Gia Thạnh',
-      avatarText: 'TT',
-      statusMessage: 'Luôn sẵn sàng cho một set đôi',
-    ),
-    ChatContact(
-      id: 'friend-5',
-      name: 'Khu Tự Trị Dữ Đồ',
-      avatarText: 'KD',
-      statusMessage: 'Tối nay đánh tăng 2 nhen',
-    ),
-    ChatContact(
-      id: 'friend-6',
-      name: 'Hua Tan Datt',
-      avatarText: 'HD',
-      statusMessage: 'Game báo done',
     ),
   ];
 
@@ -212,58 +172,122 @@ class _ChatHomePageState extends State<ChatHomePage> {
   }
 
   Widget _buildFriendList(BuildContext context, ColorScheme cs) {
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
-      itemCount: _friends.length + 1,
-      itemBuilder: (context, index) {
-        if (index == 0) {
+    final manager = context.watch<FriendListManager>();
+    final theme = Theme.of(context);
+
+    if (manager.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (manager.error != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(manager.error!, style: theme.textTheme.bodyMedium),
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: manager.loadFriends,
+              child: const Text('Thử lại'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (manager.friends.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: manager.loadFriends,
+        child: ListView(
+          padding: const EdgeInsets.all(24),
+          children: [
+            const SizedBox(height: 40),
+            Icon(Icons.groups_outlined, size: 56, color: cs.primary),
+            const SizedBox(height: 12),
+            Text(
+              'Chưa có bạn bè',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Hãy gửi lời mời kết bạn để kết nối với người khác.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium,
+            ),
+          ],
+        ),
+      );
+    }
+
+    final friendsContacts = manager.friends
+        .map(
+          (result) => ChatContact(
+            id: result.user.id,
+            name: result.displayName,
+            avatarText: result.initials,
+            avatarUrl: result.details?.avatarUrl,
+            statusMessage:
+                result.details?.level ?? result.user.email ?? result.user.phone,
+          ),
+        )
+        .toList();
+
+    return RefreshIndicator(
+      onRefresh: manager.loadFriends,
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
+        itemCount: friendsContacts.length + 1,
+        itemBuilder: (context, index) {
+          if (index == 0) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const ChatSectionHeader(
+                    title: 'Tất cả bạn bè',
+                    subtitle: 'Bấm vào biểu tượng chat để mở cuộc trò chuyện',
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(18),
+                      color: cs.primaryContainer.withOpacity(0.3),
+                    ),
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Icon(Icons.search_rounded, color: cs.primary),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Tìm kiếm bạn bè nhanh chóng',
+                            style: theme.textTheme.bodyMedium
+                                ?.copyWith(color: cs.primary),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          final contact = friendsContacts[index - 1];
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const ChatSectionHeader(
-                  title: 'Tất cả bạn bè',
-                  subtitle: 'Bấm vào biểu tượng chat để mở cuộc trò chuyện',
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(18),
-                    color: cs.primaryContainer.withOpacity(0.3),
-                  ),
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Icon(Icons.search_rounded, color: cs.primary),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Tìm kiếm bạn bè nhanh chóng',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.copyWith(color: cs.primary),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            child: ContactListTile.friend(
+              contact: contact,
+              onTap: () => _openChat(context, contact),
+              onChatPressed: () => _openChat(context, contact),
             ),
           );
-        }
-
-        final contact = _friends[index - 1];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: ContactListTile.friend(
-            contact: contact,
-            onTap: () => _openChat(context, contact),
-            onChatPressed: () => _openChat(context, contact),
-          ),
-        );
-      },
+        },
+      ),
     );
   }
 

@@ -14,6 +14,9 @@ import 'package:badminton_booking_app/pages/user/user_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:badminton_booking_app/pages/social/chat/friend_request_manager.dart';
+import 'package:provider/provider.dart';
+
 class SocialPage extends StatefulWidget {
   const SocialPage({super.key});
 
@@ -108,7 +111,13 @@ class _SocialPageState extends State<SocialPage> {
               tooltip: 'Tin nhắn',
               onPressed: () {
                 Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => ChatHomePage()),
+                  MaterialPageRoute(
+                    builder: (_) => ChangeNotifierProvider(
+                      create: (_) =>
+                          FriendRequestManager()..loadIncomingRequests(),
+                      child: const ChatHomePage(),
+                    ),
+                  ),
                 );
               },
             ),

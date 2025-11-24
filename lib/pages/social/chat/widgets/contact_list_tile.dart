@@ -13,6 +13,7 @@ class ContactListTile extends StatelessWidget {
     this.actionLabel,
     this.isProcessing = false,
     this.isPending = false,
+    this.trailing,
   });
 
   factory ContactListTile.chat({
@@ -51,6 +52,7 @@ class ContactListTile extends StatelessWidget {
     String? actionLabel,
     bool isProcessing = false,
     bool isPending = false,
+    Widget? trailing,
   }) {
     return ContactListTile._(
       key: key,
@@ -61,6 +63,7 @@ class ContactListTile extends StatelessWidget {
       actionLabel: actionLabel,
       isProcessing: isProcessing,
       isPending: isPending,
+      trailing: trailing,
     );
   }
 
@@ -71,6 +74,7 @@ class ContactListTile extends StatelessWidget {
   final String? actionLabel;
   final bool isProcessing;
   final bool isPending;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -189,6 +193,8 @@ class ContactListTile extends StatelessWidget {
   }
 
   Widget _buildTrailing(BuildContext context) {
+    if (trailing != null) return trailing!;
+
     switch (type) {
       case _ContactTileType.chat:
         return _ChatTrailing(contact: contact);

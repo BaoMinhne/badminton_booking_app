@@ -1,4 +1,5 @@
 import 'package:badminton_booking_app/models/chat_contact.dart';
+import 'package:badminton_booking_app/models/friend_relation.dart';
 import 'package:badminton_booking_app/models/friend_search_result.dart';
 import 'package:badminton_booking_app/pages/social/chat/friend_manager.dart';
 import 'package:badminton_booking_app/pages/social/chat/widgets/contact_list_tile.dart';
@@ -170,11 +171,15 @@ class AddFriendPage extends StatelessWidget {
                 avatarText: result.initials,
                 statusMessage: result.subtitle.isEmpty ? null : result.subtitle,
               ),
-              actionLabel: friendManager.isRequestPending(result.user.id)
-                  ? 'Huỷ lời mời'
-                  : 'Kết bạn',
+              actionLabel: _primaryActionLabel(friendManager, result),
               isProcessing: friendManager.isActionInProgress(result.user.id),
-              isPending: friendManager.isRequestPending(result.user.id),
+              isPending: friendManager.relationFor(result.user.id).type ==
+                  FriendRelationType.outgoingRequest,
+              trailing: _buildTrailingActions(
+                context,
+                friendManager,
+                result,
+              ),
               onTap: () {},
               onChatPressed: () =>
                   _handleFriendAction(context, friendManager, result),
@@ -190,7 +195,8 @@ class AddFriendPage extends StatelessWidget {
     FriendManager friendManager,
     FriendSearchResult result,
   ) async {
-    final isPending = friendManager.isRequestPending(result.user.id);
+    final relation = friendManager.relationFor(result.user.id);
+    final isPending = relation.type == FriendRelationType.outgoingRequest;
 
     if (isPending) {
       final confirmed = await _showConfirmDialog(
@@ -210,7 +216,7 @@ class AddFriendPage extends StatelessWidget {
             const SnackBar(content: Text('Đã huỷ lời mời kết bạn.')),
           );
         }
-      } else {
+      } else if (relation.type == FriendRelationType.none) {
         await friendManager.sendFriendRequest(result);
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -251,6 +257,120 @@ class AddFriendPage extends StatelessWidget {
     );
 
     return result ?? false;
+  }
+
+  Widget? _buildTrailingActions(
+    BuildContext context,
+    FriendManager friendManager,
+    FriendSearchResult result,
+  ) {
+    final relation = friendManager.relationFor(result.user.id);
+    final isProcessing = friendManager.isActionInProgress(result.user.id);
+    final cs = Theme.of(context).colorScheme;
+
+    switch (relation.type) {
+      case FriendRelationType.friends:
+        return FilledButton.tonal(
+          onPressed: null,
+          child: const Text('Bạn bè'),
+        );
+      case FriendRelationType.incomingRequest:
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FilledButton(
+              onPressed: isProcessing
+                  ? null
+                  : () => _handleAcceptRequest(context, friendManager, result),
+              child: const Text('Đồng ý'),
+            ),
+            const SizedBox(width: 8),
+            FilledButton.tonal(
+              onPressed: isProcessing
+                  ? null
+                  : () => _handleRejectRequest(context, friendManager, result),
+              style: FilledButton.styleFrom(
+                backgroundColor: cs.errorContainer,
+                foregroundColor: cs.onErrorContainer,
+              ),
+              child: const Text('Xóa'),
+            ),
+          ],
+        );
+      case FriendRelationType.outgoingRequest:
+      case FriendRelationType.none:
+        return null;
+    }
+  }
+
+  String? _primaryActionLabel(
+    FriendManager friendManager,
+    FriendSearchResult result,
+  ) {
+    final relation = friendManager.relationFor(result.user.id);
+
+    switch (relation.type) {
+      case FriendRelationType.none:
+        return 'Kết bạn';
+      case FriendRelationType.outgoingRequest:
+        return 'Huỷ lời mời';
+      case FriendRelationType.incomingRequest:
+      case FriendRelationType.friends:
+        return null;
+    }
+  }
+
+  Future<void> _handleAcceptRequest(
+    BuildContext context,
+    FriendManager friendManager,
+    FriendSearchResult result,
+  ) async {
+    try {
+      await friendManager.acceptIncomingRequest(result);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Bạn và ${result.displayName} đã là bạn bè.'),
+          ),
+        );
+      }
+    } catch (err) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$err')),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleRejectRequest(
+    BuildContext context,
+    FriendManager friendManager,
+    FriendSearchResult result,
+  ) async {
+    final confirmed = await _showConfirmDialog(
+      context,
+      title: 'Xóa lời mời kết bạn?',
+      message:
+          'Bạn có chắc muốn xóa lời mời kết bạn từ ${result.displayName}?',
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await friendManager.rejectIncomingRequest(result);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã xóa lời mời kết bạn.')),
+        );
+      }
+    } catch (err) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$err')),
+        );
+      }
+    }
   }
 
   Widget _buildCommunityCard(BuildContext context) {

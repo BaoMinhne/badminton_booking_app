@@ -1,5 +1,6 @@
 import 'package:pocketbase/pocketbase.dart';
 
+import '../models/friend_relation.dart';
 import '../models/friend_request.dart';
 import '../models/friend_search_result.dart';
 import '../models/user.dart';
@@ -78,6 +79,51 @@ class FriendRequestService {
     }
   }
 
+  Future<FriendRelationStatus> getRelationStatus(String otherUserId) async {
+    final pb = await getPocketbaseInstance();
+    final currentUserId = pb.authStore.record?.id;
+
+    if (currentUserId == null) {
+      return const FriendRelationStatus.none();
+    }
+
+    final friendshipFilter =
+        "(user_a = '$currentUserId' && user_b = '$otherUserId') || (user_b = '$currentUserId' && user_a = '$otherUserId')";
+
+    try {
+      await pb.collection('friendships').getFirstListItem(friendshipFilter);
+      return const FriendRelationStatus(type: FriendRelationType.friends);
+    } on ClientException catch (err) {
+      if (err.statusCode != 404) rethrow;
+    }
+
+    try {
+      final incoming = await pb.collection('friend_requests').getFirstListItem(
+            "from_user = '$otherUserId' && to_user = '$currentUserId' && status = 'pending'",
+          );
+      return FriendRelationStatus(
+        type: FriendRelationType.incomingRequest,
+        requestId: incoming.id,
+      );
+    } on ClientException catch (err) {
+      if (err.statusCode != 404) rethrow;
+    }
+
+    try {
+      final outgoing = await pb.collection('friend_requests').getFirstListItem(
+            "from_user = '$currentUserId' && to_user = '$otherUserId' && status = 'pending'",
+          );
+      return FriendRelationStatus(
+        type: FriendRelationType.outgoingRequest,
+        requestId: outgoing.id,
+      );
+    } on ClientException catch (err) {
+      if (err.statusCode != 404) rethrow;
+    }
+
+    return const FriendRelationStatus.none();
+  }
+
   Future<String> sendFriendRequest(String toUserId) async {
     final pb = await getPocketbaseInstance();
     final currentUserId = pb.authStore.record?.id;
@@ -135,7 +181,33 @@ class FriendRequestService {
     await _createFriendship(pb, request.from.user.id, currentUserId);
   }
 
+  Future<void> acceptFriendRequestById(
+    String requestId,
+    String fromUserId,
+  ) async {
+    final pb = await getPocketbaseInstance();
+    final currentUserId = pb.authStore.record?.id;
+    if (currentUserId == null) {
+      throw Exception('Bạn chưa đăng nhập.');
+    }
+
+    await pb.collection('friend_requests').update(
+      requestId,
+      body: {'status': 'accepted'},
+    );
+
+    await _createFriendship(pb, fromUserId, currentUserId);
+  }
+
   Future<void> rejectFriendRequest(String requestId) async {
+    final pb = await getPocketbaseInstance();
+    await pb.collection('friend_requests').update(
+      requestId,
+      body: {'status': 'rejected'},
+    );
+  }
+
+  Future<void> rejectFriendRequestById(String requestId) async {
     final pb = await getPocketbaseInstance();
     await pb.collection('friend_requests').update(
       requestId,

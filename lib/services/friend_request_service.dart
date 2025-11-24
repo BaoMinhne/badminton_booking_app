@@ -69,8 +69,7 @@ class FriendRequestService {
       if (currentUserId == null) return null;
 
       final rec = await pb.collection('friend_requests').getFirstListItem(
-            filter:
-                "from_user = '$currentUserId' && to_user = '$toUserId' && status = 'pending'",
+            "from_user = '$currentUserId' && to_user = '$toUserId' && status = 'pending'",
           );
       return rec.id;
     } on ClientException catch (err) {

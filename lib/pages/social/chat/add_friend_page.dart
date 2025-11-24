@@ -55,7 +55,7 @@ class AddFriendPage extends StatelessWidget {
             _buildSearchField(cs, friendManager),
             const SizedBox(height: 16),
             if (friendManager.currentQuery.trim().isNotEmpty)
-              _buildSearchResults(friendManager, theme),
+              _buildSearchResults(context, friendManager, theme),
             const SizedBox(height: 24),
             Text(
               'Gợi ý kết bạn',
@@ -131,6 +131,7 @@ class AddFriendPage extends StatelessWidget {
   }
 
   Widget _buildSearchResults(
+    BuildContext context,
     FriendManager friendManager,
     ThemeData theme,
   ) {
@@ -167,14 +168,12 @@ class AddFriendPage extends StatelessWidget {
                 id: result.user.id,
                 name: result.displayName,
                 avatarText: result.initials,
-                statusMessage:
-                    result.subtitle.isEmpty ? null : result.subtitle,
+                statusMessage: result.subtitle.isEmpty ? null : result.subtitle,
               ),
               actionLabel: friendManager.isRequestPending(result.user.id)
                   ? 'Huỷ lời mời'
                   : 'Kết bạn',
-              isProcessing:
-                  friendManager.isActionInProgress(result.user.id),
+              isProcessing: friendManager.isActionInProgress(result.user.id),
               isPending: friendManager.isRequestPending(result.user.id),
               onTap: () {},
               onChatPressed: () =>

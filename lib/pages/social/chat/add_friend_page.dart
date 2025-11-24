@@ -1,4 +1,5 @@
 import 'package:badminton_booking_app/models/chat_contact.dart';
+import 'package:badminton_booking_app/models/friend_search_result.dart';
 import 'package:badminton_booking_app/pages/social/chat/friend_manager.dart';
 import 'package:badminton_booking_app/pages/social/chat/widgets/contact_list_tile.dart';
 import 'package:flutter/material.dart';
@@ -166,15 +167,91 @@ class AddFriendPage extends StatelessWidget {
                 id: result.user.id,
                 name: result.displayName,
                 avatarText: result.initials,
-                statusMessage: result.subtitle.isEmpty ? null : result.subtitle,
+                statusMessage:
+                    result.subtitle.isEmpty ? null : result.subtitle,
               ),
+              actionLabel: friendManager.isRequestPending(result.user.id)
+                  ? 'Huỷ lời mời'
+                  : 'Kết bạn',
+              isProcessing:
+                  friendManager.isActionInProgress(result.user.id),
+              isPending: friendManager.isRequestPending(result.user.id),
               onTap: () {},
-              onChatPressed: () {},
+              onChatPressed: () =>
+                  _handleFriendAction(context, friendManager, result),
             ),
           ),
         ),
       ],
     );
+  }
+
+  Future<void> _handleFriendAction(
+    BuildContext context,
+    FriendManager friendManager,
+    FriendSearchResult result,
+  ) async {
+    final isPending = friendManager.isRequestPending(result.user.id);
+
+    if (isPending) {
+      final confirmed = await _showConfirmDialog(
+        context,
+        title: 'Huỷ lời mời kết bạn?',
+        message:
+            'Bạn có chắc muốn huỷ lời mời kết bạn đã gửi cho ${result.displayName}?',
+      );
+      if (!confirmed) return;
+    }
+
+    try {
+      if (isPending) {
+        await friendManager.cancelPendingRequest(result.user.id);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Đã huỷ lời mời kết bạn.')),
+          );
+        }
+      } else {
+        await friendManager.sendFriendRequest(result);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Đã gửi lời mời kết bạn.')),
+          );
+        }
+      }
+    } catch (err) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$err')),
+        );
+      }
+    }
+  }
+
+  Future<bool> _showConfirmDialog(
+    BuildContext context, {
+    required String title,
+    required String message,
+  }) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Quay lại'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Xác nhận'),
+          ),
+        ],
+      ),
+    );
+
+    return result ?? false;
   }
 
   Widget _buildCommunityCard(BuildContext context) {

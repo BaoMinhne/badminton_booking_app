@@ -10,6 +10,9 @@ class ContactListTile extends StatelessWidget {
     required this.type,
     this.onTap,
     this.onChatPressed,
+    this.actionLabel,
+    this.isProcessing = false,
+    this.isPending = false,
   });
 
   factory ContactListTile.chat({
@@ -45,6 +48,9 @@ class ContactListTile extends StatelessWidget {
     required ChatContact contact,
     VoidCallback? onTap,
     VoidCallback? onChatPressed,
+    String? actionLabel,
+    bool isProcessing = false,
+    bool isPending = false,
   }) {
     return ContactListTile._(
       key: key,
@@ -52,6 +58,9 @@ class ContactListTile extends StatelessWidget {
       type: _ContactTileType.suggestion,
       onTap: onTap,
       onChatPressed: onChatPressed,
+      actionLabel: actionLabel,
+      isProcessing: isProcessing,
+      isPending: isPending,
     );
   }
 
@@ -59,6 +68,9 @@ class ContactListTile extends StatelessWidget {
   final _ContactTileType type;
   final VoidCallback? onTap;
   final VoidCallback? onChatPressed;
+  final String? actionLabel;
+  final bool isProcessing;
+  final bool isPending;
 
   @override
   Widget build(BuildContext context) {
@@ -187,9 +199,26 @@ class ContactListTile extends StatelessWidget {
           label: const Text('Chat'),
         );
       case _ContactTileType.suggestion:
+        final label = actionLabel ?? 'Kết bạn';
+        if (isProcessing) {
+          return const SizedBox(
+            width: 32,
+            height: 32,
+            child: CircularProgressIndicator(strokeWidth: 2.6),
+          );
+        }
+
         return FilledButton(
+          style: isPending
+              ? FilledButton.styleFrom(
+                  backgroundColor:
+                      Theme.of(context).colorScheme.secondaryContainer,
+                  foregroundColor:
+                      Theme.of(context).colorScheme.onSecondaryContainer,
+                )
+              : null,
           onPressed: onChatPressed,
-          child: const Text('Kết bạn'),
+          child: Text(label),
         );
     }
   }

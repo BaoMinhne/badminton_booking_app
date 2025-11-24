@@ -17,6 +17,7 @@ class ChatBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isMe = message.isMe;
+    final initials = _initials(message.author);
 
     final bubbleColor = isMe ? cs.primary : Colors.grey.shade300;
     final textColor = isMe ? cs.onPrimary : cs.onSurface;
@@ -39,7 +40,10 @@ class ChatBubble extends StatelessWidget {
                 child: CircleAvatar(
                   radius: 16,
                   backgroundColor: cs.primary,
-                  child: const Text('NM', style: TextStyle(fontSize: 12)),
+                  child: Text(
+                    initials,
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -78,7 +82,7 @@ class ChatBubble extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            message.time,
+                            message.timeLabel,
                             style: Theme.of(context)
                                 .textTheme
                                 .labelSmall
@@ -108,4 +112,18 @@ class ChatBubble extends StatelessWidget {
       ),
     );
   }
+}
+
+String _initials(String name) {
+  final parts = name.trim().split(RegExp(r'\s+'));
+  if (parts.length == 1) {
+    final word = parts.first;
+    if (word.isEmpty) return '??';
+    return word.substring(0, word.length >= 2 ? 2 : 1).toUpperCase();
+  }
+
+  final first = parts.first.isNotEmpty ? parts.first[0] : '';
+  final last = parts.last.isNotEmpty ? parts.last[0] : '';
+  final result = (first + last).trim();
+  return result.isEmpty ? '??' : result.toUpperCase();
 }

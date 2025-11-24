@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class ChatInput extends StatefulWidget {
-  final void Function(String text) onSend;
+  final Future<void> Function(String text) onSend;
   final Color? backgroundColor;
 
   const ChatInput({
@@ -16,13 +16,23 @@ class ChatInput extends StatefulWidget {
 
 class _ChatInputState extends State<ChatInput> {
   final _controller = TextEditingController();
+  bool _isSending = false;
 
-  void _handleSubmit() {
+  Future<void> _handleSubmit() async {
     final text = _controller.text.trim();
-    if (text.isEmpty) return;
-    widget.onSend(text);
-    _controller.clear();
-    setState(() {}); // để rebuild nút gửi (enable/disable)
+    if (text.isEmpty || _isSending) return;
+    setState(() {
+      _isSending = true;
+    });
+    try {
+      await widget.onSend(text);
+      _controller.clear();
+    } finally {
+      setState(() {
+        _isSending = false;
+      });
+    }
+    // để rebuild nút gửi (enable/disable)
   }
 
   @override
@@ -71,6 +81,7 @@ class _ChatInputState extends State<ChatInput> {
                 child: TextField(
                   controller: _controller,
                   keyboardType: TextInputType.multiline,
+                  enabled: !_isSending,
                   onChanged: (_) => setState(() {}),
                   maxLines: null,
                   minLines: 1,
@@ -85,7 +96,7 @@ class _ChatInputState extends State<ChatInput> {
                     ),
                     contentPadding:
                         EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  ),
+                    ),
                   onSubmitted: (_) => _handleSubmit(),
                 ),
               ),
@@ -94,10 +105,12 @@ class _ChatInputState extends State<ChatInput> {
             Padding(
               padding: const EdgeInsets.only(right: 4),
               child: GestureDetector(
-                onTap: _controller.text.trim().isEmpty ? null : _handleSubmit,
+                onTap:
+                    _controller.text.trim().isEmpty || _isSending ? null : _handleSubmit,
                 child: AnimatedOpacity(
                   duration: const Duration(milliseconds: 180),
-                  opacity: _controller.text.trim().isEmpty ? 0.4 : 1.0,
+                  opacity:
+                      _controller.text.trim().isEmpty || _isSending ? 0.4 : 1.0,
                   child: Container(
                     width: 44,
                     height: 44,

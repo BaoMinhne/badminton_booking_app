@@ -8,6 +8,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'add_friend_page.dart';
+import '../../../services/chat_service.dart';
+import 'chat_conversation_manager.dart';
+import 'chat_list_manager.dart';
 import 'friend_list_manager.dart';
 import 'friend_manager.dart';
 import 'friend_request_manager.dart';
@@ -20,55 +23,6 @@ class ChatHomePage extends StatefulWidget {
 }
 
 class _ChatHomePageState extends State<ChatHomePage> {
-  static const List<ChatContact> _activeChats = [
-    ChatContact(
-      id: 'chat-1',
-      name: 'Nhỏ quậy lắm chiều',
-      avatarText: 'NC',
-      lastMessage: 'Bạn: hehe hehe <3 tối qua đánh cầu nhe bạn',
-      lastMessageTimeLabel: '1 phút',
-      unreadCount: 2,
-      isOnline: true,
-    ),
-    ChatContact(
-      id: 'chat-2',
-      name: 'Bến Đò Không Người Lái Đó',
-      avatarText: 'BD',
-      lastMessage: 'Bạn: tìm được con trai thất lạc nên khóc...',
-      lastMessageTimeLabel: '15 phút',
-    ),
-    ChatContact(
-      id: 'chat-3',
-      name: 'Cf chủ nhật',
-      avatarText: 'CF',
-      lastMessage: '😊 😌',
-      lastMessageTimeLabel: '30 phút',
-      isOnline: true,
-    ),
-    ChatContact(
-      id: 'chat-4',
-      name: 'Trần Gia Thạnh',
-      avatarText: 'TT',
-      lastMessage: 'Đã gửi cho bạn một ảnh',
-      lastMessageTimeLabel: '1 giờ',
-    ),
-    ChatContact(
-      id: 'chat-5',
-      name: 'Khu Tự Trị Dữ Đồ',
-      avatarText: 'KD',
-      lastMessage: 'Bé thỏ mới uống: Mà deokdame đáng cháy vcl',
-      lastMessageTimeLabel: '2 giờ',
-      unreadCount: 1,
-    ),
-    ChatContact(
-      id: 'chat-6',
-      name: 'Hua Tan Datt',
-      avatarText: 'HD',
-      lastMessage: 'Game bào điên',
-      lastMessageTimeLabel: '5 giờ',
-    ),
-  ];
-
   TabBar _buildTabs(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
@@ -145,29 +99,83 @@ class _ChatHomePageState extends State<ChatHomePage> {
   }
 
   Widget _buildActiveChatList(BuildContext context) {
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
-      itemCount: _activeChats.length + 1,
-      itemBuilder: (context, index) {
-        if (index == 0) {
-          return const Padding(
-            padding: EdgeInsets.only(bottom: 12),
-            child: ChatSectionHeader(
-              title: 'Đang trò chuyện',
-              subtitle: 'Danh sách những người bạn đang nhắn tin gần đây',
+    final manager = context.watch<ChatListManager>();
+    final theme = Theme.of(context);
+
+    if (manager.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (manager.error != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(manager.error!, style: theme.textTheme.bodyMedium),
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: manager.loadChats,
+              child: const Text('Thử lại'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (manager.chats.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: manager.loadChats,
+        child: ListView(
+          padding: const EdgeInsets.all(24),
+          children: [
+            const SizedBox(height: 32),
+            Icon(Icons.chat_bubble_outline,
+                size: 56, color: theme.colorScheme.primary),
+            const SizedBox(height: 12),
+            Text(
+              'Chưa có cuộc trò chuyện',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Hãy bắt đầu trò chuyện với bạn bè để xuất hiện tại đây.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: manager.loadChats,
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
+        itemCount: manager.chats.length + 1,
+        itemBuilder: (context, index) {
+          if (index == 0) {
+            return const Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: ChatSectionHeader(
+                title: 'Đang trò chuyện',
+                subtitle: 'Danh sách những người bạn đang nhắn tin gần đây',
+              ),
+            );
+          }
+
+          final contact = manager.chats[index - 1];
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: ContactListTile.chat(
+              contact: contact,
+              onTap: () => _openChat(context, contact),
             ),
           );
-        }
-
-        final contact = _activeChats[index - 1];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: ContactListTile.chat(
-            contact: contact,
-            onTap: () => _openChat(context, contact),
-          ),
-        );
-      },
+        },
+      ),
     );
   }
 
@@ -222,13 +230,14 @@ class _ChatHomePageState extends State<ChatHomePage> {
       );
     }
 
-    final friendsContacts = manager.friends
-        .map(
-          (result) => ChatContact(
-            id: result.user.id,
-            name: result.displayName,
-            avatarText: result.initials,
-            avatarUrl: result.details?.avatarUrl,
+      final friendsContacts = manager.friends
+          .map(
+            (result) => ChatContact(
+              id: result.user.id,
+              userId: result.user.id,
+              name: result.displayName,
+              avatarText: result.initials,
+              avatarUrl: result.details?.avatarUrl,
             statusMessage:
                 result.details?.level ?? result.user.email ?? result.user.phone,
           ),
@@ -456,15 +465,44 @@ class _ChatHomePageState extends State<ChatHomePage> {
   }
 
   void _openChat(BuildContext context, ChatContact contact) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => ChatPage(
-          contactName: contact.name,
-          isContactOnline: contact.isOnline,
-          avatarText: contact.avatarText,
-        ),
-      ),
-    );
+    final service = ChatService();
+    final navigator = Navigator.of(context);
+    final scaffold = ScaffoldMessenger.of(context);
+
+    () async {
+      try {
+        final targetUserId = contact.userId ?? contact.id;
+        final roomId = contact.chatId ?? contact.id ?? contact.userId;
+
+        if (roomId == null && targetUserId == null) {
+          throw Exception('Không xác định được người nhận tin nhắn.');
+        }
+
+        final ensuredRoom = roomId ??
+            await service.ensureRoomWith(targetUserId ?? '');
+
+        if (!context.mounted) return;
+
+        final targetContact = contact.copyWith(
+          id: ensuredRoom,
+          chatId: ensuredRoom,
+        );
+
+        navigator.push(
+          MaterialPageRoute(
+            builder: (_) => ChangeNotifierProvider(
+              create: (_) => ChatConversationManager(chatId: ensuredRoom)
+                ..initialize(),
+              child: ChatPage(contact: targetContact),
+            ),
+          ),
+        );
+      } catch (error) {
+        scaffold.showSnackBar(
+          SnackBar(content: Text('$error')),
+        );
+      }
+    }();
   }
 }
 

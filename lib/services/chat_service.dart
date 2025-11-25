@@ -51,7 +51,8 @@ class ChatService {
         );
 
     return result.items
-        .map((record) => ChatRoom.fromRecord(record, currentUserId: currentUserId))
+        .map((record) =>
+            ChatRoom.fromRecord(record, currentUserId: currentUserId))
         .toList();
   }
 
@@ -104,7 +105,9 @@ class ChatService {
         'content': content.trim(),
         'is_read': false,
       },
-      files: attachment != null ? [attachment] : null,
+      files: attachment != null
+          ? <http.MultipartFile>[attachment]
+          : <http.MultipartFile>[],
     );
 
     final lastMessageLabel = content.trim().isNotEmpty

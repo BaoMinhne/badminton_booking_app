@@ -7,6 +7,7 @@ import 'package:badminton_booking_app/components/recruitment_post_card.dart';
 import 'package:badminton_booking_app/models/community_post.dart';
 import 'package:badminton_booking_app/models/recruitment_post.dart';
 import 'package:badminton_booking_app/pages/social/chat/chat_home_page.dart';
+import 'package:badminton_booking_app/pages/social/chat/chat_list_manager.dart';
 import 'package:badminton_booking_app/pages/social/create_post_page.dart';
 import 'package:badminton_booking_app/pages/social/recruitment/recruitment_page.dart';
 import 'package:badminton_booking_app/pages/social/social_manager.dart';
@@ -109,22 +110,25 @@ class _SocialPageState extends State<SocialPage> {
               icon: const Icon(Icons.group, size: 30),
               tooltip: 'Tin nhắn',
               onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => MultiProvider(
-                      providers: [
-                        ChangeNotifierProvider(
-                          create: (_) =>
-                              FriendRequestManager()..loadIncomingRequests(),
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => MultiProvider(
+                          providers: [
+                            ChangeNotifierProvider(
+                              create: (_) =>
+                                  FriendRequestManager()..loadIncomingRequests(),
+                            ),
+                            ChangeNotifierProvider(
+                              create: (_) => FriendListManager()..loadFriends(),
+                            ),
+                            ChangeNotifierProvider(
+                              create: (_) => ChatListManager()..initialize(),
+                            ),
+                          ],
+                          child: const ChatHomePage(),
                         ),
-                        ChangeNotifierProvider(
-                          create: (_) => FriendListManager()..loadFriends(),
-                        ),
-                      ],
-                      child: const ChatHomePage(),
-                    ),
-                  ),
-                );
+                      ),
+                    );
               },
             ),
             const SizedBox(width: 6),

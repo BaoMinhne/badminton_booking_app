@@ -115,11 +115,10 @@ class _SocialPageState extends State<SocialPage> {
                         builder: (_) => MultiProvider(
                           providers: [
                             ChangeNotifierProvider(
-                              create: (_) =>
-                                  FriendRequestManager()..loadIncomingRequests(),
+                              create: (_) => FriendRequestManager()..initialize(),
                             ),
                             ChangeNotifierProvider(
-                              create: (_) => FriendListManager()..loadFriends(),
+                              create: (_) => FriendListManager()..initialize(),
                             ),
                             ChangeNotifierProvider(
                               create: (_) => ChatListManager()..initialize(),

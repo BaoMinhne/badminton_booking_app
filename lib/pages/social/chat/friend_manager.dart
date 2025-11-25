@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:badminton_booking_app/models/friend_relation.dart';
 import 'package:badminton_booking_app/models/friend_search_result.dart';
 import 'package:badminton_booking_app/services/friend_request_service.dart';
+import 'package:badminton_booking_app/services/pocketbase_client.dart';
 import 'package:badminton_booking_app/services/user_service.dart';
 import 'package:flutter/foundation.dart';
+import 'package:pocketbase/pocketbase.dart';
 
 class FriendManager extends ChangeNotifier {
   FriendManager()
@@ -23,6 +25,9 @@ class FriendManager extends ChangeNotifier {
 
   final Map<String, FriendRelationStatus> _relations = {};
   final Map<String, bool> _actionLoading = {};
+  UnsubscribeFunc? _requestUnsubscribe;
+  UnsubscribeFunc? _friendshipUnsubscribe;
+  String? _currentUserId;
 
   List<FriendSearchResult> get searchResults => _searchResults;
   bool get isSearching => _isSearching;
@@ -43,7 +48,121 @@ class FriendManager extends ChangeNotifier {
   @override
   void dispose() {
     _searchDebounce?.cancel();
+    unawaited(_requestUnsubscribe?.call());
+    unawaited(_friendshipUnsubscribe?.call());
     super.dispose();
+  }
+
+  Future<void> initialize() async {
+    final pb = await getPocketbaseInstance();
+    _currentUserId = pb.authStore.record?.id;
+    await _setupRealtime(pb);
+  }
+
+  Future<void> _setupRealtime(PocketBase pocketBase) async {
+    final userId = _currentUserId;
+    if (userId == null) return;
+
+    final oldReqUnsub = _requestUnsubscribe;
+    _requestUnsubscribe = null;
+    if (oldReqUnsub != null) {
+      await oldReqUnsub();
+    }
+
+    final oldFriendshipUnsub = _friendshipUnsubscribe;
+    _friendshipUnsubscribe = null;
+    if (oldFriendshipUnsub != null) {
+      await oldFriendshipUnsub();
+    }
+
+    try {
+      _requestUnsubscribe = await pocketBase
+          .collection('friend_requests')
+          .subscribe('*', _handleRequestEvent);
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint('Failed to subscribe friend requests: $error');
+      }
+    }
+
+    try {
+      _friendshipUnsubscribe = await pocketBase
+          .collection('friendships')
+          .subscribe('*', _handleFriendshipEvent);
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint('Failed to subscribe friendships: $error');
+      }
+    }
+  }
+
+  Future<void> _handleRequestEvent(RecordSubscriptionEvent event) async {
+    final record = event.record;
+    final userId = _currentUserId;
+    if (record == null || userId == null) return;
+
+    final fromUser = record.getStringValue('from_user');
+    final toUser = record.getStringValue('to_user');
+
+    if (fromUser != userId && toUser != userId) return;
+
+    final otherUserId = fromUser == userId ? toUser : fromUser;
+    final status = record.getStringValue('status');
+
+    switch (event.action) {
+      case 'delete':
+        _relations[otherUserId] = const FriendRelationStatus.none();
+        break;
+      case 'create':
+      case 'update':
+        if (status == 'pending') {
+          final type = toUser == userId
+              ? FriendRelationType.incomingRequest
+              : FriendRelationType.outgoingRequest;
+          _relations[otherUserId] = FriendRelationStatus(
+            type: type,
+            requestId: record.id,
+          );
+        } else if (status == 'accepted') {
+          _relations[otherUserId] =
+              const FriendRelationStatus(type: FriendRelationType.friends);
+        } else {
+          _relations[otherUserId] = const FriendRelationStatus.none();
+        }
+        break;
+      default:
+        break;
+    }
+
+    notifyListeners();
+  }
+
+  Future<void> _handleFriendshipEvent(RecordSubscriptionEvent event) async {
+    final record = event.record;
+    final userId = _currentUserId;
+    if (record == null || userId == null) return;
+
+    final userA = record.getStringValue('user_a');
+    final userB = record.getStringValue('user_b');
+
+    if (userA != userId && userB != userId) return;
+
+    final otherUserId = userA == userId ? userB : userA;
+
+    switch (event.action) {
+      case 'delete':
+        _relations[otherUserId] = const FriendRelationStatus.none();
+        break;
+      case 'create':
+      case 'update':
+        _relations[otherUserId] =
+            const FriendRelationStatus(type: FriendRelationType.friends);
+        break;
+      default:
+        break;
+    }
+
+    notifyListeners();
   }
 
   void searchDebounced(String keyword) {

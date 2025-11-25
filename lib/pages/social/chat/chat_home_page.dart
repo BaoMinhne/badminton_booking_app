@@ -65,7 +65,7 @@ class _ChatHomePageState extends State<ChatHomePage> {
             Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (_) => ChangeNotifierProvider(
-                  create: (_) => FriendManager(),
+                  create: (_) => FriendManager()..initialize(),
                   child: const AddFriendPage(),
                 ),
               ),
@@ -78,7 +78,7 @@ class _ChatHomePageState extends State<ChatHomePage> {
             Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (_) => ChangeNotifierProvider(
-                  create: (_) => FriendManager(),
+                  create: (_) => FriendManager()..initialize(),
                   child: const AddFriendPage(),
                 ),
               ),

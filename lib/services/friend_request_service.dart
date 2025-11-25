@@ -63,6 +63,41 @@ class FriendRequestService {
     return result;
   }
 
+  Future<FriendRequestItem?> buildIncomingRequestItem(
+    PocketBase pb,
+    RecordModel record,
+  ) async {
+    final fromUserId = record.getStringValue('from_user');
+    if (fromUserId.isEmpty) return null;
+
+    User? fromUser;
+
+    final expanded = record.expand['from_user'] as List<dynamic>?;
+    if (expanded != null && expanded.isNotEmpty) {
+      final expandedUser = expanded.first;
+      if (expandedUser is RecordModel) {
+        fromUser = User.fromJson(expandedUser.toJson());
+      }
+    }
+
+    fromUser ??= User(id: fromUserId, username: '', email: '', phone: '');
+
+    final details = await _userDetailsService.getByUserIdWithClient(
+      pb,
+      fromUserId,
+    );
+
+    final createdAt = DateTime.tryParse(record.getStringValue('created')) ??
+        DateTime.now();
+
+    return FriendRequestItem(
+      id: record.id,
+      from: FriendSearchResult(user: fromUser, details: details),
+      createdAt: createdAt,
+      timeLabel: formatRelativeTime(createdAt),
+    );
+  }
+
   Future<String?> getPendingRequestIdTo(String toUserId) async {
     try {
       final pb = await getPocketbaseInstance();

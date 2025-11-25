@@ -59,6 +59,7 @@ class _ChatPageState extends State<ChatPage> {
           ),
           ChatInput(
             onSend: manager.sendMessage,
+            onPickImage: manager.sendImage,
             backgroundColor: cs.background,
           ),
         ],

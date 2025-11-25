@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 class ChatInput extends StatefulWidget {
   final Future<void> Function(String text) onSend;
+  final Future<void> Function(XFile image)? onPickImage;
   final Color? backgroundColor;
 
   const ChatInput({
     super.key,
     required this.onSend,
+    this.onPickImage,
     this.backgroundColor,
   });
 
@@ -17,6 +20,8 @@ class ChatInput extends StatefulWidget {
 class _ChatInputState extends State<ChatInput> {
   final _controller = TextEditingController();
   bool _isSending = false;
+
+  final _picker = ImagePicker();
 
   Future<void> _handleSubmit() async {
     final text = _controller.text.trim();
@@ -33,6 +38,25 @@ class _ChatInputState extends State<ChatInput> {
       });
     }
     // để rebuild nút gửi (enable/disable)
+  }
+
+  Future<void> _handlePickImage() async {
+    if (_isSending || widget.onPickImage == null) return;
+
+    try {
+      final image = await _picker.pickImage(source: ImageSource.gallery);
+      if (image == null) return;
+
+      setState(() {
+        _isSending = true;
+      });
+
+      await widget.onPickImage!(image);
+    } finally {
+      setState(() {
+        _isSending = false;
+      });
+    }
   }
 
   @override
@@ -69,7 +93,7 @@ class _ChatInputState extends State<ChatInput> {
             _CircleIconButton(
               icon: Icons.image_outlined,
               color: primary,
-              onTap: () {},
+              onTap: _handlePickImage,
             ),
             const SizedBox(width: 10),
             // ô nhập dài

@@ -1,7 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import 'package:pocketbase/pocketbase.dart';
+import 'package:path/path.dart' as p;
 
 import '../../../models/chat_message.dart';
 import '../../../services/chat_service.dart';
@@ -72,11 +75,34 @@ class ChatConversationManager extends ChangeNotifier {
     if (trimmed.isEmpty) return;
 
     try {
-      final message = await _service.sendMessage(chatId: chatId, content: trimmed);
+      final message =
+          await _service.sendMessage(chatId: chatId, content: trimmed);
       _upsertMessage(message);
     } catch (error) {
       if (kDebugMode) {
         debugPrint('Send message failed: $error');
+      }
+    }
+  }
+
+  Future<void> sendImage(XFile image) async {
+    try {
+      final bytes = await image.readAsBytes();
+      final fileName = p.basename(image.path);
+      final multipart = http.MultipartFile.fromBytes(
+        'attachments',
+        bytes,
+        filename: fileName,
+      );
+
+      final message = await _service.sendMessage(
+        chatId: chatId,
+        attachment: multipart,
+      );
+      _upsertMessage(message);
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint('Send image failed: $error');
       }
     }
   }
@@ -87,11 +113,12 @@ class ChatConversationManager extends ChangeNotifier {
     if (event.action == 'delete') return;
 
     try {
-      final userId =
-          _currentUserId ?? (await getPocketbaseInstance()).authStore.record?.id;
+      final pb = await getPocketbaseInstance();
+      final userId = _currentUserId ?? pb.authStore.record?.id;
       _currentUserId ??= userId;
       final current = ChatMessage.fromRecord(
         record,
+        pb: pb,
         currentUserId: userId ?? '',
       );
       _upsertMessage(current);

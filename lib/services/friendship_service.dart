@@ -62,4 +62,54 @@ class FriendshipService {
 
     return results;
   }
+
+  Future<FriendSearchResult?> buildFriendFromRecord(
+    PocketBase pb,
+    RecordModel record,
+    String currentUserId,
+  ) async {
+    final userAId = record.getStringValue('user_a');
+    final userBId = record.getStringValue('user_b');
+    final otherUserId = userAId == currentUserId ? userBId : userAId;
+
+    if (otherUserId.isEmpty) return null;
+
+    User? otherUser;
+
+    final userAExpanded = record.expand['user_a'] as List<dynamic>?;
+    final userBExpanded = record.expand['user_b'] as List<dynamic>?;
+
+    if (userAExpanded != null && userAExpanded.isNotEmpty) {
+      final expandedUser = userAExpanded.first;
+      if (expandedUser is RecordModel && expandedUser.id == otherUserId) {
+        otherUser = User.fromJson(expandedUser.toJson());
+      }
+    }
+
+    if (otherUser == null && userBExpanded != null && userBExpanded.isNotEmpty) {
+      final expandedUser = userBExpanded.first;
+      if (expandedUser is RecordModel && expandedUser.id == otherUserId) {
+        otherUser = User.fromJson(expandedUser.toJson());
+      }
+    }
+
+    try {
+      final userRecord = await pb.collection('users').getOne(otherUserId);
+      otherUser = User.fromJson(userRecord.toJson());
+    } catch (_) {
+      otherUser ??= User(
+        id: otherUserId,
+        username: '',
+        email: '',
+        phone: '',
+      );
+    }
+
+    final details = await _userDetailsService.getByUserIdWithClient(
+      pb,
+      otherUserId,
+    );
+
+    return FriendSearchResult(user: otherUser, details: details);
+  }
 }

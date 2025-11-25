@@ -18,9 +18,15 @@ class ChatBubble extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final isMe = message.isMe;
     final initials = _initials(message.author);
+    final hasAttachment = message.hasAttachment;
+    final hasText = message.hasText;
 
     final bubbleColor = isMe ? cs.primary : Colors.grey.shade300;
     final textColor = isMe ? cs.onPrimary : cs.onSurface;
+
+    final EdgeInsets bubblePadding = hasAttachment && !hasText
+        ? const EdgeInsets.all(6)
+        : const EdgeInsets.symmetric(horizontal: 14, vertical: 10);
 
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
@@ -63,8 +69,7 @@ class ChatBubble extends StatelessWidget {
                   ),
                 ),
                 child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: bubblePadding,
                   child: Column(
                     // crossAxisAlignment: isMe
                     //     ? CrossAxisAlignment.start
@@ -72,15 +77,61 @@ class ChatBubble extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        message.content,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              fontSize: 16,
-                              color: textColor,
-                              height: 1.35,
+                      if (message.attachmentUrl != null) ...[
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(14),
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(
+                              maxWidth: 240,
+                              maxHeight: 280,
+                              minWidth: 120,
                             ),
-                      ),
-                      const SizedBox(height: 4),
+                            child: Image.network(
+                              message.attachmentUrl!,
+                              fit: BoxFit.cover,
+                              loadingBuilder: (context, child, progress) {
+                                if (progress == null) return child;
+                                return SizedBox(
+                                  height: 180,
+                                  width: 180,
+                                  child: Center(
+                                    child: CircularProgressIndicator(
+                                      value: progress.expectedTotalBytes != null
+                                          ? progress.cumulativeBytesLoaded /
+                                              (progress.expectedTotalBytes ?? 1)
+                                          : null,
+                                      color: textColor,
+                                    ),
+                                  ),
+                                );
+                              },
+                              errorBuilder: (_, __, ___) => Container(
+                                height: 160,
+                                width: 180,
+                                color: Colors.black12,
+                                alignment: Alignment.center,
+                                child: Icon(
+                                  Icons.broken_image_outlined,
+                                  color: textColor,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (hasText) const SizedBox(height: 8),
+                      ],
+                      if (hasText) ...[
+                        Text(
+                          message.content,
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    fontSize: 16,
+                                    color: textColor,
+                                    height: 1.35,
+                                  ),
+                        ),
+                        const SizedBox(height: 4),
+                      ],
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [

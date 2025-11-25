@@ -1,3 +1,4 @@
+import 'package:http/http.dart' as http;
 import 'package:pocketbase/pocketbase.dart';
 
 import '../models/chat_message.dart';
@@ -73,6 +74,7 @@ class ChatService {
         .map(
           (record) => ChatMessage.fromRecord(
             record,
+            pb: pb,
             currentUserId: currentUserId,
           ),
         )
@@ -81,7 +83,8 @@ class ChatService {
 
   Future<ChatMessage> sendMessage({
     required String chatId,
-    required String content,
+    String content = '',
+    http.MultipartFile? attachment,
   }) async {
     final pb = await getPocketbaseInstance();
     final currentUserId = pb.authStore.record?.id;
@@ -90,21 +93,35 @@ class ChatService {
       throw Exception('Bạn chưa đăng nhập.');
     }
 
-    final record = await pb.collection(messagesCollection).create(body: {
-      'chat': chatId,
-      'sender': currentUserId,
-      'content': content.trim(),
-      'is_read': false,
-    });
+    if (content.trim().isEmpty && attachment == null) {
+      throw Exception('Vui lòng nhập tin nhắn hoặc chọn tệp đính kèm.');
+    }
+
+    final record = await pb.collection(messagesCollection).create(
+      body: {
+        'chat': chatId,
+        'sender': currentUserId,
+        'content': content.trim(),
+        'is_read': false,
+      },
+      files: attachment != null ? [attachment] : null,
+    );
+
+    final lastMessageLabel = content.trim().isNotEmpty
+        ? content.trim()
+        : attachment != null
+            ? '[Ảnh]'
+            : '';
 
     await pb.collection(chatsCollection).update(chatId, body: {
-      'last_message': content.trim(),
+      'last_message': lastMessageLabel,
       'last_message_at': DateTime.now().toIso8601String(),
       'last_sender': currentUserId,
     });
 
     return ChatMessage.fromRecord(
       record,
+      pb: pb,
       currentUserId: currentUserId,
       authorName: 'Bạn',
     );

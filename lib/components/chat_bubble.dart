@@ -42,7 +42,8 @@ class ChatBubble extends StatelessWidget {
                   backgroundColor: cs.primary,
                   child: Text(
                     initials,
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                        fontSize: 12, fontWeight: FontWeight.w700),
                   ),
                 ),
               ),
@@ -65,14 +66,16 @@ class ChatBubble extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   child: Column(
-                    crossAxisAlignment: isMe
-                        ? CrossAxisAlignment.start
-                        : CrossAxisAlignment.end,
+                    // crossAxisAlignment: isMe
+                    //     ? CrossAxisAlignment.start
+                    //     : CrossAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
                         message.content,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              fontSize: 16,
                               color: textColor,
                               height: 1.35,
                             ),

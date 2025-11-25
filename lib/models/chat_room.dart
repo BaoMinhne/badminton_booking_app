@@ -46,7 +46,7 @@ class ChatRoom {
       avatarText = _initials(otherUserName);
     }
 
-    final lastMessageAt = record.getDateTimeValue('last_message_at');
+    final lastMessageAt = _parseDateTime(record.data['last_message_at']);
 
     return ChatRoom(
       id: record.id,
@@ -61,7 +61,8 @@ class ChatRoom {
 
   ChatContact toContact(String currentUserId) {
     final isMyMessage = lastSenderId == currentUserId;
-    final prefix = isMyMessage && (lastMessage?.isNotEmpty ?? false) ? 'Bạn: ' : '';
+    final prefix =
+        isMyMessage && (lastMessage?.isNotEmpty ?? false) ? 'Bạn: ' : '';
 
     return ChatContact(
       id: id,
@@ -74,6 +75,13 @@ class ChatRoom {
           lastMessageAt != null ? formatRelativeTime(lastMessageAt!) : null,
     );
   }
+}
+
+DateTime? _parseDateTime(dynamic value) {
+  if (value is String && value.isNotEmpty) {
+    return DateTime.tryParse(value);
+  }
+  return null;
 }
 
 String _resolveDisplayName(RecordModel userRecord) {
@@ -93,7 +101,9 @@ String _initials(String name) {
   final parts = name.trim().split(RegExp(r'\s+'));
   if (parts.isEmpty || parts.first.isEmpty) return '??';
   if (parts.length == 1) {
-    return parts.first.substring(0, parts.first.length >= 2 ? 2 : 1).toUpperCase();
+    return parts.first
+        .substring(0, parts.first.length >= 2 ? 2 : 1)
+        .toUpperCase();
   }
   final first = parts.first.isNotEmpty ? parts.first[0] : '';
   final last = parts.last.isNotEmpty ? parts.last[0] : '';

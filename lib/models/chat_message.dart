@@ -24,7 +24,7 @@ class ChatMessage {
     String? authorName,
   }) {
     final senderId = record.getStringValue('sender');
-    final created = record.getDateTimeValue('created') ?? DateTime.now();
+    final created = _parseDateTime(record.data['created']) ?? DateTime.now();
     String? resolvedName = authorName;
 
     final expandedSender = record.expand['sender'] as List<dynamic>?;
@@ -46,6 +46,13 @@ class ChatMessage {
   }
 
   String get timeLabel => DateFormat('HH:mm').format(createdAt);
+}
+
+DateTime? _parseDateTime(dynamic value) {
+  if (value is String && value.isNotEmpty) {
+    return DateTime.tryParse(value);
+  }
+  return null;
 }
 
 String _resolveDisplayName(RecordModel userRecord) {

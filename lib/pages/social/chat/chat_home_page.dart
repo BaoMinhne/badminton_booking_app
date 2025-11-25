@@ -4,11 +4,11 @@ import 'package:badminton_booking_app/pages/social/chat/chat_page.dart';
 import 'package:badminton_booking_app/pages/social/chat/widgets/chat_header.dart';
 import 'package:badminton_booking_app/pages/social/chat/widgets/chat_section_header.dart';
 import 'package:badminton_booking_app/pages/social/chat/widgets/contact_list_tile.dart';
+import 'package:badminton_booking_app/services/chat_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'add_friend_page.dart';
-import '../../../services/chat_service.dart';
 import 'chat_conversation_manager.dart';
 import 'chat_list_manager.dart';
 import 'friend_list_manager.dart';
@@ -230,14 +230,14 @@ class _ChatHomePageState extends State<ChatHomePage> {
       );
     }
 
-      final friendsContacts = manager.friends
-          .map(
-            (result) => ChatContact(
-              id: result.user.id,
-              userId: result.user.id,
-              name: result.displayName,
-              avatarText: result.initials,
-              avatarUrl: result.details?.avatarUrl,
+    final friendsContacts = manager.friends
+        .map(
+          (result) => ChatContact(
+            id: result.user.id,
+            userId: result.user.id,
+            name: result.displayName,
+            avatarText: result.initials,
+            avatarUrl: result.details?.avatarUrl,
             statusMessage:
                 result.details?.level ?? result.user.email ?? result.user.phone,
           ),
@@ -471,28 +471,42 @@ class _ChatHomePageState extends State<ChatHomePage> {
 
     () async {
       try {
+        // 1. Xác định id người bạn
         final targetUserId = contact.userId ?? contact.id;
-        final roomId = contact.chatId ?? contact.id ?? contact.userId;
 
-        if (roomId == null && targetUserId == null) {
+        if (targetUserId == null) {
           throw Exception('Không xác định được người nhận tin nhắn.');
         }
 
-        final ensuredRoom = roomId ??
-            await service.ensureRoomWith(targetUserId ?? '');
+        // 2. Chỉ coi contact.id là roomId nếu nó khác userId
+        //    (tức là contact được tạo từ ChatRoom.toContact)
+        String? roomId = contact.chatId;
+        if (roomId == null &&
+            contact.userId != null &&
+            contact.id != null &&
+            contact.id != contact.userId) {
+          // Trường hợp contact.id là roomId (tab Đang trò chuyện)
+          roomId = contact.id;
+        }
+
+        // 3. Nếu vẫn chưa có roomId → đảm bảo tạo/tìm phòng chat với bạn đó
+        final ensuredRoom =
+            roomId ?? await service.ensureRoomWith(targetUserId);
 
         if (!context.mounted) return;
 
+        // 4. Cập nhật lại contact để mang theo chatId chính xác
         final targetContact = contact.copyWith(
           id: ensuredRoom,
           chatId: ensuredRoom,
         );
 
+        // 5. Mở trang chat với chatId đúng
         navigator.push(
           MaterialPageRoute(
             builder: (_) => ChangeNotifierProvider(
-              create: (_) => ChatConversationManager(chatId: ensuredRoom)
-                ..initialize(),
+              create: (_) =>
+                  ChatConversationManager(chatId: ensuredRoom)..initialize(),
               child: ChatPage(contact: targetContact),
             ),
           ),

@@ -104,8 +104,8 @@ class _RecruitmentApplicantsPageState
 
     if (!_post.hasCourt) {
       final now = DateTime.now();
-      final baseDate = _post.eventTime ?? now;
-      final initialTime = TimeOfDay.fromDateTime(baseDate);
+      final baseDate = now;
+      final initialTime = TimeOfDay.fromDateTime(_post.eventTime ?? now);
 
       final picked = await showTimePicker(
         context: context,

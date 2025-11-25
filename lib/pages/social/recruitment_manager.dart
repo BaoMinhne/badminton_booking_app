@@ -142,11 +142,6 @@ class RecruitmentManager extends ChangeNotifier {
           break;
         case 'create':
         case 'update':
-          final isActive = record.data['is_active'] != false;
-          if (!isActive) {
-            _removeRecruitment(record.id);
-            break;
-          }
           final updated = await _service.getRecruitmentById(record.id);
           final index =
               _recruitmentPosts.indexWhere((item) => item.id == updated.id);
@@ -199,34 +194,8 @@ class RecruitmentManager extends ChangeNotifier {
     final recruitment = _recruitmentPosts[index];
 
     try {
-      final pocketBase = await getPocketbaseInstance();
-      final currentUserId = pocketBase.authStore.record?.id;
-      final applicantUserId = _extractRelationId(record, 'user');
-
-      switch (event.action) {
-        case 'create':
-          final updated = recruitment.copyWith(
-            joinedPlayers: recruitment.joinedPlayers + 1,
-            isJoined: recruitment.isJoined ||
-                (currentUserId != null && currentUserId == applicantUserId),
-          );
-          _replaceRecruitmentAt(index, updated);
-          break;
-        case 'delete':
-          final newCount = recruitment.joinedPlayers > 1
-              ? recruitment.joinedPlayers - 1
-              : recruitment.joinedPlayers;
-          final updated = recruitment.copyWith(
-            joinedPlayers: newCount,
-            isJoined: currentUserId != null && currentUserId == applicantUserId
-                ? recruitment.isOwner
-                : recruitment.isJoined,
-          );
-          _replaceRecruitmentAt(index, updated);
-          break;
-        default:
-          break;
-      }
+      final updated = await _service.getRecruitmentById(recruitment.id);
+      _replaceRecruitmentAt(index, updated);
     } catch (error, stackTrace) {
       if (kDebugMode) {
         debugPrint('Failed to process applicant realtime event: $error');

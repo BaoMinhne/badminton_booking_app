@@ -9,6 +9,7 @@ import 'package:badminton_booking_app/models/recruitment_post.dart';
 import 'package:badminton_booking_app/pages/social/chat/chat_home_page.dart';
 import 'package:badminton_booking_app/pages/social/chat/chat_list_manager.dart';
 import 'package:badminton_booking_app/pages/social/create_post_page.dart';
+import 'package:badminton_booking_app/pages/social/recruitment/recruitment_applicants_page.dart';
 import 'package:badminton_booking_app/pages/social/recruitment/recruitment_page.dart';
 import 'package:badminton_booking_app/pages/social/social_manager.dart';
 import 'package:badminton_booking_app/pages/user/user_manager.dart';
@@ -337,6 +338,7 @@ class _SocialPageState extends State<SocialPage> {
             playTime: post.eventTime,
             locationNote: post.locationNote,
             onJoin: () async {
+              if (!post.isActive) return;
               try {
                 await manager.joinRecruitment(post.id);
               } catch (error) {
@@ -349,6 +351,16 @@ class _SocialPageState extends State<SocialPage> {
             isJoined: post.isJoined,
             isOwner: post.isOwner,
             isJoinLoading: manager.isJoining(post.id),
+            isActive: post.isActive,
+            onManage: post.isOwner
+                ? () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => RecruitmentApplicantsPage(post: post),
+                      ),
+                    );
+                  }
+                : null,
           );
         },
         childCount: manager.recruitmentPosts.length,

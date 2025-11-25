@@ -1,9 +1,12 @@
+import 'package:badminton_booking_app/models/recruitment_applicant.dart';
 import 'package:badminton_booking_app/models/recruitment_post.dart';
 import 'package:badminton_booking_app/models/user_booking_view.dart';
+import 'package:badminton_booking_app/utils/pocketbase_utils.dart';
 import 'package:badminton_booking_app/utils/recruitment_dictionary.dart';
 import 'package:pocketbase/pocketbase.dart';
 
 import 'pocketbase_client.dart';
+import 'user_service.dart';
 
 class RecruitmentServiceException implements Exception {
   RecruitmentServiceException(this.message);
@@ -31,7 +34,7 @@ class RecruitmentService {
             sort: '-created',
             expand: 'author,court',
             filter:
-                "is_active = true && (expires_at = '' || expires_at = null || expires_at >= '${DateTime.now().toUtc().toIso8601String()}')",
+                "(expires_at = '' || expires_at = null || expires_at >= '${DateTime.now().toUtc().toIso8601String()}')",
           );
 
       final applicantsMap = await _fetchApplicantsMap(
@@ -70,6 +73,7 @@ class RecruitmentService {
         body: {
           'recruitment': recruitmentId,
           'user': currentUserId,
+          'status': 'pending',
         },
       );
     } on ClientException catch (error) {
@@ -110,6 +114,119 @@ class RecruitmentService {
       throw RecruitmentServiceException(
         'Không thể tải thông tin bài tuyển. Vui lòng thử lại.',
       );
+    }
+  }
+
+  Future<List<RecruitmentApplicant>> fetchApplicants(
+    String recruitmentId,
+  ) async {
+    final pocketBase = await getPocketbaseInstance();
+    final userDetailsService = UserDetailsService();
+
+    try {
+      final result = await pocketBase.collection(recruitmentApplicantsCollection).getList(
+            page: 1,
+            perPage: 200,
+            filter: "recruitment='${_escapeFilterValue(recruitmentId)}'",
+            expand: 'user',
+            sort: '-created',
+          );
+
+      final applicants = <RecruitmentApplicant>[];
+
+      for (final record in result.items) {
+        final expandedUser = resolveExpandedRecord(record.expand?['user']);
+        final userData = expandedUser?.data;
+        final userId = (record.data['user'] as String?) ?? expandedUser?.id;
+        if (userId == null || userId.isEmpty) continue;
+
+        final details = await userDetailsService.getByUserIdWithClient(
+          pocketBase,
+          userId,
+        );
+
+        final avatarUrl = details?.avatarUrl ??
+            resolveFileUrl(pocketBase, expandedUser, userData?['avatar']);
+        final levelLabel = details?.level != null
+            ? RecruitmentDictionary.skillLabelFromValue(details!.level)
+            : null;
+        final playStyles = (details?.playStyle ?? const [])
+            .map(RecruitmentDictionary.playStyleLabelFromValue)
+            .whereType<String>()
+            .toList(growable: false);
+
+        applicants.add(
+          RecruitmentApplicant(
+            id: record.id,
+            userId: userId,
+            displayName: sanitizeDisplayName(
+              userData?['username'] as String? ?? userData?['email'] as String?,
+            ),
+            status: (record.data['status'] as String?) ?? 'pending',
+            createdAt: DateTime.parse(record.data['created'] as String),
+            avatarUrl: avatarUrl,
+            level: levelLabel,
+            playStyles: playStyles,
+          ),
+        );
+      }
+
+      return applicants;
+    } catch (error) {
+      throw RecruitmentServiceException(
+        'Không thể tải danh sách yêu cầu tham gia. Vui lòng thử lại.',
+      );
+    }
+  }
+
+  Future<RecruitmentPost> updateApplicantStatus({
+    required String applicantId,
+    required String status,
+  }) async {
+    final pocketBase = await getPocketbaseInstance();
+
+    try {
+      final record = await pocketBase
+          .collection(recruitmentApplicantsCollection)
+          .update(applicantId, body: {
+        'status': status,
+      });
+
+      final recruitmentId = record.data['recruitment'] as String?;
+      if (recruitmentId == null || recruitmentId.isEmpty) {
+        throw RecruitmentServiceException('Không tìm thấy bài tuyển liên quan.');
+      }
+
+      return getRecruitmentById(recruitmentId);
+    } on ClientException catch (error) {
+      throw RecruitmentServiceException(_mapClientError(error));
+    } catch (_) {
+      throw RecruitmentServiceException('Không thể cập nhật trạng thái yêu cầu.');
+    }
+  }
+
+  Future<RecruitmentPost> closeRecruitment({
+    required String recruitmentId,
+    DateTime? expiresAt,
+  }) async {
+    final pocketBase = await getPocketbaseInstance();
+    try {
+      final record = await pocketBase
+          .collection(recruitmentPostsCollection)
+          .update(recruitmentId, body: {
+        'is_active': false,
+        'expires_at': expiresAt?.toUtc().toIso8601String(),
+      });
+
+      return RecruitmentPost.fromRecord(
+        record: record,
+        pocketBase: pocketBase,
+        currentUserId: pocketBase.authStore.record?.id,
+      );
+    } on ClientException catch (error) {
+      throw RecruitmentServiceException(_mapClientError(error));
+    } catch (_) {
+      throw RecruitmentServiceException('Không thể đóng bài tuyển.');
     }
   }
 

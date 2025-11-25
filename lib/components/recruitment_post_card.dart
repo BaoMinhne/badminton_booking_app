@@ -17,6 +17,8 @@ class RecruitmentPostCard extends StatelessWidget {
   final bool isJoined;
   final bool isOwner;
   final bool isJoinLoading;
+  final bool isActive;
+  final VoidCallback? onManage;
 
   const RecruitmentPostCard({
     super.key,
@@ -35,6 +37,8 @@ class RecruitmentPostCard extends StatelessWidget {
     this.isJoined = false,
     this.isOwner = false,
     this.isJoinLoading = false,
+    this.isActive = true,
+    this.onManage,
   });
 
   @override
@@ -79,27 +83,45 @@ class RecruitmentPostCard extends StatelessWidget {
                     ),
                   ),
                   FilledButton.icon(
-                    onPressed:
-                        (isJoined || isOwner || isJoinLoading) ? null : onJoin,
+                    onPressed: (!isActive || isJoined || isOwner || isJoinLoading)
+                        ? null
+                        : onJoin,
                     icon: isJoinLoading
                         ? const SizedBox(
                             width: 18,
                             height: 18,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : Icon(isJoined
-                            ? Icons.check_circle
-                            : Icons.add_circle_outline),
+                        : Icon(
+                            isActive
+                                ? (isJoined
+                                    ? Icons.check_circle
+                                    : Icons.add_circle_outline)
+                                : Icons.lock_outline,
+                          ),
                     label: Text(
                       isOwner
                           ? 'Bài của bạn'
-                          : isJoined
-                              ? 'Đã tham gia'
-                              : 'Tham gia',
+                          : !isActive
+                              ? 'Đã đóng'
+                              : isJoined
+                                  ? 'Đã tham gia'
+                                  : 'Tham gia',
                     ),
                   ),
                 ],
               ),
+              if (isOwner && onManage != null) ...[
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: onManage,
+                    icon: const Icon(Icons.assignment_ind_outlined),
+                    label: const Text('Quản lý yêu cầu'),
+                  ),
+                ),
+              ],
               const SizedBox(height: 12),
               ClipRRect(
                 borderRadius: BorderRadius.circular(50),
@@ -197,19 +219,23 @@ class RecruitmentPostCard extends StatelessWidget {
         const SizedBox(width: 12),
         Container(
           decoration: BoxDecoration(
-            color: cs.primaryContainer,
+            color: isActive ? cs.primaryContainer : cs.surfaceVariant,
             borderRadius: BorderRadius.circular(16),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.bolt, color: cs.primary, size: 16),
+              Icon(
+                isActive ? Icons.bolt : Icons.lock,
+                color: isActive ? cs.primary : cs.onSurfaceVariant,
+                size: 16,
+              ),
               const SizedBox(width: 6),
               Text(
-                'Tuyển gấp',
+                isActive ? 'Đang tuyển' : 'Đã đóng',
                 style: textTheme.labelMedium?.copyWith(
-                  color: cs.primary,
+                  color: isActive ? cs.primary : cs.onSurfaceVariant,
                   fontWeight: FontWeight.w700,
                 ),
               ),

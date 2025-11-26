@@ -25,6 +25,7 @@ class RecruitmentFormManager with ChangeNotifier {
   bool _isLoadingCourts = false;
   bool _isSubmitting = false;
   DateTime _selectedDateTime = DateTime.now().add(const Duration(hours: 2));
+  DateTime _expiresAt = DateTime.now().add(const Duration(hours: 2));
   List<BookedCourtOption> _bookedCourts = const [];
   BookedCourtOption? _selectedCourt;
   String? _courtMessage;
@@ -36,6 +37,7 @@ class RecruitmentFormManager with ChangeNotifier {
   bool get isLoadingCourts => _isLoadingCourts;
   bool get isSubmitting => _isSubmitting;
   DateTime get selectedDateTime => _selectedDateTime;
+  DateTime get expiresAt => _expiresAt;
   List<BookedCourtOption> get bookedCourts => _bookedCourts;
   BookedCourtOption? get selectedCourt => _selectedCourt;
   String? get courtMessage => _courtMessage;
@@ -65,11 +67,21 @@ class RecruitmentFormManager with ChangeNotifier {
 
   Future<void> updateSelectedDateTime(DateTime value) async {
     _selectedDateTime = value;
+    if (_expiresAt.isBefore(value)) {
+      _expiresAt = value;
+    }
     if (_hasBookedCourt) {
       await _loadBookedCourts();
     } else {
       notifyListeners();
     }
+  }
+
+  void updateExpiresAt(DateTime value) {
+    _expiresAt = value.isBefore(DateTime.now())
+        ? DateTime.now().add(const Duration(minutes: 30))
+        : value;
+    notifyListeners();
   }
 
   void updateSelectedCourt(String? bookingId) {
@@ -125,6 +137,7 @@ class RecruitmentFormManager with ChangeNotifier {
       final result = await _service.createRecruitmentPost(
         hasBookedCourt: _hasBookedCourt,
         playTime: _selectedDateTime,
+        expiresAt: _expiresAt,
         needMembers: _memberCount,
         playStyleLabel: _selectedPlayStyleLabel,
         skillLevelLabel: _selectedSkillLevelLabel,

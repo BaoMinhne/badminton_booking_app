@@ -28,13 +28,15 @@ class RecruitmentService {
     final currentUserId = pocketBase.authStore.record?.id;
 
     try {
-      final result = await pocketBase.collection(recruitmentPostsCollection).getList(
+      final result = await pocketBase
+          .collection(recruitmentPostsCollection)
+          .getList(
             page: page,
             perPage: perPage,
             sort: '-created',
             expand: 'author,court',
             filter:
-                "(expires_at = '' || expires_at = null || expires_at >= '${DateTime.now().toUtc().toIso8601String()}')",
+                "is_active = true && (expires_at = '' || expires_at = null || expires_at >= '${DateTime.now().toUtc().toIso8601String()}')",
           );
 
       final applicantsMap = await _fetchApplicantsMap(
@@ -267,6 +269,7 @@ class RecruitmentService {
   Future<RecruitmentPost> createRecruitmentPost({
     required bool hasBookedCourt,
     required DateTime playTime,
+    required DateTime expiresAt,
     required int needMembers,
     required String playStyleLabel,
     required String skillLevelLabel,
@@ -289,6 +292,7 @@ class RecruitmentService {
           'play_style': RecruitmentDictionary.playStyleValueFromLabel(playStyleLabel),
           'skill_level': RecruitmentDictionary.skillValueFromLabel(skillLevelLabel),
           'event_time': playTime.toUtc().toIso8601String(),
+          'expires_at': expiresAt.toUtc().toIso8601String(),
           'court': hasBookedCourt ? courtId : null,
           'location_note': locationNote,
           'is_active': true,

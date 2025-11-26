@@ -31,7 +31,7 @@ class MyTextfield extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final radius = BorderRadius.circular(18);
+    final radius = BorderRadius.circular(28);
 
     return TextFormField(
       onTap: onTap,
@@ -46,20 +46,25 @@ class MyTextfield extends StatelessWidget {
         prefixIcon: prefixIcon,
         suffixIcon: suffixIcon,
         filled: true,
-        fillColor: cs.surfaceVariant.withOpacity(0.6),
+        fillColor: cs.surfaceVariant.withOpacity(0.3),
+        hintStyle: TextStyle(color: cs.onSurfaceVariant.withOpacity(0.7)),
         contentPadding:
-            const EdgeInsets.symmetric(vertical: 18, horizontal: 18),
+            const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
         border: OutlineInputBorder(
           borderRadius: radius,
-          borderSide: BorderSide(color: cs.outline.withOpacity(0.15)),
+          borderSide: BorderSide(color: cs.outline.withOpacity(0.1)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: radius,
-          borderSide: BorderSide(color: cs.outline.withOpacity(0.12)),
+          borderSide: BorderSide(color: cs.outline.withOpacity(0.1)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: radius,
-          borderSide: BorderSide(color: cs.primary, width: 1.6),
+          borderSide: BorderSide(color: cs.primary, width: 2.0),
+        ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: radius,
+          borderSide: BorderSide(color: cs.outline.withOpacity(0.05)),
         ),
       ),
       validator: validator,

@@ -20,6 +20,9 @@ class RecruitmentPost {
     required this.isJoined,
     required this.isOwner,
     required this.locationNote,
+    required this.isActive,
+    required this.expiresAt,
+    required this.hasCourt,
   });
 
   factory RecruitmentPost.fromRecord({
@@ -52,6 +55,7 @@ class RecruitmentPost {
     final courtRecord = _resolveExpandedRecord(record.expand?['court']);
     final courtData = courtRecord?.data;
     final courtName = _sanitizeName(courtData?['name'] as String?);
+    final courtId = (data['court'] as String?) ?? courtRecord?.id;
 
     final applicantUserIds = applicants
         .map((rec) =>
@@ -60,7 +64,12 @@ class RecruitmentPost {
         .cast<String>()
         .toList();
 
-    final joinedCount = applicantUserIds.length + 1; // tính cả chủ bài
+    final acceptedApplicants = applicants.where((rec) {
+      final status = (rec.data['status'] as String?) ?? 'pending';
+      return status == 'accepted';
+    }).length;
+
+    final joinedCount = acceptedApplicants + 1; // tính cả chủ bài
     final hasJoined = applicantUserIds.contains(loggedInUserId);
 
     return RecruitmentPost(
@@ -82,6 +91,9 @@ class RecruitmentPost {
       isJoined: hasJoined || authorId == loggedInUserId,
       isOwner: isOwner,
       locationNote: (data['location_note'] as String?)?.trim(),
+      isActive: data['is_active'] != false,
+      expiresAt: _tryParseDateTime(data['expires_at']),
+      hasCourt: courtId != null && courtId.isNotEmpty,
     );
   }
 
@@ -100,11 +112,16 @@ class RecruitmentPost {
   final bool isJoined;
   final bool isOwner;
   final String? locationNote;
+  final bool isActive;
+  final DateTime? expiresAt;
+  final bool hasCourt;
 
   RecruitmentPost copyWith({
     int? joinedPlayers,
     bool? isJoined,
     String? authorAvatarUrl,
+    bool? isActive,
+    DateTime? expiresAt,
   }) {
     return RecruitmentPost(
       id: id,
@@ -122,6 +139,9 @@ class RecruitmentPost {
       isJoined: isJoined ?? this.isJoined,
       isOwner: isOwner,
       locationNote: locationNote,
+      isActive: isActive ?? this.isActive,
+      expiresAt: expiresAt ?? this.expiresAt,
+      hasCourt: hasCourt,
     );
   }
 }

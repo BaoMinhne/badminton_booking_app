@@ -285,8 +285,7 @@ class _QuickAction extends StatelessWidget {
             ],
           ),
           child: Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
@@ -506,8 +505,9 @@ class _UpcomingCard extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final highlight = hasBooking;
     final textColor = highlight ? cs.onPrimary : cs.onSurface;
-    final subtitleColor =
-        highlight ? cs.onPrimary.withOpacity(0.8) : cs.onSurface.withOpacity(0.7);
+    final subtitleColor = highlight
+        ? cs.onPrimary.withOpacity(0.8)
+        : cs.onSurface.withOpacity(0.7);
 
     return InkWell(
       onTap: hasBooking ? onTap : null,
@@ -524,9 +524,7 @@ class _UpcomingCard extends StatelessWidget {
                   end: Alignment.bottomRight,
                 )
               : null,
-          color: highlight
-              ? null
-              : cs.surfaceVariant.withOpacity(0.65),
+          color: highlight ? null : cs.surfaceVariant.withOpacity(0.65),
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             if (highlight)

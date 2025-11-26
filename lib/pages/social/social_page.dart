@@ -9,6 +9,7 @@ import 'package:badminton_booking_app/models/recruitment_post.dart';
 import 'package:badminton_booking_app/pages/social/chat/chat_home_page.dart';
 import 'package:badminton_booking_app/pages/social/chat/chat_list_manager.dart';
 import 'package:badminton_booking_app/pages/social/create_post_page.dart';
+import 'package:badminton_booking_app/pages/social/recruitment/recruitment_applicants_page.dart';
 import 'package:badminton_booking_app/pages/social/recruitment/recruitment_page.dart';
 import 'package:badminton_booking_app/pages/social/social_manager.dart';
 import 'package:badminton_booking_app/pages/user/user_manager.dart';
@@ -94,66 +95,115 @@ class _SocialPageState extends State<SocialPage> {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        backgroundColor: cs.surfaceVariant.withOpacity(0.3),
+        backgroundColor: cs.surfaceVariant.withOpacity(0.1),
         appBar: AppBar(
           title: const Text(
             'Cộng đồng cầu lông',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            style: TextStyle(
+                fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: -0.5),
           ),
           actions: [
             IconButton(
-              icon: const Icon(Icons.add_circle_outline),
+              icon: const Icon(Icons.add_circle_outline_rounded, size: 26),
               tooltip: 'Đăng bài',
               onPressed: () => _openCreatePost(context),
+              style: IconButton.styleFrom(
+                foregroundColor: cs.onPrimary,
+                backgroundColor: cs.primary.withOpacity(0.15),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
             ),
+            const SizedBox(width: 8),
             IconButton(
-              icon: const Icon(Icons.group, size: 30),
+              icon: const Icon(Icons.group_rounded, size: 28),
               tooltip: 'Tin nhắn',
               onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => MultiProvider(
-                          providers: [
-                            ChangeNotifierProvider(
-                              create: (_) => FriendRequestManager()..initialize(),
-                            ),
-                            ChangeNotifierProvider(
-                              create: (_) => FriendListManager()..initialize(),
-                            ),
-                            ChangeNotifierProvider(
-                              create: (_) => ChatListManager()..initialize(),
-                            ),
-                          ],
-                          child: const ChatHomePage(),
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => MultiProvider(
+                      providers: [
+                        ChangeNotifierProvider(
+                          create: (_) => FriendRequestManager()..initialize(),
                         ),
-                      ),
-                    );
+                        ChangeNotifierProvider(
+                          create: (_) => FriendListManager()..initialize(),
+                        ),
+                        ChangeNotifierProvider(
+                          create: (_) => ChatListManager()..initialize(),
+                        ),
+                      ],
+                      child: const ChatHomePage(),
+                    ),
+                  ),
+                );
               },
+              style: IconButton.styleFrom(
+                foregroundColor: cs.onPrimary,
+                backgroundColor: cs.primary.withOpacity(0.15),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 12),
           ],
           bottom: TabBar(
             tabs: [
-              Tab(text: 'Community'),
-              Tab(text: 'Recruitment'),
+              Tab(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.people_alt_rounded, size: 20),
+                    const SizedBox(width: 8),
+                    Text('Community'),
+                  ],
+                ),
+              ),
+              Tab(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.person_search_rounded, size: 20),
+                    const SizedBox(width: 8),
+                    Text('Recruitment'),
+                  ],
+                ),
+              ),
             ],
             // Chữ tab đang chọn
-            labelStyle: tt.titleSmall?.copyWith(
+            labelStyle: tt.titleMedium?.copyWith(
               fontWeight: FontWeight.w700,
-              fontSize: 16, // ← tăng kích thước chữ
+              fontSize: 16,
             ),
             // Chữ tab chưa chọn
-            unselectedLabelStyle: tt.titleSmall?.copyWith(
-              fontSize: 16, // ← giữ cùng size cho đồng đều
+            unselectedLabelStyle: tt.titleMedium?.copyWith(
+              fontSize: 16,
               fontWeight: FontWeight.w500,
             ),
             labelColor: cs.onPrimary,
-            unselectedLabelColor: cs.onPrimary.withOpacity(0.65),
-            indicator: UnderlineTabIndicator(
-              borderSide: BorderSide(color: cs.onPrimary, width: 2.4),
-              insets: const EdgeInsets.symmetric(horizontal: 16),
+            unselectedLabelColor: cs.onPrimary.withOpacity(0.75),
+            indicator: BoxDecoration(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+              color: cs.primary.withOpacity(0.3),
+            ),
+            indicatorSize: TabBarIndicatorSize.tab,
+            indicatorColor: Colors.transparent,
+            dividerColor: cs.onPrimary.withOpacity(0.15),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            overlayColor: WidgetStateProperty.all(cs.primary.withOpacity(0.1)),
+          ),
+          flexibleSpace: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [cs.primary, cs.primary.withOpacity(0.85)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
             ),
           ),
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          shadowColor: Colors.transparent,
         ),
         body: SafeArea(
           child: TabBarView(
@@ -178,7 +228,7 @@ class _SocialPageState extends State<SocialPage> {
         slivers: [
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
               child: _buildCreatePostCard(context, avatarUrl),
             ),
           ),
@@ -237,6 +287,7 @@ class _SocialPageState extends State<SocialPage> {
     final cs = Theme.of(context).colorScheme;
     return DecoratedBox(
       decoration: BoxDecoration(
+        border: Border.all(color: cs.outlineVariant.withOpacity(0.3)),
         color: cs.surface,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
@@ -248,28 +299,44 @@ class _SocialPageState extends State<SocialPage> {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding:
+            const EdgeInsets.only(top: 16, left: 16, right: 16, bottom: 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Header: Tiêu đề + nút Viết bài (được làm gọn và tinh tế hơn)
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   'Chia sẻ điều mới mẻ',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w600),
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 18,
+                        height: 1.2,
+                      ),
                 ),
-                TextButton.icon(
+                const Spacer(),
+                // Nút "Viết bài" được làm kiểu chip hiện đại, có hiệu ứng ripple đẹp
+                FilledButton.tonalIcon(
                   onPressed: () => _openCreatePost(context),
-                  icon: const Icon(Icons.edit_outlined),
+                  icon: const Icon(Icons.edit_outlined, size: 18),
                   label: const Text('Viết bài'),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    elevation: 0,
+                    shadowColor: Colors.transparent,
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+
+            const SizedBox(height: 16), // Tăng khoảng cách cho thoáng
+
+            // CreatePostBar được tối ưu giao diện (dùng bản mình đã cải thiện trước đó)
             CreatePostBar(
               onCreatePost: () => _openCreatePost(context),
               onPickPhoto: () => _openCreatePost(context),
@@ -280,11 +347,14 @@ class _SocialPageState extends State<SocialPage> {
                   ),
                 );
               },
-              avatarImageProvider: (avatarUrl != null && avatarUrl.isNotEmpty)
-                  ? NetworkImage(avatarUrl)
+              avatarImageProvider: (avatarUrl != null && avatarUrl!.isNotEmpty)
+                  ? NetworkImage(avatarUrl!)
                   : null,
               hintText: 'Bạn đang nghĩ gì thế?',
-              elevation: 0,
+              elevation: 4, // bật lại elevation nhẹ để nổi
+              compact: false,
+              // Tùy chọn: thêm chút màu chủ đạo nếu muốn nổi bật hơn
+              // primaryColor: Colors.blue,
             ),
           ],
         ),
@@ -337,6 +407,7 @@ class _SocialPageState extends State<SocialPage> {
             playTime: post.eventTime,
             locationNote: post.locationNote,
             onJoin: () async {
+              if (!post.isActive) return;
               try {
                 await manager.joinRecruitment(post.id);
               } catch (error) {
@@ -349,6 +420,16 @@ class _SocialPageState extends State<SocialPage> {
             isJoined: post.isJoined,
             isOwner: post.isOwner,
             isJoinLoading: manager.isJoining(post.id),
+            isActive: post.isActive,
+            onManage: post.isOwner
+                ? () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => RecruitmentApplicantsPage(post: post),
+                      ),
+                    );
+                  }
+                : null,
           );
         },
         childCount: manager.recruitmentPosts.length,

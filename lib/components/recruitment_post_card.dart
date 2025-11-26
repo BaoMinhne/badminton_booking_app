@@ -17,6 +17,8 @@ class RecruitmentPostCard extends StatelessWidget {
   final bool isJoined;
   final bool isOwner;
   final bool isJoinLoading;
+  final bool isActive;
+  final VoidCallback? onManage;
 
   const RecruitmentPostCard({
     super.key,
@@ -35,6 +37,8 @@ class RecruitmentPostCard extends StatelessWidget {
     this.isJoined = false,
     this.isOwner = false,
     this.isJoinLoading = false,
+    this.isActive = true,
+    this.onManage,
   });
 
   @override
@@ -42,15 +46,14 @@ class RecruitmentPostCard extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final totalSlots = requiredPlayers <= 0 ? joinedPlayers : requiredPlayers;
-    final progress = totalSlots == 0
-        ? 0.0
-        : (joinedPlayers / totalSlots).clamp(0, 1).toDouble();
+    final progress =
+        totalSlots == 0 ? 0.0 : (joinedPlayers / totalSlots).clamp(0.0, 1.0);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Material(
-        elevation: 6,
-        borderRadius: BorderRadius.circular(24),
+        elevation: 4,
+        borderRadius: BorderRadius.circular(28),
         color: cs.surface,
         child: Padding(
           padding: const EdgeInsets.all(20),
@@ -59,91 +62,105 @@ class RecruitmentPostCard extends StatelessWidget {
             children: [
               _buildHeader(context, textTheme),
               if (description != null && description!.isNotEmpty) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 Text(
                   description!,
-                  style: textTheme.bodyMedium?.copyWith(color: cs.onSurface),
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: cs.onSurface.withOpacity(0.85),
+                    height: 1.4,
+                  ),
                 ),
               ],
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
+              // Player count with modern styling
               Row(
                 children: [
-                  Icon(Icons.group_outlined, color: cs.primary),
-                  const SizedBox(width: 8),
+                  Icon(Icons.group_rounded, color: cs.primary, size: 22),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       'Đã có $joinedPlayers / $requiredPlayers thành viên',
-                      style: textTheme.bodyMedium?.copyWith(
+                      style: textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w600,
+                        color: cs.onSurface,
                       ),
-                    ),
-                  ),
-                  FilledButton.icon(
-                    onPressed:
-                        (isJoined || isOwner || isJoinLoading) ? null : onJoin,
-                    icon: isJoinLoading
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Icon(isJoined
-                            ? Icons.check_circle
-                            : Icons.add_circle_outline),
-                    label: Text(
-                      isOwner
-                          ? 'Bài của bạn'
-                          : isJoined
-                              ? 'Đã tham gia'
-                              : 'Tham gia',
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
+              // Progress bar with capsule shape
               ClipRRect(
                 borderRadius: BorderRadius.circular(50),
                 child: LinearProgressIndicator(
                   value: progress,
                   minHeight: 8,
-                  backgroundColor: cs.surfaceVariant,
-                  color: cs.primary,
+                  backgroundColor: cs.surfaceVariant.withOpacity(0.5),
+                  valueColor: AlwaysStoppedAnimation<Color>(cs.primary),
                 ),
               ),
               const SizedBox(height: 20),
+              // Chips section
               Wrap(
-                spacing: 8,
-                runSpacing: 8,
+                spacing: 10,
+                runSpacing: 10,
                 children: [
                   if (skillLevel != null && skillLevel!.isNotEmpty)
                     _InfoChip(
                       icon: Icons.stars_rounded,
                       label: 'Trình độ: $skillLevel',
-                      color: cs.primaryContainer,
+                      color: cs.primaryContainer.withOpacity(0.8),
                       iconColor: cs.primary,
                     ),
                   if (playStyle != null && playStyle!.isNotEmpty)
                     _InfoChip(
-                      icon: Icons.sports_tennis,
+                      icon: Icons.sports_tennis_rounded,
                       label: 'Lối chơi: $playStyle',
-                      color: cs.secondaryContainer,
+                      color: cs.secondaryContainer.withOpacity(0.8),
                       iconColor: cs.secondary,
                     ),
                   if (courtName != null && courtName!.isNotEmpty)
                     _InfoChip(
-                      icon: Icons.location_on_outlined,
+                      icon: Icons.location_on_rounded,
                       label: 'Sân: $courtName',
-                      color: cs.tertiaryContainer,
+                      color: cs.tertiaryContainer.withOpacity(0.8),
                       iconColor: cs.tertiary,
                     ),
                   if (playTime != null)
                     _InfoChip(
-                      icon: Icons.access_time,
+                      icon: Icons.access_time_rounded,
                       label:
                           'Giờ đánh: ${DateFormat('HH:mm - dd/MM').format(playTime!)}',
-                      color: cs.surfaceVariant,
+                      color: cs.surfaceVariant.withOpacity(0.8),
                       iconColor: cs.primary,
                     ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              // Professional button layout: Full-width for main action, secondary aligned right
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildActionButton(context),
+                  if (isOwner && onManage != null) ...[
+                    const SizedBox(height: 12),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: OutlinedButton.icon(
+                        onPressed: onManage,
+                        icon: Icon(Icons.assignment_ind_rounded, size: 20),
+                        label: const Text('Quản lý yêu cầu'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: cs.primary,
+                          side: BorderSide(color: cs.primary.withOpacity(0.5)),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(24)),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ],
@@ -156,7 +173,7 @@ class RecruitmentPostCard extends StatelessWidget {
   Widget _buildHeader(BuildContext context, TextTheme textTheme) {
     final cs = Theme.of(context).colorScheme;
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         CircleAvatar(
           radius: 26,
@@ -183,6 +200,7 @@ class RecruitmentPostCard extends StatelessWidget {
                 hostName,
                 style: textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w700,
+                  fontSize: 18,
                 ),
               ),
               const SizedBox(height: 4),
@@ -194,22 +212,31 @@ class RecruitmentPostCard extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(width: 12),
         Container(
           decoration: BoxDecoration(
-            color: cs.primaryContainer,
-            borderRadius: BorderRadius.circular(16),
+            color: isActive
+                ? cs.primaryContainer.withOpacity(0.9)
+                : cs.surfaceVariant.withOpacity(0.9),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+                color: isActive
+                    ? cs.primary.withOpacity(0.3)
+                    : cs.outline.withOpacity(0.3)),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.bolt, color: cs.primary, size: 16),
+              Icon(
+                isActive ? Icons.bolt_rounded : Icons.lock_rounded,
+                color: isActive ? cs.primary : cs.onSurfaceVariant,
+                size: 18,
+              ),
               const SizedBox(width: 6),
               Text(
-                'Tuyển gấp',
+                isActive ? 'Đang tuyển' : 'Đã đóng',
                 style: textTheme.labelMedium?.copyWith(
-                  color: cs.primary,
+                  color: isActive ? cs.primary : cs.onSurfaceVariant,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -217,6 +244,50 @@ class RecruitmentPostCard extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildActionButton(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    final bool isDisabled = !isActive || isJoined || isOwner || isJoinLoading;
+
+    return FilledButton.icon(
+      onPressed: isDisabled ? null : onJoin,
+      style: FilledButton.styleFrom(
+        minimumSize: const Size(double.infinity, 50),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        elevation: isDisabled ? 0 : 2,
+        backgroundColor: isDisabled ? cs.surfaceVariant : cs.primary,
+        foregroundColor: isDisabled ? cs.onSurfaceVariant : cs.onPrimary,
+      ),
+      icon: isJoinLoading
+          ? SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: cs.onPrimary,
+              ),
+            )
+          : Icon(
+              isActive
+                  ? (isJoined
+                      ? Icons.check_circle_rounded
+                      : Icons.add_circle_rounded)
+                  : Icons.lock_rounded,
+              size: 22,
+            ),
+      label: Text(
+        isOwner
+            ? 'Bài của bạn'
+            : !isActive
+                ? 'Đã đóng'
+                : isJoined
+                    ? 'Đã tham gia'
+                    : 'Tham gia',
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+      ),
     );
   }
 }
@@ -238,24 +309,26 @@ class _InfoChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: cs.outline.withOpacity(0.2)),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: cs.outline.withOpacity(0.15)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: iconColor),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-            overflow: TextOverflow.ellipsis,
+          Icon(icon, size: 18, color: iconColor),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: cs.onSurface,
+                  ),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),

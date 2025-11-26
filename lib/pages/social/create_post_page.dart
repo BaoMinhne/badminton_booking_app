@@ -74,96 +74,202 @@ class _CreatePostPageState extends State<CreatePostPage> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Đăng bài cộng đồng')),
+      appBar: AppBar(
+        title: Text(
+          'Đăng bài mới',
+          style: textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.5,
+          ),
+        ),
+        elevation: 0,
+        backgroundColor: cs.surface,
+        foregroundColor: cs.onSurface,
+        scrolledUnderElevation: 0,
+      ),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            TextField(
-              controller: _contentController,
-              maxLines: 5,
-              decoration: const InputDecoration(
-                labelText: 'Chia sẻ điều gì đó...',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                ..._selectedImages.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final image = entry.value;
-                  return Stack(
-                    alignment: Alignment.topRight,
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(18),
-                        child: Image.file(
-                          File(image.path),
-                          width: 120,
-                          height: 120,
-                          fit: BoxFit.cover,
-                        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Column(
+            children: [
+              Expanded(
+                child: ListView(
+                  children: [
+                    // Modern TextField
+                    Container(
+                      decoration: BoxDecoration(
+                        color: cs.surfaceVariant.withOpacity(0.4),
+                        borderRadius: BorderRadius.circular(24),
                       ),
-                      Positioned(
-                        top: 4,
-                        right: 4,
-                        child: InkWell(
-                          onTap: () => _removeImage(index),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: cs.errorContainer,
-                              shape: BoxShape.circle,
-                            ),
-                            padding: const EdgeInsets.all(4),
-                            child: Icon(Icons.close,
-                                size: 18, color: cs.onErrorContainer),
+                      child: TextField(
+                        controller: _contentController,
+                        maxLines: null,
+                        minLines: 4,
+                        keyboardType: TextInputType.multiline,
+                        decoration: InputDecoration(
+                          hintText: 'Chia sẻ suy nghĩ của bạn...',
+                          hintStyle: textTheme.bodyLarge?.copyWith(
+                            color: cs.onSurfaceVariant,
                           ),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.all(20),
+                        ),
+                        style: textTheme.bodyLarge?.copyWith(
+                          height: 1.5,
                         ),
                       ),
+                    ),
+                    const SizedBox(height: 24),
+                    // Images section
+                    if (_selectedImages.isNotEmpty || true) ...[
+                      Text(
+                        'Ảnh đính kèm',
+                        style: textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                     ],
-                  );
-                }).toList(),
-                GestureDetector(
-                  onTap: _pickImages,
-                  child: Container(
-                    width: 120,
-                    height: 120,
-                    decoration: BoxDecoration(
-                      color: cs.surfaceVariant.withOpacity(0.5),
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: cs.outlineVariant),
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 3,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        childAspectRatio: 1,
+                      ),
+                      itemCount: _selectedImages.length + 1,
+                      itemBuilder: (context, index) {
+                        if (index == _selectedImages.length) {
+                          // Add button
+                          return GestureDetector(
+                            onTap: _pickImages,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: cs.surfaceVariant.withOpacity(0.3),
+                                borderRadius: BorderRadius.circular(24),
+                                border: Border.all(
+                                  color: cs.outlineVariant.withOpacity(0.5),
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.add_photo_alternate_rounded,
+                                    size: 32,
+                                    color: cs.primary,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Thêm ảnh',
+                                    style: textTheme.labelMedium?.copyWith(
+                                      color: cs.primary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        } else {
+                          // Image item
+                          final image = _selectedImages[index];
+                          return Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(24),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Stack(
+                              alignment: Alignment.topRight,
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(24),
+                                  child: Image.file(
+                                    File(image.path),
+                                    fit: BoxFit.cover,
+                                    width: double.infinity,
+                                    height: double.infinity,
+                                  ),
+                                ),
+                                Positioned(
+                                  top: 8,
+                                  right: 8,
+                                  child: GestureDetector(
+                                    onTap: () => _removeImage(index),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: cs.error.withOpacity(0.9),
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: cs.error.withOpacity(0.3),
+                                            blurRadius: 4,
+                                          ),
+                                        ],
+                                      ),
+                                      child: Icon(
+                                        Icons.close_rounded,
+                                        size: 16,
+                                        color: cs.onError,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                      },
                     ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Icon(Icons.add_a_photo_outlined, size: 28),
-                        SizedBox(height: 8),
-                        Text('Thêm ảnh'),
-                      ],
-                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Submit button
+              FilledButton.icon(
+                onPressed: _isSubmitting ? null : _submit,
+                icon: _isSubmitting
+                    ? SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: cs.onPrimary,
+                        ),
+                      )
+                    : const Icon(Icons.send_rounded),
+                label: Text(
+                  _isSubmitting ? 'Đang đăng...' : 'Đăng bài',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 32),
-            FilledButton.icon(
-              onPressed: _isSubmitting ? null : _submit,
-              icon: _isSubmitting
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2.5),
-                    )
-                  : const Icon(Icons.send),
-              label: Text(_isSubmitting ? 'Đang đăng...' : 'Đăng bài'),
-              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
-            ),
-          ],
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(56),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(28),
+                  ),
+                  elevation: 2,
+                  shadowColor: cs.primary.withOpacity(0.3),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

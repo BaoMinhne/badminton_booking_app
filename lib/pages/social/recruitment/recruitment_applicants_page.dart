@@ -18,8 +18,7 @@ class RecruitmentApplicantsPage extends StatefulWidget {
       _RecruitmentApplicantsPageState();
 }
 
-class _RecruitmentApplicantsPageState
-    extends State<RecruitmentApplicantsPage> {
+class _RecruitmentApplicantsPageState extends State<RecruitmentApplicantsPage> {
   final RecruitmentService _service = RecruitmentService();
 
   late RecruitmentPost _post;
@@ -301,18 +300,67 @@ class _ApplicantTile extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     final playStyles = applicant.playStyles.join(', ');
 
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    // Màu trạng thái rõ ràng + đậm đà
+    final Color statusBgColor;
+    final Color statusTextColor;
+    final IconData? statusIcon;
+
+    switch (applicant.status) {
+      case 'pending':
+        statusBgColor = Colors.orange.shade100;
+        statusTextColor = Colors.orange.shade800;
+        statusIcon = Icons.access_time_filled;
+        break;
+      case 'accepted':
+        statusBgColor = Colors.green.shade100;
+        statusTextColor = Colors.green.shade800;
+        statusIcon = Icons.check_circle;
+        break;
+      case 'rejected':
+        statusBgColor = Colors.red.shade50;
+        statusTextColor = Colors.red.shade700;
+        statusIcon = Icons.cancel;
+        break;
+      default:
+        statusBgColor = cs.primary.withOpacity(0.1);
+        statusTextColor = cs.primary;
+        statusIcon = null;
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: applicant.status == 'rejected'
+              ? Colors.red.shade200.withOpacity(0.6)
+              : cs.outline.withOpacity(0.45),
+          width: applicant.status == 'rejected'
+              ? 1.8
+              : 1.4, // Viền đậm hơn khi bị từ chối
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: applicant.status == 'rejected'
+                ? Colors.red.shade100.withOpacity(0.3)
+                : cs.shadow.withOpacity(0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Header: Avatar + Info
             Row(
               children: [
                 CircleAvatar(
-                  radius: 24,
-                  backgroundColor: cs.primary,
+                  radius: 28,
+                  backgroundColor: cs.primary.withOpacity(0.15),
                   backgroundImage: applicant.avatarUrl != null
                       ? NetworkImage(applicant.avatarUrl!)
                       : null,
@@ -321,14 +369,14 @@ class _ApplicantTile extends StatelessWidget {
                           applicant.displayName.isNotEmpty
                               ? applicant.displayName[0].toUpperCase()
                               : '?',
-                          style: textTheme.titleMedium?.copyWith(
-                            color: cs.onPrimary,
+                          style: textTheme.titleLarge?.copyWith(
+                            color: cs.primary,
                             fontWeight: FontWeight.bold,
                           ),
                         )
                       : null,
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -336,34 +384,49 @@ class _ApplicantTile extends StatelessWidget {
                       Text(
                         applicant.displayName,
                         style: textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 18,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 8),
                       Row(
                         children: [
+                          // Label trạng thái: ĐẬM, RÕ, CÓ ICON
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 6,
-                            ),
+                                horizontal: 14, vertical: 8),
                             decoration: BoxDecoration(
-                              color: _statusColor(context),
-                              borderRadius: BorderRadius.circular(12),
+                              color: statusBgColor,
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                  color: statusTextColor.withOpacity(0.4),
+                                  width: 1.2),
                             ),
-                            child: Text(
-                              _statusLabel(),
-                              style: textTheme.labelMedium?.copyWith(
-                                color: _statusTextColor(context),
-                                fontWeight: FontWeight.w700,
-                              ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(statusIcon,
+                                    size: 16, color: statusTextColor),
+                                const SizedBox(width: 6),
+                                Text(
+                                  _statusLabel(),
+                                  style: textTheme.labelMedium?.copyWith(
+                                    color: statusTextColor,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 13,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 12),
                           Text(
-                            DateFormat('dd/MM HH:mm').format(applicant.createdAt),
+                            DateFormat('dd/MM HH:mm')
+                                .format(applicant.createdAt),
                             style: textTheme.bodySmall?.copyWith(
-                              color: cs.onSurfaceVariant,
+                              color: cs.onSurfaceVariant.withOpacity(0.85),
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ],
@@ -373,28 +436,135 @@ class _ApplicantTile extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            if (applicant.level != null && applicant.level!.isNotEmpty) ...[
-              Text(
-                'Trình độ: ${applicant.level}',
-                style: textTheme.bodyMedium,
+
+            const SizedBox(height: 16),
+
+            // Thông tin trình độ & lối đánh – phối màu đẹp, dễ nhìn
+            if (applicant.level != null && applicant.level!.isNotEmpty)
+              _infoRow(
+                icon: Icons.trending_up_rounded,
+                color: Colors.deepPurple.shade600,
+                label: 'Trình độ',
+                value: applicant.level!,
+                textTheme: textTheme,
               ),
-              const SizedBox(height: 4),
-            ],
-            if (playStyles.isNotEmpty) ...[
-              Text(
-                'Lối đánh: $playStyles',
-                style: textTheme.bodyMedium,
+
+            if (applicant.level != null && applicant.level!.isNotEmpty)
+              const SizedBox(height: 10),
+
+            if (playStyles.isNotEmpty)
+              _infoRow(
+                icon: Icons.sports_tennis_rounded,
+                color: Colors.teal.shade600,
+                label: 'Lối đánh',
+                value: playStyles,
+                textTheme: textTheme,
               ),
-              const SizedBox(height: 4),
-            ],
+
+            const SizedBox(height: 20),
+
+            // Nút hành động – đẹp, rõ chức năng
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
-              children: _buildActions(context),
+              children: _buildActions(context).map((widget) {
+                if (widget is TextButton) {
+                  final text = widget.child is Text
+                      ? (widget.child as Text).data ?? ''
+                      : '';
+
+                  if (text.contains('Chấp nhận') || text.contains('Đồng ý')) {
+                    return Padding(
+                      padding: const EdgeInsets.only(left: 10),
+                      child: FilledButton.icon(
+                        onPressed: widget.onPressed,
+                        icon: const Icon(Icons.check_circle_rounded, size: 20),
+                        label: Text(text,
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w600)),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.green.shade600,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 22, vertical: 14),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30)),
+                          elevation: 2,
+                        ),
+                      ),
+                    );
+                  }
+
+                  if (text.contains('Từ chối') || text.contains('Hủy')) {
+                    return Padding(
+                      padding: const EdgeInsets.only(left: 10),
+                      child: OutlinedButton.icon(
+                        onPressed: widget.onPressed,
+                        icon: const Icon(Icons.cancel_rounded, size: 20),
+                        label: Text(text,
+                            style: TextStyle(
+                                color: Colors.red.shade700,
+                                fontWeight: FontWeight.w600)),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red.shade700,
+                          side:
+                              BorderSide(color: Colors.red.shade400, width: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 22, vertical: 14),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30)),
+                        ),
+                      ),
+                    );
+                  }
+                }
+                return Padding(
+                    padding: const EdgeInsets.only(left: 10), child: widget);
+              }).toList(),
             ),
           ],
         ),
       ),
+    );
+  }
+
+// Helper: Dòng thông tin đẹp + màu sắc hài hòa
+  Widget _infoRow({
+    required IconData icon,
+    required Color color,
+    required String label,
+    required String value,
+    required TextTheme textTheme,
+  }) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, size: 20, color: color),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          '$label:',
+          style: textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            value,
+            style: textTheme.bodyMedium?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+            ),
+          ),
+        ),
+      ],
     );
   }
 

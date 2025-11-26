@@ -391,7 +391,8 @@ class _CourtTimelineState extends State<CourtTimeline> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final dividerColor = cs.outline;
+    final dividerColor = cs.outlineVariant
+        .withOpacity(0.5); // Softer divider for better aesthetics
     final colors = _SlotColors.fromColorScheme(cs);
 
     return Column(
@@ -400,7 +401,12 @@ class _CourtTimelineState extends State<CourtTimeline> {
           height: widget.headerHeight,
           decoration: BoxDecoration(
             color: const Color(0xFFBDEFFF),
-            border: Border(bottom: BorderSide(color: dividerColor)),
+            border: Border(
+                bottom: BorderSide(
+                    color: dividerColor,
+                    width: 1.5)), // Thicker border for emphasis
+            borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(8)), // Rounded top corners
           ),
           child: Row(
             children: [
@@ -414,7 +420,9 @@ class _CourtTimelineState extends State<CourtTimeline> {
                     child: Padding(
                       padding: EdgeInsets.only(left: widget.leftColumnWidth),
                       child: SizedBox(
-                        width: _totalWidth + widget.headerLeadingInset,
+                        width: _totalWidth +
+                            widget.headerLeadingInset +
+                            20, // Extra padding to prevent label cutoff
                         height: widget.headerHeight,
                         child: CustomPaint(
                           painter: _TimeHeaderPainterHalfHour(
@@ -423,11 +431,12 @@ class _CourtTimelineState extends State<CourtTimeline> {
                             slotWidth: widget.slotWidth,
                             leadingInset: widget.headerLeadingInset,
                             hourTickColor: const Color(0xFFFFB300),
-                            halfTickColor: const Color(0xFFFFB300),
+                            halfTickColor: const Color(0xFFFFB300)
+                                .withOpacity(0.7), // Softer half tick
                             hourTickStroke: 2.5,
                             halfTickStroke: 2.0,
-                            hourTickHeight: 16,
-                            halfTickHeight: 12,
+                            hourTickHeight: 18, // Slightly taller ticks
+                            halfTickHeight: 14,
                             textStyle: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
@@ -448,8 +457,17 @@ class _CourtTimelineState extends State<CourtTimeline> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SizedBox(
+              Container(
                 width: widget.leftColumnWidth,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE7FFF0),
+                  border: Border(
+                      right: BorderSide(
+                          color: dividerColor,
+                          width: 1.5)), // Right border for separation
+                  borderRadius: const BorderRadius.vertical(
+                      bottom: Radius.circular(8)), // Rounded bottom corners
+                ),
                 child: Scrollbar(
                   controller: _leftColumnCtrl,
                   child: ListView.separated(
@@ -458,12 +476,18 @@ class _CourtTimelineState extends State<CourtTimeline> {
                     itemCount: widget.rows.length,
                     itemBuilder: (_, index) => Container(
                       height: widget.rowHeight,
-                      color: const Color(0xFFE7FFF0),
                       alignment: Alignment.centerLeft,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal:
+                              16), // Increased padding for better spacing
                       child: Text(
                         widget.rows[index].label,
-                        style: const TextStyle(fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15, // Slightly larger font for readability
+                          color:
+                              Color(0xFF123B28), // Matching header text color
+                        ),
                       ),
                     ),
                     separatorBuilder: (_, __) =>
@@ -473,13 +497,15 @@ class _CourtTimelineState extends State<CourtTimeline> {
               ),
               Expanded(
                 child: Container(
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     border: Border(
                       bottom: BorderSide(
-                        color: Colors.black,
-                        width: 2,
+                        color: dividerColor,
+                        width: 1.5,
                       ),
                     ),
+                    borderRadius: const BorderRadius.vertical(
+                        bottom: Radius.circular(8)), // Rounded bottom corners
                   ),
                   child: Scrollbar(
                     controller: _gridCtrl,
@@ -488,7 +514,8 @@ class _CourtTimelineState extends State<CourtTimeline> {
                       controller: _gridCtrl,
                       scrollDirection: Axis.horizontal,
                       child: SizedBox(
-                        width: _totalWidth,
+                        width:
+                            _totalWidth + 20, // Extra width to prevent cutoff
                         child: Scrollbar(
                           controller: _gridVerticalCtrl,
                           child: ListView.separated(
@@ -603,8 +630,14 @@ class _TimeHeaderPainterHalfHour extends CustomPainter {
           DateFormat('H:00').format(DateTime(2000, 1, 1, hourVal));
       tp.text = TextSpan(text: labelHour, style: textStyle);
       tp.layout();
-      final hourTx = hourX - tp.width / 2;
+      double hourTx = hourX - tp.width / 2;
       final hourTy = hourTop - tp.height - 2;
+
+      // Adjust last label to prevent cutoff
+      if (i == slotCount && hourTx + tp.width > size.width) {
+        hourTx = size.width - tp.width - 4; // Align to right with small padding
+      }
+
       tp.paint(canvas, Offset(hourTx, hourTy));
 
       if (showHalf && i < slotCount) {

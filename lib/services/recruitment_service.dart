@@ -34,7 +34,7 @@ class RecruitmentService {
             sort: '-created',
             expand: 'author,court',
             filter:
-                "(expires_at = '' || expires_at = null || expires_at >= '${DateTime.now().toUtc().toIso8601String()}')",
+                "is_active = true && (expires_at = '' || expires_at = null || expires_at >= '${DateTime.now().toUtc().toIso8601String()}')",
           );
 
       final applicantsMap = await _fetchApplicantsMap(
@@ -273,6 +273,7 @@ class RecruitmentService {
     String? note,
     String? courtId,
     String? locationNote,
+    DateTime? expiresAt,
   }) async {
     final pocketBase = await getPocketbaseInstance();
     final currentUserId = pocketBase.authStore.record?.id;
@@ -292,6 +293,7 @@ class RecruitmentService {
           'court': hasBookedCourt ? courtId : null,
           'location_note': locationNote,
           'is_active': true,
+          'expires_at': expiresAt?.toUtc().toIso8601String(),
         },
       );
 

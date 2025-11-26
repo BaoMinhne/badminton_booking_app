@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../models/recruitment_applicant.dart';
 import '../../../models/recruitment_post.dart';
 import '../../../services/recruitment_service.dart';
+import '../../../services/pocketbase_client.dart';
 
 class RecruitmentApplicantsPage extends StatefulWidget {
   const RecruitmentApplicantsPage({
@@ -26,13 +27,23 @@ class _RecruitmentApplicantsPageState extends State<RecruitmentApplicantsPage> {
   bool _isLoading = true;
   bool _isClosing = false;
   String? _error;
+  String? _currentUserId;
   final Set<String> _updatingApplicantIds = <String>{};
 
   @override
   void initState() {
     super.initState();
     _post = widget.post;
+    _loadCurrentUser();
     _loadData();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    final client = await getPocketbaseInstance();
+    if (!mounted) return;
+    setState(() {
+      _currentUserId = client.authStore.record?.id;
+    });
   }
 
   Future<void> _loadData() async {
@@ -161,7 +172,8 @@ class _RecruitmentApplicantsPageState extends State<RecruitmentApplicantsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final canManage = _post.isOwner;
+    final canManage =
+        _post.isOwner || (_currentUserId != null && _post.authorId == _currentUserId);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Yêu cầu tham gia'),

@@ -25,6 +25,7 @@ class RecruitmentFormManager with ChangeNotifier {
   bool _isLoadingCourts = false;
   bool _isSubmitting = false;
   DateTime _selectedDateTime = DateTime.now().add(const Duration(hours: 2));
+  late DateTime _selectedExpiresAt = _selectedDateTime;
   List<BookedCourtOption> _bookedCourts = const [];
   BookedCourtOption? _selectedCourt;
   String? _courtMessage;
@@ -36,6 +37,7 @@ class RecruitmentFormManager with ChangeNotifier {
   bool get isLoadingCourts => _isLoadingCourts;
   bool get isSubmitting => _isSubmitting;
   DateTime get selectedDateTime => _selectedDateTime;
+  DateTime get selectedExpiresAt => _selectedExpiresAt;
   List<BookedCourtOption> get bookedCourts => _bookedCourts;
   BookedCourtOption? get selectedCourt => _selectedCourt;
   String? get courtMessage => _courtMessage;
@@ -65,11 +67,19 @@ class RecruitmentFormManager with ChangeNotifier {
 
   Future<void> updateSelectedDateTime(DateTime value) async {
     _selectedDateTime = value;
+    if (_selectedExpiresAt.isBefore(value)) {
+      _selectedExpiresAt = value;
+    }
     if (_hasBookedCourt) {
       await _loadBookedCourts();
     } else {
       notifyListeners();
     }
+  }
+
+  void updateExpiresAt(DateTime value) {
+    _selectedExpiresAt = value;
+    notifyListeners();
   }
 
   void updateSelectedCourt(String? bookingId) {
@@ -131,6 +141,7 @@ class RecruitmentFormManager with ChangeNotifier {
         note: noteController.text,
         courtId: _selectedCourt?.courtId,
         locationNote: _selectedCourt?.bookingView.courtLocation,
+        expiresAt: _selectedExpiresAt,
       );
       return result;
     } finally {

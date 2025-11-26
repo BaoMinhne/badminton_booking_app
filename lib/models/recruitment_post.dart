@@ -71,6 +71,8 @@ class RecruitmentPost {
 
     final joinedCount = acceptedApplicants + 1; // tính cả chủ bài
     final hasJoined = applicantUserIds.contains(loggedInUserId);
+    final expiresAt = _tryParseDateTime(data['expires_at']);
+    final isExpired = expiresAt != null && expiresAt.isBefore(DateTime.now());
 
     return RecruitmentPost(
       id: record.id,
@@ -91,8 +93,8 @@ class RecruitmentPost {
       isJoined: hasJoined || authorId == loggedInUserId,
       isOwner: isOwner,
       locationNote: (data['location_note'] as String?)?.trim(),
-      isActive: data['is_active'] != false,
-      expiresAt: _tryParseDateTime(data['expires_at']),
+      isActive: data['is_active'] != false && !isExpired,
+      expiresAt: expiresAt,
       hasCourt: courtId != null && courtId.isNotEmpty,
     );
   }

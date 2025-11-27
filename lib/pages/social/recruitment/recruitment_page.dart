@@ -8,6 +8,7 @@ import 'package:badminton_booking_app/pages/social/recruitment/widgets/play_styl
 import 'package:badminton_booking_app/pages/social/recruitment/widgets/skill_level_selector.dart';
 import 'package:badminton_booking_app/pages/social/recruitment/widgets/submit_button.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 class RecruitmentFormPage extends StatelessWidget {
@@ -40,6 +41,35 @@ class RecruitmentFormPage extends StatelessWidget {
     await manager.updateSelectedDateTime(newDateTime);
   }
 
+  Future<void> _pickCloseDateTime(BuildContext context) async {
+    final manager = context.read<RecruitmentFormManager>();
+    final initialDate = manager.expiresAt;
+    final date = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 30)),
+    );
+
+    if (date == null) return;
+
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(initialDate),
+    );
+
+    if (time == null) return;
+
+    final newDateTime = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      time.hour,
+      time.minute,
+    );
+    manager.updateExpiresAt(newDateTime);
+  }
+
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
@@ -59,6 +89,20 @@ class RecruitmentFormPage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     IntroCard(cs: cs, textTheme: textTheme),
+                    const SizedBox(height: 24),
+
+                    _DateTimeField(
+                      label: 'Giờ đánh dự kiến',
+                      value: manager.selectedDateTime,
+                      onTap: () => _pickDateTime(context),
+                    ),
+                    const SizedBox(height: 12),
+                    _DateTimeField(
+                      label: 'Thời gian đóng bài',
+                      value: manager.expiresAt,
+                      helperText: 'Đến giờ này bài sẽ tự động đóng.',
+                      onTap: () => _pickCloseDateTime(context),
+                    ),
                     const SizedBox(height: 24),
 
                     SwitchListTile.adaptive(
@@ -84,9 +128,7 @@ class RecruitmentFormPage extends StatelessWidget {
                                   selectedCourtId:
                                       manager.selectedCourt?.id,
                                   availableCourts: manager.bookedCourts,
-                                  selectedDateTime: manager.selectedDateTime,
                                   onCourtChanged: manager.updateSelectedCourt,
-                                  onPickDateTime: () => _pickDateTime(context),
                                   message: manager.courtMessage,
                                 )
                           : const NoCourtInfoBox(),
@@ -143,6 +185,52 @@ class RecruitmentFormPage extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+}
+
+class _DateTimeField extends StatelessWidget {
+  const _DateTimeField({
+    required this.label,
+    required this.value,
+    required this.onTap,
+    this.helperText,
+  });
+
+  final String label;
+  final DateTime value;
+  final String? helperText;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          onTap: onTap,
+          child: InputDecorator(
+            decoration: InputDecoration(
+              labelText: label,
+              helperText: helperText,
+              filled: true,
+              fillColor: cs.surfaceVariant.withOpacity(0.6),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(DateFormat('HH:mm - dd/MM/yyyy').format(value)),
+                const Icon(Icons.calendar_month_outlined),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

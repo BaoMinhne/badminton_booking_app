@@ -17,10 +17,11 @@ class RecruitmentServiceException implements Exception {
 
 class RecruitmentService {
   static const String recruitmentPostsCollection = 'recruitment_posts';
-  static const String recruitmentApplicantsCollection = 'recruitment_applicants';
+  static const String recruitmentApplicantsCollection =
+      'recruitment_applicants';
   static const String bookingsCollection = 'court_bookings';
 
-  Future<List<RecruitmentPost>> fetchActivePosts({
+  Future<List<RecruitmentPost>> fetchRecruitmentPosts({
     int page = 1,
     int perPage = 30,
   }) async {
@@ -28,14 +29,13 @@ class RecruitmentService {
     final currentUserId = pocketBase.authStore.record?.id;
 
     try {
-      final result = await pocketBase.collection(recruitmentPostsCollection).getList(
-            page: page,
-            perPage: perPage,
-            sort: '-created',
-            expand: 'author,court',
-            filter:
-                "(expires_at = '' || expires_at = null || expires_at >= '${DateTime.now().toUtc().toIso8601String()}')",
-          );
+      final result =
+          await pocketBase.collection(recruitmentPostsCollection).getList(
+                page: page,
+                perPage: perPage,
+                sort: '-created',
+                expand: 'author,court',
+              );
 
       final applicantsMap = await _fetchApplicantsMap(
         pocketBase: pocketBase,
@@ -124,13 +124,14 @@ class RecruitmentService {
     final userDetailsService = UserDetailsService();
 
     try {
-      final result = await pocketBase.collection(recruitmentApplicantsCollection).getList(
-            page: 1,
-            perPage: 200,
-            filter: "recruitment='${_escapeFilterValue(recruitmentId)}'",
-            expand: 'user',
-            sort: '-created',
-          );
+      final result =
+          await pocketBase.collection(recruitmentApplicantsCollection).getList(
+                page: 1,
+                perPage: 200,
+                filter: "recruitment='${_escapeFilterValue(recruitmentId)}'",
+                expand: 'user',
+                sort: '-created',
+              );
 
       final applicants = <RecruitmentApplicant>[];
 
@@ -194,14 +195,16 @@ class RecruitmentService {
 
       final recruitmentId = record.data['recruitment'] as String?;
       if (recruitmentId == null || recruitmentId.isEmpty) {
-        throw RecruitmentServiceException('Không tìm thấy bài tuyển liên quan.');
+        throw RecruitmentServiceException(
+            'Không tìm thấy bài tuyển liên quan.');
       }
 
       return getRecruitmentById(recruitmentId);
     } on ClientException catch (error) {
       throw RecruitmentServiceException(_mapClientError(error));
     } catch (_) {
-      throw RecruitmentServiceException('Không thể cập nhật trạng thái yêu cầu.');
+      throw RecruitmentServiceException(
+          'Không thể cập nhật trạng thái yêu cầu.');
     }
   }
 
@@ -267,6 +270,7 @@ class RecruitmentService {
   Future<RecruitmentPost> createRecruitmentPost({
     required bool hasBookedCourt,
     required DateTime playTime,
+    required DateTime expiresAt,
     required int needMembers,
     required String playStyleLabel,
     required String skillLevelLabel,
@@ -281,14 +285,18 @@ class RecruitmentService {
     }
 
     try {
-      final record = await pocketBase.collection(recruitmentPostsCollection).create(
+      final record =
+          await pocketBase.collection(recruitmentPostsCollection).create(
         body: {
           'author': currentUserId,
           'content': note?.trim(),
           'need_members': needMembers,
-          'play_style': RecruitmentDictionary.playStyleValueFromLabel(playStyleLabel),
-          'skill_level': RecruitmentDictionary.skillValueFromLabel(skillLevelLabel),
+          'play_style':
+              RecruitmentDictionary.playStyleValueFromLabel(playStyleLabel),
+          'skill_level':
+              RecruitmentDictionary.skillValueFromLabel(skillLevelLabel),
           'event_time': playTime.toUtc().toIso8601String(),
+          'expires_at': expiresAt.toUtc().toIso8601String(),
           'court': hasBookedCourt ? courtId : null,
           'location_note': locationNote,
           'is_active': true,
@@ -322,11 +330,12 @@ class RecruitmentService {
         .join(' || ');
 
     try {
-      final result = await pocketBase.collection(recruitmentApplicantsCollection).getList(
-            page: 1,
-            perPage: 500,
-            filter: filters,
-          );
+      final result =
+          await pocketBase.collection(recruitmentApplicantsCollection).getList(
+                page: 1,
+                perPage: 500,
+                filter: filters,
+              );
 
       final map = <String, List<RecordModel>>{};
       for (final record in result.items) {

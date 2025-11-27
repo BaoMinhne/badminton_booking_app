@@ -38,7 +38,7 @@ class RecruitmentManager extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final results = await _service.fetchActivePosts();
+      final results = await _service.fetchRecruitmentPosts();
       _recruitmentPosts = results;
     } on RecruitmentServiceException catch (error) {
       _recruitmentError = error.message;

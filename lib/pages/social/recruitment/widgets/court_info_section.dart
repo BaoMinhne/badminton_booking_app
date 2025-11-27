@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-
 import '../../../../services/recruitment_service.dart';
 
 class CourtInfoSection extends StatelessWidget {
@@ -8,17 +6,13 @@ class CourtInfoSection extends StatelessWidget {
     super.key,
     required this.selectedCourtId,
     required this.availableCourts,
-    required this.selectedDateTime,
     required this.onCourtChanged,
-    required this.onPickDateTime,
     this.message,
   });
 
   final String? selectedCourtId;
   final List<BookedCourtOption> availableCourts;
-  final DateTime selectedDateTime;
   final ValueChanged<String?> onCourtChanged;
-  final VoidCallback onPickDateTime;
   final String? message;
 
   @override
@@ -53,20 +47,6 @@ class CourtInfoSection extends StatelessWidget {
                 .toList(growable: false),
             onChanged: onCourtChanged,
           ),
-        const SizedBox(height: 16),
-        GestureDetector(
-          onTap: onPickDateTime,
-          child: InputDecorator(
-            decoration: _inputDecoration(cs, 'Giờ đánh dự kiến'),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(DateFormat('HH:mm - dd/MM/yyyy').format(selectedDateTime)),
-                const Icon(Icons.calendar_month_outlined),
-              ],
-            ),
-          ),
-        ),
       ],
     );
   }

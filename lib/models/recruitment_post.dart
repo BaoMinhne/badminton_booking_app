@@ -18,6 +18,7 @@ class RecruitmentPost {
     required this.eventTime,
     required this.courtName,
     required this.isJoined,
+    this.currentUserStatus,
     required this.isOwner,
     required this.locationNote,
     required this.isActive,
@@ -57,12 +58,24 @@ class RecruitmentPost {
     final courtName = _sanitizeName(courtData?['name'] as String?);
     final courtId = (data['court'] as String?) ?? courtRecord?.id;
 
-    final applicantUserIds = applicants
-        .map((rec) =>
-            (rec.data['user'] as String?) ?? rec.getStringValue('user'))
-        .where((id) => id != null && id.isNotEmpty)
-        .cast<String>()
-        .toList();
+    final applicantUserIds = <String>[];
+    String? currentUserStatus;
+
+    for (final rec in applicants) {
+      final userId =
+          (rec.data['user'] as String?) ?? rec.getStringValue('user') ?? '';
+      if (userId.isEmpty) continue;
+
+      applicantUserIds.add(userId);
+
+      // Nếu đây là request của chính user đang đăng nhập
+      if (loggedInUserId != null &&
+          loggedInUserId.isNotEmpty &&
+          userId == loggedInUserId &&
+          currentUserStatus == null) {
+        currentUserStatus = (rec.data['status'] as String?) ?? 'pending';
+      }
+    }
 
     final acceptedApplicants = applicants.where((rec) {
       final status = (rec.data['status'] as String?) ?? 'pending';
@@ -70,7 +83,19 @@ class RecruitmentPost {
     }).length;
 
     final joinedCount = acceptedApplicants + 1; // tính cả chủ bài
-    final hasJoined = applicantUserIds.contains(loggedInUserId);
+
+    // Chỉ coi là "đã tham gia" khi đã được accepted hoặc là chủ bài
+    final hasJoined = currentUserStatus == 'accepted' || isOwner;
+
+    final expiresAt = _tryParseDateTime(data['expires_at']);
+    final bool isActiveFlag = (data['is_active'] as bool?) ?? true;
+    final now = DateTime.now();
+
+// expires_at <= now coi là đã hết hạn
+    final bool isExpired = expiresAt != null && !expiresAt.isAfter(now);
+
+// chỉ "đang tuyển" khi DB còn active và chưa hết hạn
+    final bool isActive = isActiveFlag && !isExpired;
 
     return RecruitmentPost(
       id: record.id,
@@ -89,10 +114,11 @@ class RecruitmentPost {
       eventTime: _tryParseDateTime(data['event_time']),
       courtName: courtName,
       isJoined: hasJoined || authorId == loggedInUserId,
+      currentUserStatus: currentUserStatus,
       isOwner: isOwner,
       locationNote: (data['location_note'] as String?)?.trim(),
-      isActive: data['is_active'] != false,
-      expiresAt: _tryParseDateTime(data['expires_at']),
+      isActive: isActive,
+      expiresAt: expiresAt,
       hasCourt: courtId != null && courtId.isNotEmpty,
     );
   }
@@ -110,6 +136,7 @@ class RecruitmentPost {
   final DateTime? eventTime;
   final String? courtName;
   final bool isJoined;
+  final String? currentUserStatus;
   final bool isOwner;
   final String? locationNote;
   final bool isActive;
@@ -122,6 +149,7 @@ class RecruitmentPost {
     String? authorAvatarUrl,
     bool? isActive,
     DateTime? expiresAt,
+    String? currentUserStatus,
   }) {
     return RecruitmentPost(
       id: id,
@@ -137,6 +165,7 @@ class RecruitmentPost {
       eventTime: eventTime,
       courtName: courtName,
       isJoined: isJoined ?? this.isJoined,
+      currentUserStatus: currentUserStatus ?? this.currentUserStatus,
       isOwner: isOwner,
       locationNote: locationNote,
       isActive: isActive ?? this.isActive,

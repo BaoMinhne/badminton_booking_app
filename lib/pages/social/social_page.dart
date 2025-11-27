@@ -408,6 +408,13 @@ class _SocialPageState extends State<SocialPage> {
             locationNote: post.locationNote,
             onJoin: () async {
               if (!post.isActive) return;
+
+              // Nếu đã có status (pending/accepted/rejected) thì không join lại
+              if (post.currentUserStatus != null &&
+                  post.currentUserStatus != 'cancelled') {
+                return;
+              }
+
               try {
                 await manager.joinRecruitment(post.id);
               } catch (error) {
@@ -421,6 +428,7 @@ class _SocialPageState extends State<SocialPage> {
             isOwner: post.isOwner,
             isJoinLoading: manager.isJoining(post.id),
             isActive: post.isActive,
+            currentUserStatus: post.currentUserStatus,
             onManage: post.isOwner
                 ? () {
                     Navigator.of(context).push(

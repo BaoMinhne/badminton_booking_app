@@ -18,6 +18,7 @@ class RecruitmentPostCard extends StatelessWidget {
   final bool isOwner;
   final bool isJoinLoading;
   final bool isActive;
+  final String? currentUserStatus;
   final VoidCallback? onManage;
 
   const RecruitmentPostCard({
@@ -38,6 +39,7 @@ class RecruitmentPostCard extends StatelessWidget {
     this.isOwner = false,
     this.isJoinLoading = false,
     this.isActive = true,
+    this.currentUserStatus,
     this.onManage,
   });
 
@@ -250,7 +252,11 @@ class RecruitmentPostCard extends StatelessWidget {
   Widget _buildActionButton(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    final bool isDisabled = !isActive || isJoined || isOwner || isJoinLoading;
+    final bool hasApplication =
+        currentUserStatus != null && currentUserStatus != 'cancelled';
+
+    final bool isDisabled =
+        !isActive || isOwner || isJoinLoading || hasApplication;
 
     return FilledButton.icon(
       onPressed: isDisabled ? null : onJoin,
@@ -271,11 +277,15 @@ class RecruitmentPostCard extends StatelessWidget {
               ),
             )
           : Icon(
-              isActive
-                  ? (isJoined
+              !isActive
+                  ? Icons.lock_rounded
+                  : currentUserStatus == 'accepted' || isJoined
                       ? Icons.check_circle_rounded
-                      : Icons.add_circle_rounded)
-                  : Icons.lock_rounded,
+                      : currentUserStatus == 'rejected'
+                          ? Icons.cancel_rounded
+                          : currentUserStatus == 'pending'
+                              ? Icons.hourglass_top_rounded
+                              : Icons.add_circle_rounded,
               size: 22,
             ),
       label: Text(
@@ -283,9 +293,13 @@ class RecruitmentPostCard extends StatelessWidget {
             ? 'Bài của bạn'
             : !isActive
                 ? 'Đã đóng'
-                : isJoined
-                    ? 'Đã tham gia'
-                    : 'Tham gia',
+                : currentUserStatus == 'pending'
+                    ? 'Chờ duyệt'
+                    : currentUserStatus == 'accepted' || isJoined
+                        ? 'Đã tham gia'
+                        : currentUserStatus == 'rejected'
+                            ? 'Từ chối'
+                            : 'Tham gia',
         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
       ),
     );

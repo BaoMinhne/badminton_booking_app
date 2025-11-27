@@ -20,6 +20,7 @@ class CourtTimelineRow {
 /// Visual state for each cell in the time grid.
 enum CourtSlotStatus {
   available,
+  lockedPast,
   heldByMe,
   heldByOther,
   pendingApprovalMine, // mapped from awaiting_payment (mine)
@@ -76,6 +77,8 @@ class _CourtTimelineState extends State<CourtTimeline> {
 
   late Map<String, int> _rowIndexById;
   late List<List<CourtSlotStatus>> _statusMatrix;
+  late DateTime _nowLocal;
+  late DateTime _todayLocal;
 
   _DragOperation _currentDragOp = _DragOperation.none;
   final Set<_CellCoordinate> _draggedCells = <_CellCoordinate>{};
@@ -98,6 +101,8 @@ class _CourtTimelineState extends State<CourtTimeline> {
         ScrollController(initialScrollOffset: widget.headerLeadingInset);
     _leftColumnCtrl = ScrollController();
     _rowIndexById = _buildRowIndexMap(widget.rows);
+    _nowLocal = DateTime.now();
+    _todayLocal = DateTime(_nowLocal.year, _nowLocal.month, _nowLocal.day);
     _statusMatrix = _buildStatusMatrix();
 
     _headerCtrl.addListener(_handleHeaderScroll);
@@ -118,6 +123,9 @@ class _CourtTimelineState extends State<CourtTimeline> {
         oldWidget.date != widget.date ||
         oldWidget.startHour != widget.startHour ||
         oldWidget.endHour != widget.endHour) {
+      _nowLocal = DateTime.now();
+      _todayLocal =
+          DateTime(_nowLocal.year, _nowLocal.month, _nowLocal.day);
       _statusMatrix = _buildStatusMatrix();
     }
   }
@@ -199,7 +207,7 @@ class _CourtTimelineState extends State<CourtTimeline> {
     );
 
     if (widget.bookings.isEmpty || _slotCount == 0) {
-      return matrix;
+      return _applyPastLocks(matrix);
     }
 
     final now = DateTime.now().toUtc();
@@ -219,7 +227,46 @@ class _CourtTimelineState extends State<CourtTimeline> {
         }
       }
     }
+    return _applyPastLocks(matrix);
+  }
+
+  List<List<CourtSlotStatus>> _applyPastLocks(
+      List<List<CourtSlotStatus>> matrix) {
+    final selectedDay = DateTime(
+      widget.date.year,
+      widget.date.month,
+      widget.date.day,
+    );
+
+    if (selectedDay.isAfter(_todayLocal)) {
+      return matrix;
+    }
+
+    final lockAll = selectedDay.isBefore(_todayLocal);
+    for (var row = 0; row < matrix.length; row++) {
+      for (var column = 0; column < matrix[row].length; column++) {
+        if (matrix[row][column] != CourtSlotStatus.available) continue;
+        if (lockAll || _isPastColumn(column)) {
+          matrix[row][column] = CourtSlotStatus.lockedPast;
+        }
+      }
+    }
     return matrix;
+  }
+
+  bool _isPastColumn(int column) {
+    final slotStart = _slotStartAtColumn(column);
+    return !slotStart.isAfter(_nowLocal);
+  }
+
+  DateTime _slotStartAtColumn(int column) {
+    final base = DateTime(
+      widget.date.year,
+      widget.date.month,
+      widget.date.day,
+      widget.startHour,
+    );
+    return base.add(Duration(minutes: column * widget.slotDuration.inMinutes));
   }
 
   /// Map BookingStatus (DB) -> CourtSlotStatus (UI)
@@ -260,6 +307,8 @@ class _CourtTimelineState extends State<CourtTimeline> {
     switch (status) {
       case CourtSlotStatus.available:
         return 0;
+      case CourtSlotStatus.lockedPast:
+        return 1;
       case CourtSlotStatus.heldByMe:
         return 4;
       case CourtSlotStatus.pendingApprovalMine:
@@ -736,6 +785,7 @@ class _CourtRowPainter extends CustomPainter {
 class _SlotColors {
   _SlotColors({
     required this.available,
+    required this.lockedPast,
     required this.heldByMe,
     required this.heldByOther,
     required this.pendingMine,
@@ -748,6 +798,7 @@ class _SlotColors {
   factory _SlotColors.fromColorScheme(ColorScheme cs) {
     return _SlotColors(
       available: cs.surface,
+      lockedPast: cs.onSurface.withOpacity(0.08),
       heldByMe: cs.secondaryContainer.withOpacity(0.7),
       heldByOther: cs.errorContainer.withOpacity(0.9),
       pendingMine: cs.tertiaryContainer.withOpacity(0.9),
@@ -759,6 +810,7 @@ class _SlotColors {
   }
 
   final Color available;
+  final Color lockedPast;
   final Color heldByMe;
   final Color heldByOther;
   final Color pendingMine;
@@ -771,6 +823,8 @@ class _SlotColors {
     switch (status) {
       case CourtSlotStatus.available:
         return available;
+      case CourtSlotStatus.lockedPast:
+        return lockedPast;
       case CourtSlotStatus.heldByMe:
         return heldByMe;
       case CourtSlotStatus.heldByOther:
@@ -788,6 +842,7 @@ class _SlotColors {
   bool operator ==(Object other) {
     return other is _SlotColors &&
         other.available == available &&
+        other.lockedPast == lockedPast &&
         other.heldByMe == heldByMe &&
         other.heldByOther == heldByOther &&
         other.pendingMine == pendingMine &&
@@ -798,8 +853,16 @@ class _SlotColors {
   }
 
   @override
-  int get hashCode => Object.hash(available, heldByMe, heldByOther, pendingMine,
-      pending, confirmed, selectedOverlay, gridLine);
+  int get hashCode => Object.hash(
+      available,
+      lockedPast,
+      heldByMe,
+      heldByOther,
+      pendingMine,
+      pending,
+      confirmed,
+      selectedOverlay,
+      gridLine);
 }
 
 class _CellCoordinate {

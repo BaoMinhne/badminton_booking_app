@@ -1,4 +1,5 @@
 // lib/components/my_court_time.dart
+import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
@@ -72,6 +73,8 @@ class _CourtTimelineState extends State<CourtTimeline> {
   late final ScrollController _leftColumnCtrl;
   final ScrollController _gridVerticalCtrl = ScrollController();
 
+  Timer? _nowTimer;
+
   bool _horizontalSyncing = false;
   bool _verticalSyncing = false;
 
@@ -109,6 +112,8 @@ class _CourtTimelineState extends State<CourtTimeline> {
     _gridCtrl.addListener(_handleGridHorizontalScroll);
     _leftColumnCtrl.addListener(_handleLeftVerticalScroll);
     _gridVerticalCtrl.addListener(_handleGridVerticalScroll);
+
+    _startNowTimer();
   }
 
   @override
@@ -144,7 +149,24 @@ class _CourtTimelineState extends State<CourtTimeline> {
     _gridVerticalCtrl
       ..removeListener(_handleGridVerticalScroll)
       ..dispose();
+    _nowTimer?.cancel();
     super.dispose();
+  }
+
+  void _startNowTimer() {
+    _nowTimer?.cancel();
+    _nowTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (!mounted) return;
+      setState(() {
+        _nowLocal = DateTime.now();
+        _todayLocal = DateTime(
+          _nowLocal.year,
+          _nowLocal.month,
+          _nowLocal.day,
+        );
+        _statusMatrix = _buildStatusMatrix();
+      });
+    });
   }
 
   void _handleHeaderScroll() {

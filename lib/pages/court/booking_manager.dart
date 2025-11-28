@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
+import 'package:pocketbase/pocketbase.dart';
 
 import 'package:badminton_booking_app/models/booking.dart';
 import 'package:badminton_booking_app/models/court_detail.dart';
@@ -20,6 +21,7 @@ class BookingManager extends ChangeNotifier {
     _selectedDate = _normalizeDate(DateTime.now());
 
     Future.microtask(() => loadBookings());
+    Future.microtask(_setupRealtimeSubscription);
   }
 
   final CourtDetailData detailData;
@@ -30,6 +32,8 @@ class BookingManager extends ChangeNotifier {
   DateTime _selectedDate = DateTime.now();
   int _selectedUnitGroupIndex = 0;
   String? _currentUserId;
+
+  bool _isDisposed = false;
 
   bool _isLoading = false;
   bool _isSubmittingHeldBookings = false;
@@ -45,6 +49,8 @@ class BookingManager extends ChangeNotifier {
 
   final Map<String, _BookingCacheEntry> _bookingCacheByKey =
       <String, _BookingCacheEntry>{};
+
+  UnsubscribeFunc? _bookingRealtimeUnsubscribe;
 
   DateTime get selectedDate => _selectedDate;
   int get selectedUnitGroupIndex => _selectedUnitGroupIndex;
@@ -138,6 +144,17 @@ class BookingManager extends ChangeNotifier {
     unawaited(loadBookings(forceRefresh: true));
   }
 
+  @override
+  void dispose() {
+    _isDisposed = true;
+    final unsubscribe = _bookingRealtimeUnsubscribe;
+    _bookingRealtimeUnsubscribe = null;
+    if (unsubscribe != null) {
+      unawaited(unsubscribe());
+    }
+    super.dispose();
+  }
+
   Future<void> changeDate(DateTime date) async {
     final normalized = _normalizeDate(date);
     if (normalized.isAtSameMomentAs(_selectedDate)) {
@@ -147,6 +164,7 @@ class BookingManager extends ChangeNotifier {
     _friendlyErrorMessage = null;
     notifyListeners();
     await loadBookings();
+    await _setupRealtimeSubscription();
   }
 
   Future<void> changeCourtUnitGroup(int groupIndex) async {
@@ -198,6 +216,34 @@ class BookingManager extends ChangeNotifier {
   }
 
   Future<void> refreshBookings() => loadBookings(forceRefresh: true);
+
+  Future<void> _setupRealtimeSubscription() async {
+    try {
+      final previous = _bookingRealtimeUnsubscribe;
+      _bookingRealtimeUnsubscribe = null;
+      if (previous != null) {
+        await previous();
+      }
+
+      _bookingRealtimeUnsubscribe = await _bookingService.subscribeBookings(
+        courtId: detailData.court.id,
+        date: _selectedDate,
+        onEvent: _handleBookingRealtimeEvent,
+      );
+    } catch (error, stackTrace) {
+      if (kDebugMode) {
+        debugPrint('Failed to initialize booking realtime: $error');
+        debugPrint(stackTrace.toString());
+      }
+    }
+  }
+
+  Future<void> _handleBookingRealtimeEvent(
+    RecordSubscriptionEvent event,
+  ) async {
+    if (_isDisposed) return;
+    await loadBookings(forceRefresh: true);
+  }
 
   Future<void> holdSlot(SelectedSlot slot) async {
     if (_currentUserId == null || _currentUserId!.isEmpty) {

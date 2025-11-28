@@ -46,6 +46,27 @@ class BookingService {
     }
   }
 
+  Future<UnsubscribeFunc> subscribeBookings({
+    required String courtId,
+    required DateTime date,
+    required RecordSubscriptionCallback onEvent,
+  }) async {
+    final pb = await getPocketbaseInstance();
+
+    final dayStart = DateTime(date.year, date.month, date.day).toUtc();
+    final dayEnd = dayStart.add(const Duration(days: 1));
+
+    final escapedCourt = _escapeFilterValue(courtId);
+    final filter =
+        "court_id='$escapedCourt' && start_time < '${dayEnd.toIso8601String()}' && end_time > '${dayStart.toIso8601String()}'";
+
+    return pb.collection(collection).subscribe(
+          '*',
+          onEvent,
+          filter: filter,
+        );
+  }
+
   Future<List<UserBookingView>> listUserBookings({
     required String userId,
     DateTime? startTimeInclusive,

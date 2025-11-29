@@ -1,4 +1,5 @@
 // lib/components/my_court_time.dart
+import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
@@ -79,6 +80,7 @@ class _CourtTimelineState extends State<CourtTimeline> {
   late List<List<CourtSlotStatus>> _statusMatrix;
   late DateTime _nowLocal;
   late DateTime _todayLocal;
+  Timer? _clockTicker;
 
   _DragOperation _currentDragOp = _DragOperation.none;
   final Set<_CellCoordinate> _draggedCells = <_CellCoordinate>{};
@@ -104,6 +106,7 @@ class _CourtTimelineState extends State<CourtTimeline> {
     _nowLocal = DateTime.now();
     _todayLocal = DateTime(_nowLocal.year, _nowLocal.month, _nowLocal.day);
     _statusMatrix = _buildStatusMatrix();
+    _startClockTicker();
 
     _headerCtrl.addListener(_handleHeaderScroll);
     _gridCtrl.addListener(_handleGridHorizontalScroll);
@@ -144,7 +147,21 @@ class _CourtTimelineState extends State<CourtTimeline> {
     _gridVerticalCtrl
       ..removeListener(_handleGridVerticalScroll)
       ..dispose();
+    _clockTicker?.cancel();
     super.dispose();
+  }
+
+  void _startClockTicker() {
+    _clockTicker?.cancel();
+    _clockTicker = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (!mounted) return;
+      setState(() {
+        _nowLocal = DateTime.now();
+        _todayLocal =
+            DateTime(_nowLocal.year, _nowLocal.month, _nowLocal.day);
+        _statusMatrix = _buildStatusMatrix();
+      });
+    });
   }
 
   void _handleHeaderScroll() {

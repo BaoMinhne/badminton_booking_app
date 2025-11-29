@@ -3,9 +3,11 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
+import 'package:pocketbase/pocketbase.dart';
 
 import 'package:badminton_booking_app/models/booking.dart';
 import 'package:badminton_booking_app/models/court_detail.dart';
+import 'package:badminton_booking_app/services/booking_realtime_service.dart';
 import 'package:badminton_booking_app/services/booking_service.dart';
 import 'package:badminton_booking_app/utils/booking_helpers.dart';
 
@@ -26,6 +28,7 @@ class BookingManager extends ChangeNotifier {
   final Duration slotDuration;
   final int unitGroupSize;
   final BookingService _bookingService;
+  final BookingRealtimeService _realtimeService = BookingRealtimeService();
 
   DateTime _selectedDate = DateTime.now();
   int _selectedUnitGroupIndex = 0;
@@ -45,6 +48,12 @@ class BookingManager extends ChangeNotifier {
 
   final Map<String, _BookingCacheEntry> _bookingCacheByKey =
       <String, _BookingCacheEntry>{};
+
+  @override
+  void dispose() {
+    _realtimeService.dispose();
+    super.dispose();
+  }
 
   DateTime get selectedDate => _selectedDate;
   int get selectedUnitGroupIndex => _selectedUnitGroupIndex;
@@ -190,6 +199,7 @@ class BookingManager extends ChangeNotifier {
       _syncSelectedSlotsWithBookings();
       _isLoading = false;
       notifyListeners();
+      unawaited(_subscribeToRealtime());
     } catch (error) {
       _isLoading = false;
       _friendlyErrorMessage = _describeFriendlyError(error);
@@ -198,6 +208,46 @@ class BookingManager extends ChangeNotifier {
   }
 
   Future<void> refreshBookings() => loadBookings(forceRefresh: true);
+
+  Future<void> _subscribeToRealtime() async {
+    await _realtimeService.subscribeToBookings(
+      courtId: detailData.court.id,
+      date: _selectedDate,
+      onChange: _handleRealtimeEvent,
+    );
+  }
+
+  void _handleRealtimeEvent(RealtimeEvent event) {
+    final record = event.record;
+    if (record == null) return;
+
+    final incoming = CourtBooking.fromRecord(record);
+    final updated = List<CourtBooking>.from(_loadedBookings);
+
+    switch (event.action) {
+      case 'delete':
+        updated.removeWhere((item) => item.id == incoming.id);
+        break;
+      case 'create':
+        updated.add(incoming);
+        break;
+      case 'update':
+        final index = updated.indexWhere((item) => item.id == incoming.id);
+        if (index >= 0) {
+          updated[index] = incoming;
+        } else {
+          updated.add(incoming);
+        }
+        break;
+      default:
+        return;
+    }
+
+    _loadedBookings = updated;
+    _updateCache(_loadedBookings, _selectedDate);
+    _syncSelectedSlotsWithBookings();
+    notifyListeners();
+  }
 
   Future<void> holdSlot(SelectedSlot slot) async {
     if (_currentUserId == null || _currentUserId!.isEmpty) {

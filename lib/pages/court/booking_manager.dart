@@ -217,7 +217,7 @@ class BookingManager extends ChangeNotifier {
     );
   }
 
-  void _handleRealtimeEvent(RealtimeEvent event) {
+  void _handleRealtimeEvent(RecordSubscriptionEvent event) {
     final record = event.record;
     if (record == null) return;
 
@@ -325,43 +325,55 @@ class BookingManager extends ChangeNotifier {
   }
 
   Future<void> submitHeldBookings() async {
-    if (_heldBookingsBySlot.isEmpty) {
-      return;
-    }
+    if (_heldBookingsBySlot.isEmpty) return;
 
     _isSubmittingHeldBookings = true;
     notifyListeners();
 
+    // ✅ LẤY SNAPSHOT TRƯỚC KHI BẮT ĐẦU, TRÁNH BỊ REALTIME LÀM THAY ĐỔI MAP
+    final bookingsToSubmit = _heldBookingsBySlot.values.toList(growable: false);
+
+    final updatedBookings = <CourtBooking>[];
+    final processedBookingIds = <String>{};
+
     try {
-      final updatedBookings = <CourtBooking>[];
-      final processedBookingIds = <String>{};
-      for (final booking in _heldBookingsBySlot.values) {
-        if (processedBookingIds.contains(booking.id)) {
-          continue;
-        }
+      // 1) Cập nhật trạng thái trên server
+      for (final booking in bookingsToSubmit) {
+        if (processedBookingIds.contains(booking.id)) continue;
         final updated = await _bookingService.submitForApproval(booking.id);
         processedBookingIds.add(booking.id);
         updatedBookings.add(updated);
       }
 
+      // 2) Cập nhật lại list local
       final updatedList = List<CourtBooking>.from(_loadedBookings);
       for (final updated in updatedBookings) {
-        final index = updatedList.indexWhere((item) => item.id == updated.id);
-        if (index >= 0) {
+        final index = updatedList.indexWhere((b) => b.id == updated.id);
+        if (index != -1) {
           updatedList[index] = updated;
+        } else {
+          updatedList.add(updated);
         }
       }
 
       _loadedBookings = updatedList;
       _updateCache(_loadedBookings, _selectedDate);
+
+      // Sau khi submit xong, mình chủ động clear lựa chọn hiện tại
       _heldBookingsBySlot.clear();
       _selectedSlots.clear();
       notifyListeners();
-      await loadBookings(forceRefresh: true);
-    } catch (error) {
-      _isSubmittingHeldBookings = false;
-      notifyListeners();
-      throw BookingManagerException(_describeFriendlyError(error));
+
+      // 3) Refresh lại ngầm, nếu lỗi thì log nhưng KHÔNG báo lỗi cho user
+      unawaited(
+        loadBookings(forceRefresh: true).catchError((error, stack) {
+          if (kDebugMode) {
+            print('loadBookings after submitHeldBookings failed: $error');
+          }
+        }),
+      );
+    } on BookingServiceException catch (error) {
+      throw BookingManagerException(error.message);
     } finally {
       _isSubmittingHeldBookings = false;
       notifyListeners();

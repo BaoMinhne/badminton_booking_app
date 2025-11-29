@@ -1,6 +1,7 @@
 import 'package:badminton_booking_app/components/my_carousel.dart';
 import 'package:badminton_booking_app/components/my_text_field.dart';
 import 'package:badminton_booking_app/pages/home/search_page.dart';
+import 'package:badminton_booking_app/pages/notification_page.dart';
 import 'package:badminton_booking_app/utils/currency.dart';
 import 'package:flutter/material.dart';
 
@@ -47,8 +48,14 @@ class _HomePageState extends State<HomePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _GreetingHeader(
-                    onNotificationTap: () =>
-                        _toast(context, 'Thông báo sẽ sớm có mặt!'),
+                    onNotificationTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const NotificationPage(),
+                        ),
+                      );
+                    },
                   ),
                   const SizedBox(height: 18),
                   MyTextfield(

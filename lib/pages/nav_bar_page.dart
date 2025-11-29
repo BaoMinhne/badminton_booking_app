@@ -54,7 +54,7 @@ class _NavBarPageState extends State<NavBarPage> {
           Icon(Icons.home, size: 30, color: Colors.white), // HomePage
           Icon(Icons.south_america,
               size: 30, color: Colors.white), // SearchPage
-          // NortiPage
+          // NotificationPage
           Icon(Icons.book_online_outlined, size: 30, color: Colors.white),
           Icon(Icons.person, size: 30, color: Colors.white), // ProfilePage
         ],

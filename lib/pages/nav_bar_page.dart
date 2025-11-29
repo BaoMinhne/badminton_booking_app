@@ -1,6 +1,7 @@
 import 'package:badminton_booking_app/pages/court/booking_page.dart';
 import 'package:badminton_booking_app/pages/court/court_page.dart';
 import 'package:badminton_booking_app/pages/home/home_page.dart';
+import 'package:badminton_booking_app/pages/notifications/notifications_page.dart';
 import 'package:badminton_booking_app/pages/user/profile_page.dart';
 import 'package:badminton_booking_app/pages/social/social_page.dart';
 import 'package:badminton_booking_app/pages/user/user_manager.dart';
@@ -31,6 +32,7 @@ class _NavBarPageState extends State<NavBarPage> {
     _pages = [
       HomePage(),
       SocialPage(),
+      const NotificationsPage(),
       CourtPage(),
       ProfilePage(),
     ];
@@ -54,7 +56,7 @@ class _NavBarPageState extends State<NavBarPage> {
           Icon(Icons.home, size: 30, color: Colors.white), // HomePage
           Icon(Icons.south_america,
               size: 30, color: Colors.white), // SearchPage
-          // NortiPage
+          Icon(Icons.notifications, size: 30, color: Colors.white),
           Icon(Icons.book_online_outlined, size: 30, color: Colors.white),
           Icon(Icons.person, size: 30, color: Colors.white), // ProfilePage
         ],

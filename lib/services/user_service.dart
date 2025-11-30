@@ -33,9 +33,34 @@ class UserDetailsService {
 
   Future<RecordModel> _ensureUserDetails(PocketBase pb, String userId) async {
     try {
-      return await pb
+      final record = await pb
           .collection(collection)
           .getFirstListItem("user_id='$userId'");
+
+      // Nếu record cũ thiếu các field bắt buộc mới thì cập nhật giá trị mặc định
+      final levelNumeric = (record.data['level_numeric'] as num?)?.toInt();
+      final matchTypes = (record.data['match_types'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const <String>[];
+      final playStyleTags = (record.data['play_style_tags'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const <String>[];
+
+      if (levelNumeric == null) {
+        return await pb.collection(collection).update(
+          record.id,
+          body: {
+            'user_id': userId,
+            'level_numeric': 3,
+            'match_types': matchTypes,
+            'play_style_tags': playStyleTags,
+          },
+        );
+      }
+
+      return record;
     } catch (_) {
       // chưa có -> tạo mới
       return await pb.collection(collection).create(body: {
@@ -102,6 +127,17 @@ class UserDetailsService {
         body: {
           // có thể gửi thêm các field khác ở đây nếu cần
           'user_id': userId,
+          // đảm bảo các field bắt buộc không bị null trên record cũ
+          'level_numeric':
+              (details.data['level_numeric'] as num?)?.toInt() ?? 3,
+          'match_types': (details.data['match_types'] as List?)
+                  ?.map((e) => e.toString())
+                  .toList() ??
+              const <String>[],
+          'play_style_tags': (details.data['play_style_tags'] as List?)
+                  ?.map((e) => e.toString())
+                  .toList() ??
+              const <String>[],
         },
         files: [multipart],
       );

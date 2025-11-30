@@ -38,7 +38,12 @@ class UserDetailsService {
           .getFirstListItem("user_id='$userId'");
     } catch (_) {
       // chưa có -> tạo mới
-      return await pb.collection(collection).create(body: {'user_id': userId});
+      return await pb.collection(collection).create(body: {
+        'user_id': userId,
+        'level_numeric': 3,
+        'match_types': const <String>[],
+        'play_style_tags': const <String>[],
+      });
     }
   }
 
@@ -155,9 +160,16 @@ class UserDetailsService {
   Future<UserDetails> updateMyDetails({
     String? fullname,
     String? level,
-    List<String>? playStyles,
+    int? levelNumeric,
+    List<String>? matchTypes,
+    List<String>? playStyleTags,
+    String? preferredRoleDoubles,
+    String? intensity,
+    int? experienceYears,
+    int? playsPerWeek,
     String? gender,
     DateTime? birthday,
+    String? homeCourtId,
   }) async {
     final pb = await getPocketbaseInstance();
     final userId = pb.authStore.record?.id;
@@ -168,16 +180,59 @@ class UserDetailsService {
 
     final record = await _ensureUserDetails(pb, userId);
 
+    final currentLevelNumeric =
+        (record.data['level_numeric'] as num?)?.toInt() ?? 3;
+    final List<String> currentMatchTypes =
+        (record.data['match_types'] as List?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            const <String>[];
+    final List<String> currentPlayStyleTags =
+        (record.data['play_style_tags'] as List?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            const <String>[];
+    final String? currentPreferredRole =
+        (record.data['preferred_role_doubles'] as String?)?.trim();
+    final String? currentIntensity =
+        (record.data['intensity'] as String?)?.trim();
+    final int? currentExperienceYears =
+        (record.data['experience_years'] as num?)?.toInt();
+    final int? currentPlaysPerWeek =
+        (record.data['plays_per_week'] as num?)?.toInt();
+    final String? currentHomeCourt =
+        (record.data['home_court'] as String?)?.trim();
     final String? sanitizedFullname =
         fullname != null && fullname.trim().isNotEmpty ? fullname.trim() : null;
     final String? sanitizedLevel =
         level != null && level.trim().isNotEmpty ? level.trim() : null;
+    final int sanitizedLevelNumeric = levelNumeric ?? currentLevelNumeric;
     final String? sanitizedGender =
         gender != null && gender.trim().isNotEmpty ? gender.trim() : null;
-    final List<String> sanitizedPlayStyles = (playStyles ?? const <String>[])
+    final List<String> sanitizedMatchTypes = (matchTypes ?? currentMatchTypes)
         .where((style) => style.trim().isNotEmpty)
         .map((style) => style.trim())
         .toList();
+    final List<String> sanitizedPlayStyleTags =
+        (playStyleTags ?? currentPlayStyleTags)
+            .where((tag) => tag.trim().isNotEmpty)
+            .map((tag) => tag.trim())
+            .toList();
+    final String? sanitizedPreferredRole =
+        (preferredRoleDoubles != null && preferredRoleDoubles.trim().isNotEmpty)
+            ? preferredRoleDoubles.trim()
+            : currentPreferredRole;
+    final String? sanitizedIntensity =
+        (intensity != null && intensity.trim().isNotEmpty)
+            ? intensity.trim()
+            : currentIntensity;
+    final int? sanitizedExperienceYears =
+        experienceYears ?? currentExperienceYears;
+    final int? sanitizedPlaysPerWeek = playsPerWeek ?? currentPlaysPerWeek;
+    final String? sanitizedHomeCourt =
+        (homeCourtId != null && homeCourtId.trim().isNotEmpty)
+            ? homeCourtId.trim()
+            : currentHomeCourt;
 
     final updated = await pb.collection(collection).update(
       record.id,
@@ -185,9 +240,16 @@ class UserDetailsService {
         'user_id': userId,
         'fullname': sanitizedFullname,
         'level': sanitizedLevel,
-        'play_style': sanitizedPlayStyles,
+        'level_numeric': sanitizedLevelNumeric,
+        'match_types': sanitizedMatchTypes,
+        'play_style_tags': sanitizedPlayStyleTags,
         'gender': sanitizedGender,
         'birthday': birthday?.toIso8601String(),
+        'preferred_role_doubles': sanitizedPreferredRole,
+        'intensity': sanitizedIntensity,
+        'experience_years': sanitizedExperienceYears,
+        'plays_per_week': sanitizedPlaysPerWeek,
+        'home_court': sanitizedHomeCourt,
       },
     );
 

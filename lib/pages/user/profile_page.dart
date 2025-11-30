@@ -34,6 +34,7 @@ class _ProfilePageState extends State<ProfilePage> {
   String? _avatarUrl;
   String? _error;
   String? _username;
+  String? _displayName;
 
   @override
   void initState() {
@@ -58,12 +59,17 @@ class _ProfilePageState extends State<ProfilePage> {
 
       final details = await userManager.getByUserId(userID);
       if (!mounted) return;
+      final String? fullname =
+          details?.fullname != null && details!.fullname!.trim().isNotEmpty
+              ? details.fullname!.trim()
+              : null;
       setState(() {
         _details = details;
         _avatarUrl = details?.avatarUrl;
         _error = null;
         _isLoading = false;
         _username = user?.username ?? 'User';
+        _displayName = fullname ?? _username;
       });
     } catch (_) {
       if (!mounted) return;
@@ -397,7 +403,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   SizedBox(height: 10),
                   Text(
-                    _username ?? 'User',
+                    _displayName ?? 'User',
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,

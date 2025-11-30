@@ -30,7 +30,12 @@ class AuthService {
       final code =
           response is Map<String, dynamic> ? response['code'] as int? : null;
       if (code == 404) {
-        await pb.collection('user_details').create(body: {'user_id': userId});
+        await pb.collection('user_details').create(body: {
+          'user_id': userId,
+          'level_numeric': 3,
+          'match_types': const <String>[],
+          'play_style_tags': const <String>[],
+        });
       } else {
         rethrow;
       }

@@ -65,7 +65,6 @@ class _UserDetailState extends State<UserDetail> {
   bool _isSaving = false;
   String? _error;
   String? _selectedLevel;
-  int _selectedLevelNumeric = 3;
   String? _selectedGender;
   List<String> _selectedMatchTypes = <String>[];
   List<String> _selectedPlayStyleTags = <String>[];
@@ -160,8 +159,8 @@ class _UserDetailState extends State<UserDetail> {
     }
 
     setState(() {
-      _selectedLevel = level;
-      _selectedLevelNumeric = details?.levelNumeric ?? 3;
+      _selectedLevel =
+          level ?? _levelFromNumeric(details?.levelNumeric ?? 3),
       _selectedGender = gender;
       _selectedMatchTypes = List<String>.from(matchTypes);
       _selectedPlayStyleTags = List<String>.from(playStyleTags);
@@ -263,17 +262,6 @@ class _UserDetailState extends State<UserDetail> {
             onChanged: (String? value) {
               setState(() {
                 _selectedLevel = value;
-              });
-            },
-          ),
-          _buildDropdownField(
-            label: 'Mức độ (1-5)',
-            value: _selectedLevelNumeric.toString(),
-            options: const <String>['1', '2', '3', '4', '5'],
-            hintText: 'Chọn mức độ theo thang 1-5',
-            onChanged: (String? value) {
-              setState(() {
-                _selectedLevelNumeric = int.tryParse(value ?? '') ?? 3;
               });
             },
           ),
@@ -660,6 +648,23 @@ class _UserDetailState extends State<UserDetail> {
         .join(' ');
   }
 
+  String _levelFromNumeric(int levelNumeric) {
+    switch (levelNumeric) {
+      case 1:
+        return 'Beginner';
+      case 2:
+        return 'Lower Intermediate';
+      case 3:
+        return 'Intermediate';
+      case 4:
+        return 'Upper Intermediate';
+      case 5:
+        return 'Advanced';
+      default:
+        return 'Intermediate';
+    }
+  }
+
   Future<void> _pickBirthday() async {
     FocusScope.of(context).unfocus();
     final DateTime initialDate = _selectedBirthday ??
@@ -699,7 +704,6 @@ class _UserDetailState extends State<UserDetail> {
       final updatedDetails = await userManager.updateMyDetails(
         fullname: _fullNameController.text.trim(),
         level: _selectedLevel,
-        levelNumeric: _selectedLevelNumeric,
         matchTypes: _selectedMatchTypes,
         playStyleTags: _selectedPlayStyleTags,
         preferredRoleDoubles: _selectedPreferredRole,

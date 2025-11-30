@@ -11,6 +11,31 @@ import 'pocketbase_client.dart';
 
 class UserDetailsService {
   static const collection = 'user_details';
+  static const Map<String, int> _levelToNumeric = {
+    'Beginner': 1,
+    'Lower Intermediate': 2,
+    'Intermediate': 3,
+    'Upper Intermediate': 4,
+    'Advanced': 5,
+  };
+
+  static const Map<int, String> _numericToLevel = {
+    1: 'Beginner',
+    2: 'Lower Intermediate',
+    3: 'Intermediate',
+    4: 'Upper Intermediate',
+    5: 'Advanced',
+  };
+
+  int _mapLevelToNumeric(String? level, int fallback) {
+    if (level == null || level.trim().isEmpty) return fallback;
+    return _levelToNumeric[level.trim()] ?? fallback;
+  }
+
+  String? _mapNumericToLevel(int? levelNumeric) {
+    if (levelNumeric == null) return null;
+    return _numericToLevel[levelNumeric];
+  }
 
   Future<String?> getCurrentUserId() async {
     final pb = await getPocketbaseInstance();
@@ -39,6 +64,7 @@ class UserDetailsService {
 
       // Nếu record cũ thiếu các field bắt buộc mới thì cập nhật giá trị mặc định
       final levelNumeric = (record.data['level_numeric'] as num?)?.toInt();
+      final level = (record.data['level'] as String?)?.trim();
       final matchTypes = (record.data['match_types'] as List?)
               ?.map((e) => e.toString())
               .toList() ??
@@ -53,7 +79,8 @@ class UserDetailsService {
           record.id,
           body: {
             'user_id': userId,
-            'level_numeric': 3,
+            'level_numeric': _mapLevelToNumeric(level, 3),
+            'level': level ?? _mapNumericToLevel(3),
             'match_types': matchTypes,
             'play_style_tags': playStyleTags,
           },
@@ -66,6 +93,7 @@ class UserDetailsService {
       return await pb.collection(collection).create(body: {
         'user_id': userId,
         'level_numeric': 3,
+        'level': _mapNumericToLevel(3),
         'match_types': const <String>[],
         'play_style_tags': const <String>[],
       });
@@ -91,6 +119,8 @@ class UserDetailsService {
       final rec = await _ensureUserDetails(pb, userId);
 
       final data = rec.toJson();
+      data['level'] ??=
+          _mapNumericToLevel((data['level_numeric'] as num?)?.toInt());
       final avatarName = (data['avatar'] as String?) ?? '';
       final avatarUrl = avatarName.isEmpty
           ? null
@@ -242,7 +272,8 @@ class UserDetailsService {
         fullname != null && fullname.trim().isNotEmpty ? fullname.trim() : null;
     final String? sanitizedLevel =
         level != null && level.trim().isNotEmpty ? level.trim() : null;
-    final int sanitizedLevelNumeric = levelNumeric ?? currentLevelNumeric;
+    final int sanitizedLevelNumeric =
+        levelNumeric ?? _mapLevelToNumeric(sanitizedLevel, currentLevelNumeric);
     final String? sanitizedGender =
         gender != null && gender.trim().isNotEmpty ? gender.trim() : null;
     final List<String> sanitizedMatchTypes = (matchTypes ?? currentMatchTypes)
@@ -275,7 +306,7 @@ class UserDetailsService {
       body: {
         'user_id': userId,
         'fullname': sanitizedFullname,
-        'level': sanitizedLevel,
+        'level': sanitizedLevel ?? _mapNumericToLevel(sanitizedLevelNumeric),
         'level_numeric': sanitizedLevelNumeric,
         'match_types': sanitizedMatchTypes,
         'play_style_tags': sanitizedPlayStyleTags,

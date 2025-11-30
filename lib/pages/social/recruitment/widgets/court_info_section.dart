@@ -30,6 +30,8 @@ class CourtInfoSection extends StatelessWidget {
         else
           DropdownButtonFormField<String>(
             value: selectedCourtId,
+            isExpanded:
+                true, // Thêm để chiếm hết chiều rộng, tránh overflow do giới hạn width
             decoration: _inputDecoration(cs, 'Chọn sân đã đặt'),
             items: availableCourts
                 .map<DropdownMenuItem<String>>(
@@ -37,9 +39,13 @@ class CourtInfoSection extends StatelessWidget {
                     value: court.id,
                     child: Tooltip(
                       message: court.displayName,
+                      preferBelow:
+                          false, // Ưu tiên hiển thị tooltip ở trên để tránh che UI dưới
                       child: Text(
                         court.displayName,
+                        maxLines: 2, // Cho phép wrap thành 2 dòng nếu text dài
                         overflow: TextOverflow.ellipsis,
+                        softWrap: true, // Kích hoạt wrap text
                       ),
                     ),
                   ),
@@ -60,6 +66,9 @@ class CourtInfoSection extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide.none,
       ),
+      contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12), // Tăng padding để text có không gian wrap
     );
   }
 }

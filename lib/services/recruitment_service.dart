@@ -151,7 +151,7 @@ class RecruitmentService {
         final levelLabel = details?.level != null
             ? RecruitmentDictionary.skillLabelFromValue(details!.level)
             : null;
-        final playStyles = (details?.playStyle ?? const [])
+        final playStyles = (details?.matchTypes ?? const [])
             .map(RecruitmentDictionary.playStyleLabelFromValue)
             .whereType<String>()
             .toList(growable: false);

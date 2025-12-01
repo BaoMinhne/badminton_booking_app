@@ -114,9 +114,11 @@ class UserManager with ChangeNotifier {
           id: '', // hoặc null/khác tùy model
           userId: _currentUser?.id ?? '',
           fullname: _currentUser?.username,
+          levelNumeric: 3,
           avatarUrl: url,
           level: null,
-          playStyle: const [],
+          matchTypes: const [],
+          playStyleTags: const [],
           gender: null,
           birthday: null,
         );
@@ -129,16 +131,30 @@ class UserManager with ChangeNotifier {
   Future<UserDetails> updateMyDetails({
     String? fullname,
     String? level,
-    List<String>? playStyles,
+    int? levelNumeric,
+    List<String>? matchTypes,
+    List<String>? playStyleTags,
+    String? preferredRoleDoubles,
+    String? intensity,
+    int? experienceYears,
+    int? playsPerWeek,
     String? gender,
     DateTime? birthday,
+    String? homeCourtId,
   }) async {
     final updated = await _userService.updateMyDetails(
       fullname: fullname,
       level: level,
-      playStyles: playStyles,
+      levelNumeric: levelNumeric,
+      matchTypes: matchTypes,
+      playStyleTags: playStyleTags,
+      preferredRoleDoubles: preferredRoleDoubles,
+      intensity: intensity,
+      experienceYears: experienceYears,
+      playsPerWeek: playsPerWeek,
       gender: gender,
       birthday: birthday,
+      homeCourtId: homeCourtId,
     );
     _myDetails = updated; // sync cache
     notifyListeners();

@@ -11,6 +11,31 @@ import 'pocketbase_client.dart';
 
 class UserDetailsService {
   static const collection = 'user_details';
+  static const Map<String, int> _levelToNumeric = {
+    'Beginner': 1,
+    'Lower Intermediate': 2,
+    'Intermediate': 3,
+    'Upper Intermediate': 4,
+    'Advanced': 5,
+  };
+
+  static const Map<int, String> _numericToLevel = {
+    1: 'Beginner',
+    2: 'Lower Intermediate',
+    3: 'Intermediate',
+    4: 'Upper Intermediate',
+    5: 'Advanced',
+  };
+
+  int _mapLevelToNumeric(String? level, int fallback) {
+    if (level == null || level.trim().isEmpty) return fallback;
+    return _levelToNumeric[level.trim()] ?? fallback;
+  }
+
+  String? _mapNumericToLevel(int? levelNumeric) {
+    if (levelNumeric == null) return null;
+    return _numericToLevel[levelNumeric];
+  }
 
   Future<String?> getCurrentUserId() async {
     final pb = await getPocketbaseInstance();
@@ -33,12 +58,45 @@ class UserDetailsService {
 
   Future<RecordModel> _ensureUserDetails(PocketBase pb, String userId) async {
     try {
-      return await pb
+      final record = await pb
           .collection(collection)
           .getFirstListItem("user_id='$userId'");
+
+      // Nếu record cũ thiếu các field bắt buộc mới thì cập nhật giá trị mặc định
+      final levelNumeric = (record.data['level_numeric'] as num?)?.toInt();
+      final level = (record.data['level'] as String?)?.trim();
+      final matchTypes = (record.data['match_types'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const <String>[];
+      final playStyleTags = (record.data['play_style_tags'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const <String>[];
+
+      if (levelNumeric == null) {
+        return await pb.collection(collection).update(
+          record.id,
+          body: {
+            'user_id': userId,
+            'level_numeric': _mapLevelToNumeric(level, 3),
+            'level': level ?? _mapNumericToLevel(3),
+            'match_types': matchTypes,
+            'play_style_tags': playStyleTags,
+          },
+        );
+      }
+
+      return record;
     } catch (_) {
       // chưa có -> tạo mới
-      return await pb.collection(collection).create(body: {'user_id': userId});
+      return await pb.collection(collection).create(body: {
+        'user_id': userId,
+        'level_numeric': 3,
+        'level': _mapNumericToLevel(3),
+        'match_types': const <String>[],
+        'play_style_tags': const <String>[],
+      });
     }
   }
 
@@ -61,6 +119,8 @@ class UserDetailsService {
       final rec = await _ensureUserDetails(pb, userId);
 
       final data = rec.toJson();
+      data['level'] ??=
+          _mapNumericToLevel((data['level_numeric'] as num?)?.toInt());
       final avatarName = (data['avatar'] as String?) ?? '';
       final avatarUrl = avatarName.isEmpty
           ? null
@@ -97,6 +157,17 @@ class UserDetailsService {
         body: {
           // có thể gửi thêm các field khác ở đây nếu cần
           'user_id': userId,
+          // đảm bảo các field bắt buộc không bị null trên record cũ
+          'level_numeric':
+              (details.data['level_numeric'] as num?)?.toInt() ?? 3,
+          'match_types': (details.data['match_types'] as List?)
+                  ?.map((e) => e.toString())
+                  .toList() ??
+              const <String>[],
+          'play_style_tags': (details.data['play_style_tags'] as List?)
+                  ?.map((e) => e.toString())
+                  .toList() ??
+              const <String>[],
         },
         files: [multipart],
       );
@@ -155,9 +226,16 @@ class UserDetailsService {
   Future<UserDetails> updateMyDetails({
     String? fullname,
     String? level,
-    List<String>? playStyles,
+    int? levelNumeric,
+    List<String>? matchTypes,
+    List<String>? playStyleTags,
+    String? preferredRoleDoubles,
+    String? intensity,
+    int? experienceYears,
+    int? playsPerWeek,
     String? gender,
     DateTime? birthday,
+    String? homeCourtId,
   }) async {
     final pb = await getPocketbaseInstance();
     final userId = pb.authStore.record?.id;
@@ -168,26 +246,77 @@ class UserDetailsService {
 
     final record = await _ensureUserDetails(pb, userId);
 
+    final currentLevelNumeric =
+        (record.data['level_numeric'] as num?)?.toInt() ?? 3;
+    final List<String> currentMatchTypes =
+        (record.data['match_types'] as List?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            const <String>[];
+    final List<String> currentPlayStyleTags =
+        (record.data['play_style_tags'] as List?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            const <String>[];
+    final String? currentPreferredRole =
+        (record.data['preferred_role_doubles'] as String?)?.trim();
+    final String? currentIntensity =
+        (record.data['intensity'] as String?)?.trim();
+    final int? currentExperienceYears =
+        (record.data['experience_years'] as num?)?.toInt();
+    final int? currentPlaysPerWeek =
+        (record.data['plays_per_week'] as num?)?.toInt();
+    final String? currentHomeCourt =
+        (record.data['home_court'] as String?)?.trim();
     final String? sanitizedFullname =
         fullname != null && fullname.trim().isNotEmpty ? fullname.trim() : null;
     final String? sanitizedLevel =
         level != null && level.trim().isNotEmpty ? level.trim() : null;
+    final int sanitizedLevelNumeric =
+        levelNumeric ?? _mapLevelToNumeric(sanitizedLevel, currentLevelNumeric);
     final String? sanitizedGender =
         gender != null && gender.trim().isNotEmpty ? gender.trim() : null;
-    final List<String> sanitizedPlayStyles = (playStyles ?? const <String>[])
+    final List<String> sanitizedMatchTypes = (matchTypes ?? currentMatchTypes)
         .where((style) => style.trim().isNotEmpty)
         .map((style) => style.trim())
         .toList();
+    final List<String> sanitizedPlayStyleTags =
+        (playStyleTags ?? currentPlayStyleTags)
+            .where((tag) => tag.trim().isNotEmpty)
+            .map((tag) => tag.trim())
+            .toList();
+    final String? sanitizedPreferredRole =
+        (preferredRoleDoubles != null && preferredRoleDoubles.trim().isNotEmpty)
+            ? preferredRoleDoubles.trim()
+            : currentPreferredRole;
+    final String? sanitizedIntensity =
+        (intensity != null && intensity.trim().isNotEmpty)
+            ? intensity.trim()
+            : currentIntensity;
+    final int? sanitizedExperienceYears =
+        experienceYears ?? currentExperienceYears;
+    final int? sanitizedPlaysPerWeek = playsPerWeek ?? currentPlaysPerWeek;
+    final String? sanitizedHomeCourt =
+        (homeCourtId != null && homeCourtId.trim().isNotEmpty)
+            ? homeCourtId.trim()
+            : currentHomeCourt;
 
     final updated = await pb.collection(collection).update(
       record.id,
       body: {
         'user_id': userId,
         'fullname': sanitizedFullname,
-        'level': sanitizedLevel,
-        'play_style': sanitizedPlayStyles,
+        'level': sanitizedLevel ?? _mapNumericToLevel(sanitizedLevelNumeric),
+        'level_numeric': sanitizedLevelNumeric,
+        'match_types': sanitizedMatchTypes,
+        'play_style_tags': sanitizedPlayStyleTags,
         'gender': sanitizedGender,
         'birthday': birthday?.toIso8601String(),
+        'preferred_role_doubles': sanitizedPreferredRole,
+        'intensity': sanitizedIntensity,
+        'experience_years': sanitizedExperienceYears,
+        'plays_per_week': sanitizedPlaysPerWeek,
+        'home_court': sanitizedHomeCourt,
       },
     );
 

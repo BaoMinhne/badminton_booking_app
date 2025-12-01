@@ -1,8 +1,9 @@
-from typing import List, Optional, Any, Dict
+from typing import List, Optional, Any, Dict, Tuple
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
+# DÙNG IMPORT THẬT TỪ POCKETBASE CLIENT CỦA BẠN
 from pocketbase_client import (
     get_user_details_by_user_id,
     get_all_other_user_details,
@@ -19,35 +20,34 @@ class UserDetails(BaseModel):
     # Basic profile
     fullname: Optional[str] = None
     avatar: Optional[str] = None
-    gender: Optional[str] = None
-    birthday: Optional[str] = None  # keep string for now
+    gender: Optional[str] = None  # "male", "female"
+    birthday: Optional[str] = None
 
     # Skill / play information
-    level: Optional[str] = None
-    level_numeric: int
+    level: Optional[str] = None  # "Beginner", "Lower Intermediate", ...
+    level_numeric: int           # 1..5 theo schema của bạn
 
-    match_types: List[str] = []  # ["singles", "doubles", "mixed"]
-    play_style_tags: List[str] = []  # ["attacking", "defensive", ...]
+    # Theo schema thật:
+    # match_types: ['singles', 'doubles', 'mixed']
+    match_types: List[str] = []
+
+    # play_style_tags: ['attack', 'defense', 'net', 'baseline', 'all_round', 'fun', 'competitive']
+    play_style_tags: List[str] = []
+
     preferred_role_doubles: Optional[str] = None  # "front", "back", "flexible"
-    intensity: Optional[str] = None  # "casual", "semi_competitive", "competitive"
+    intensity: Optional[str] = None              # "casual", "semi_competitive", "competitive"
 
     # Experience & habit
     experience_years: Optional[float] = None
     plays_per_week: Optional[float] = None
+    # Trong DB là relation tới courts -> lưu id sân (vd: "bv5emarj3ji1m32")
     home_court: Optional[str] = None
 
     @classmethod
     def from_pb_record(cls, record: Dict[str, Any]) -> "UserDetails":
-        """
-        Chuẩn hoá mapping từ PocketBase record sang UserDetails.
-
-        - Bắt buộc có level_numeric (để đảm bảo model có thể ghép).
-        - Các field còn lại để optional, không có thì gán None / [].
-        """
         raw_level_numeric = record.get("level_numeric")
 
         if raw_level_numeric is None:
-            # Bắt buộc phải có level_numeric để ghép trình độ
             raise ValueError("Record user_details thiếu trường 'level_numeric'")
 
         return cls(
@@ -72,6 +72,8 @@ class UserDetails(BaseModel):
 class MatchCandidate(BaseModel):
     user: UserDetails
     score: float
+    # Để debug: lưu được cả số điểm từng tiêu chí hoặc reason bị loại
+    debug_info: Optional[Dict[str, Any]] = None
 
 
 # ---------- SCORING CONFIG ----------
@@ -79,21 +81,19 @@ class MatchCandidate(BaseModel):
 
 class ScoringWeights(BaseModel):
     """
-    Cho phép cấu hình trọng số cho từng nhóm tiêu chí.
-
-    Mặc định tổng điểm tối đa ~100, để sau này dễ scale / hiển thị %.
+    Cấu hình trọng số.
+    Tổng điểm tối đa ~100.
     """
 
-    # Max weights cho từng nhóm
-    level: float = 40.0
-    play_style: float = 25.0
-    doubles_role: float = 15.0
-    intensity: float = 10.0
-    home_court: float = 5.0
-    habit: float = 5.0  # plays_per_week / experience_years
+    level: float = 40.0         # Trình độ vẫn quan trọng nhất
+    play_style: float = 20.0    # Giảm nhẹ để nhường chỗ cho Role
+    doubles_role: float = 20.0  # Tăng lên: Hợp vị trí đánh rất sướng
+    intensity: float = 15.0     # Tăng lên: Cùng độ máu lửa mới bền
+    home_court: float = 5.0     # Tiện đường đi lại (cùng sân / cùng court_id)
+    habit: float = 0.0          # Tạm thời bỏ qua (hoặc để thấp)
 
-    # Ngưỡng chênh lệch trình độ cho phép (quá lớn thì loại luôn)
-    max_level_diff: int = 3  # nếu chênh > 3 level thì coi như rất khó hợp
+    # Ngưỡng chênh lệch trình độ tối đa (level_numeric)
+    max_level_diff: int = 3
 
 
 DEFAULT_WEIGHTS = ScoringWeights()
@@ -102,14 +102,14 @@ DEFAULT_WEIGHTS = ScoringWeights()
 # ---------- SCORING HELPERS ----------
 
 
-def _intensity_value(intensity: str | None) -> int:
+def _intensity_value(intensity: Optional[str]) -> int:
     if intensity == "casual":
         return 1
     if intensity == "semi_competitive":
         return 2
     if intensity == "competitive":
         return 3
-    return 2  # default trung bình nếu thiếu dữ liệu
+    return 2  # default trung bình
 
 
 def _jaccard(a: List[str], b: List[str]) -> float:
@@ -124,17 +124,49 @@ def _jaccard(a: List[str], b: List[str]) -> float:
     return intersection / union
 
 
+# ---------- LOGIC BỘ LỌC (HARD FILTERS) ----------
+
+
+def _check_gender_compatibility(me: UserDetails, other: UserDetails) -> bool:
+    """
+    Kiểm tra giới tính + loại hình thi đấu:
+    - Nếu không set match_types -> chấp nhận tất cả.
+    - Nếu không có match_type chung -> loại.
+    - mixed: cần khác giới.
+    - doubles: ưu tiên cùng giới.
+    - singles: chấp nhận, không quá quan trọng giới tính.
+    """
+
+    if not me.match_types:
+        return True
+
+    common_matches = set(me.match_types) & set(other.match_types)
+    if not common_matches:
+        return False
+
+    valid_match_found = False
+
+    # 1. Mixed (đôi nam nữ) -> cần khác giới
+    if "mixed" in common_matches:
+        if me.gender and other.gender and me.gender != other.gender:
+            valid_match_found = True
+
+    # 2. Doubles (đôi nam / đôi nữ) -> cùng giới sẽ hợp lý hơn
+    if "doubles" in common_matches:
+        if me.gender and other.gender and me.gender == other.gender:
+            valid_match_found = True
+
+    # 3. Singles (đơn) -> không ràng buộc giới tính
+    if "singles" in common_matches:
+        valid_match_found = True
+
+    return valid_match_found
+
+
 # ---------- SCORING BY ASPECT ----------
 
 
 def _score_level(me: UserDetails, other: UserDetails, w: ScoringWeights) -> float:
-    """
-    Chênh lệch trình độ càng ít càng tốt.
-    diff = 0  -> 100% điểm level
-    diff = 1  -> 0.75
-    diff = 2  -> 0.4
-    diff >= 3 -> 0.0
-    """
     diff = abs(me.level_numeric - other.level_numeric)
 
     if diff == 0:
@@ -150,18 +182,17 @@ def _score_level(me: UserDetails, other: UserDetails, w: ScoringWeights) -> floa
 
 
 def _score_play_style(me: UserDetails, other: UserDetails, w: ScoringWeights) -> float:
-    """
-    Dùng Jaccard similarity trên play_style_tags, nhân với trọng số.
-    """
     jaccard = _jaccard(me.play_style_tags, other.play_style_tags)
     return jaccard * w.play_style
 
 
 def _score_doubles_role(me: UserDetails, other: UserDetails, w: ScoringWeights) -> float:
     """
-    Ghép đôi: front/back là combo tốt nhất.
-    Cả hai flexible thì cũng khá ổn.
-    Cùng role (front-front/back-back) thì vẫn có điểm nhưng thấp.
+    Logic đánh đôi:
+    - Flexible + Flexible = 1.0
+    - Front + Back = 1.0
+    - Flexible + (Front/Back) = 0.8
+    - Same role (Front+Front / Back+Back) = 0.2
     """
     role_a = me.preferred_role_doubles
     role_b = other.preferred_role_doubles
@@ -169,20 +200,14 @@ def _score_doubles_role(me: UserDetails, other: UserDetails, w: ScoringWeights) 
     if not role_a or not role_b:
         return 0.0
 
-    # perfect complement
-    if (role_a == "front" and role_b == "back") or (
-        role_a == "back" and role_b == "front"
-    ):
+    if role_a == "flexible" and role_b == "flexible":
         factor = 1.0
-    # cả hai đều flexible
-    elif role_a == "flexible" and role_b == "flexible":
+    elif (role_a == "front" and role_b == "back") or (role_a == "back" and role_b == "front"):
+        factor = 1.0
+    elif "flexible" in (role_a, role_b):
         factor = 0.8
-    # một flexible, một front/back
-    elif role_a == "flexible" or role_b == "flexible":
-        factor = 0.7
-    # cùng role (front-front / back-back)
     elif role_a == role_b:
-        factor = 0.4
+        factor = 0.2
     else:
         factor = 0.0
 
@@ -190,12 +215,6 @@ def _score_doubles_role(me: UserDetails, other: UserDetails, w: ScoringWeights) 
 
 
 def _score_intensity(me: UserDetails, other: UserDetails, w: ScoringWeights) -> float:
-    """
-    Mức độ try-hard tương đồng thì tốt.
-    diff = 0 -> full
-    diff = 1 -> 0.5
-    diff >=2 -> 0
-    """
     int_a = _intensity_value(me.intensity)
     int_b = _intensity_value(other.intensity)
     diff_int = abs(int_a - int_b)
@@ -211,25 +230,33 @@ def _score_intensity(me: UserDetails, other: UserDetails, w: ScoringWeights) -> 
 
 
 def _score_home_court(me: UserDetails, other: UserDetails, w: ScoringWeights) -> float:
-    if me.home_court and other.home_court and me.home_court == other.home_court:
+    """
+    home_court trong DB là relation -> id sân (court_id).
+    So sánh nhau bằng id là hợp lý:
+    - cùng court_id => cùng sân yêu thích.
+    """
+    court_a = (me.home_court or "").strip()
+    court_b = (other.home_court or "").strip()
+
+    if court_a and court_b and court_a == court_b:
         return w.home_court
+
     return 0.0
 
 
 def _score_habit(me: UserDetails, other: UserDetails, w: ScoringWeights) -> float:
     """
-    Thói quen chơi: dựa trên plays_per_week & experience_years.
-    Ở mức demo: chỉ kiểm tra plays_per_week, chênh lệch ít thì cộng điểm.
+    Thói quen chơi: plays_per_week.
+    (Hiện tại weight đang = 0 nên hàm này chưa ảnh hưởng,
+     nhưng giữ lại để sau này tăng weight là xài được luôn.)
     """
     plays_a = me.plays_per_week or 0
     plays_b = other.plays_per_week or 0
 
     if plays_a == 0 or plays_b == 0:
-        # không có dữ liệu thì không cộng điểm
         return 0.0
 
     diff = abs(plays_a - plays_b)
-
     if diff <= 1:
         factor = 1.0
     elif diff <= 3:
@@ -247,26 +274,37 @@ def compute_match_score(
     me: UserDetails,
     other: UserDetails,
     weights: ScoringWeights = DEFAULT_WEIGHTS,
-) -> float:
+) -> Tuple[float, Dict[str, Any]]:
     """
-    Tính tổng điểm ghép cặp giữa 2 người chơi.
-    Trả về số thực, càng cao càng hợp.
+    Tính điểm ghép cặp.
+    Trả về (Tổng điểm, Chi tiết điểm).
+    Nếu bị loại bởi Hard Filter -> trả về (0.0, {"reason": ...}).
     """
 
-    # Nếu chênh trình độ quá lớn thì cho score = 0 luôn để loại sớm.
+    # Không tự ghép với chính mình (phòng hờ)
+    if me.user_id == other.user_id:
+        return 0.0, {"reason": "same_user"}
+
+    # 1. Hard filter: chênh level quá lớn
     if abs(me.level_numeric - other.level_numeric) > weights.max_level_diff:
-        return 0.0
+        return 0.0, {"reason": "level_diff_too_high"}
 
-    score = 0.0
+    # 2. Hard filter: giới tính + loại hình thi đấu
+    if not _check_gender_compatibility(me, other):
+        return 0.0, {"reason": "gender_mismatch"}
 
-    score += _score_level(me, other, weights)
-    score += _score_play_style(me, other, weights)
-    score += _score_doubles_role(me, other, weights)
-    score += _score_intensity(me, other, weights)
-    score += _score_home_court(me, other, weights)
-    score += _score_habit(me, other, weights)
+    # 3. Tính điểm từng tiêu chí
+    scores: Dict[str, float] = {}
+    scores["level"] = _score_level(me, other, weights)
+    scores["style"] = _score_play_style(me, other, weights)
+    scores["role"] = _score_doubles_role(me, other, weights)
+    scores["intensity"] = _score_intensity(me, other, weights)
+    scores["court"] = _score_home_court(me, other, weights)
+    scores["habit"] = _score_habit(me, other, weights)
 
-    return score
+    total_score = sum(scores.values())
+
+    return total_score, scores
 
 
 def recommend_partners(
@@ -275,16 +313,20 @@ def recommend_partners(
     limit: int = 10,
     weights: ScoringWeights = DEFAULT_WEIGHTS,
 ) -> List[MatchCandidate]:
-    """
-    Tính score cho toàn bộ 'others' và trả về top N ứng viên.
-    """
     candidates: List[MatchCandidate] = []
 
     for other in others:
-        s = compute_match_score(me, other, weights=weights)
-        if s <= 0:
+        total_score, debug_details = compute_match_score(me, other, weights=weights)
+        if total_score <= 0:
             continue
-        candidates.append(MatchCandidate(user=other, score=s))
+
+        candidates.append(
+            MatchCandidate(
+                user=other,
+                score=round(total_score, 2),
+                debug_info=debug_details,
+            )
+        )
 
     candidates.sort(key=lambda c: c.score, reverse=True)
     return candidates[:limit]
@@ -304,28 +346,23 @@ async def health_check():
 @app.get("/recommend/players", response_model=List[MatchCandidate])
 async def recommend_players_endpoint(user_id: str, limit: int = 10):
     """
-    Gợi ý người chơi dựa trên dữ liệu thật từ PocketBase (collection user_details).
-
-    - user_id: id của user trong collection _pb_users_auth_ (id đang login trong app).
+    Gợi ý người chơi cho user_id (id của user trong collection users / _pb_users_auth_).
     """
 
     # 1. Lấy user_details của current user
     me_record = await get_user_details_by_user_id(user_id)
     if not me_record:
-        raise HTTPException(
-            status_code=404,
-            detail="User details not found for this user_id",
-        )
+        raise HTTPException(status_code=404, detail="User details not found")
 
     me = UserDetails.from_pb_record(me_record)
 
     # 2. Lấy user_details của tất cả user khác
     others_records = await get_all_other_user_details(user_id)
-    others = [UserDetails.from_pb_record(r) for r in others_records]
-
-    if not others:
+    if not others_records:
         return []
 
-    # 3. Tính score & lấy top
-    candidates = recommend_partners(me, others, limit=limit)
+    others = [UserDetails.from_pb_record(r) for r in others_records]
+
+    # 3. Tính score & trả về top
+    candidates = recommend_partners(me, others, limit=limit, weights=DEFAULT_WEIGHTS)
     return candidates

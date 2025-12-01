@@ -3,6 +3,7 @@ import 'package:badminton_booking_app/models/friend_relation.dart';
 import 'package:badminton_booking_app/models/friend_search_result.dart';
 import 'package:badminton_booking_app/pages/social/chat/friend_manager.dart';
 import 'package:badminton_booking_app/pages/social/chat/widgets/contact_list_tile.dart';
+import 'package:badminton_booking_app/pages/user/user_public_profile_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -171,18 +172,12 @@ class AddFriendPage extends StatelessWidget {
                 avatarText: result.initials,
                 statusMessage: result.subtitle.isEmpty ? null : result.subtitle,
               ),
-              actionLabel: _primaryActionLabel(friendManager, result),
-              isProcessing: friendManager.isActionInProgress(result.user.id),
-              isPending: friendManager.relationFor(result.user.id).type ==
-                  FriendRelationType.outgoingRequest,
               trailing: _buildTrailingActions(
                 context,
                 friendManager,
                 result,
               ),
-              onTap: () {},
-              onChatPressed: () =>
-                  _handleFriendAction(context, friendManager, result),
+              onTap: () => _openProfile(context, result),
             ),
           ),
         ),
@@ -259,7 +254,15 @@ class AddFriendPage extends StatelessWidget {
     return result ?? false;
   }
 
-  Widget? _buildTrailingActions(
+  void _openProfile(BuildContext context, FriendSearchResult result) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => UserPublicProfilePage(result: result),
+      ),
+    );
+  }
+
+  Widget _buildTrailingActions(
     BuildContext context,
     FriendManager friendManager,
     FriendSearchResult result,
@@ -268,39 +271,74 @@ class AddFriendPage extends StatelessWidget {
     final isProcessing = friendManager.isActionInProgress(result.user.id);
     final cs = Theme.of(context).colorScheme;
 
+    final actions = <Widget>[
+      FilledButton.tonalIcon(
+        onPressed: () => _openProfile(context, result),
+        icon: const Icon(Icons.person_search_rounded),
+        label: const Text('Xem hồ sơ'),
+      ),
+    ];
+
     switch (relation.type) {
       case FriendRelationType.friends:
-        return FilledButton.tonal(
-          onPressed: null,
-          child: const Text('Bạn bè'),
+        actions.add(
+          FilledButton.tonal(
+            onPressed: null,
+            child: const Text('Bạn bè'),
+          ),
         );
+        break;
       case FriendRelationType.incomingRequest:
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            FilledButton(
-              onPressed: isProcessing
-                  ? null
-                  : () => _handleAcceptRequest(context, friendManager, result),
-              child: const Text('Đồng ý'),
+        actions.addAll([
+          FilledButton(
+            onPressed: isProcessing
+                ? null
+                : () => _handleAcceptRequest(context, friendManager, result),
+            child: const Text('Đồng ý'),
+          ),
+          FilledButton.tonal(
+            onPressed: isProcessing
+                ? null
+                : () => _handleRejectRequest(context, friendManager, result),
+            style: FilledButton.styleFrom(
+              backgroundColor: cs.errorContainer,
+              foregroundColor: cs.onErrorContainer,
             ),
-            const SizedBox(width: 8),
-            FilledButton.tonal(
-              onPressed: isProcessing
-                  ? null
-                  : () => _handleRejectRequest(context, friendManager, result),
-              style: FilledButton.styleFrom(
-                backgroundColor: cs.errorContainer,
-                foregroundColor: cs.onErrorContainer,
-              ),
-              child: const Text('Xóa'),
-            ),
-          ],
-        );
+            child: const Text('Xóa'),
+          ),
+        ]);
+        break;
       case FriendRelationType.outgoingRequest:
       case FriendRelationType.none:
-        return null;
+        final label = _primaryActionLabel(friendManager, result) ?? 'Kết bạn';
+        actions.add(
+          isProcessing
+              ? const SizedBox(
+                  width: 32,
+                  height: 32,
+                  child: CircularProgressIndicator(strokeWidth: 2.6),
+                )
+              : FilledButton(
+                  style: relation.type == FriendRelationType.outgoingRequest
+                      ? FilledButton.styleFrom(
+                          backgroundColor: cs.secondaryContainer,
+                          foregroundColor: cs.onSecondaryContainer,
+                        )
+                      : null,
+                  onPressed: () =>
+                      _handleFriendAction(context, friendManager, result),
+                  child: Text(label),
+                ),
+        );
+        break;
     }
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: actions,
+    );
   }
 
   String? _primaryActionLabel(

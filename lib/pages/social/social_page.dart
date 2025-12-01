@@ -149,13 +149,18 @@ class _SocialPageState extends State<SocialPage> {
             const SizedBox(width: 12),
           ],
           bottom: TabBar(
+            isScrollable: true,
+            padding: const EdgeInsets.only(
+                left: 8), // hơi cách mép trái 1 chút cho đẹp
+            labelPadding: const EdgeInsets.only(
+                right: 24), // chỉ chừa khoảng cách bên phải mỗi tab
             tabs: [
               Tab(
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: [
+                  children: const [
                     Icon(Icons.people_alt_rounded, size: 20),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Text('Community'),
                   ],
                 ),
@@ -163,9 +168,9 @@ class _SocialPageState extends State<SocialPage> {
               Tab(
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: [
+                  children: const [
                     Icon(Icons.person_search_rounded, size: 20),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Text('Recruitment'),
                   ],
                 ),
@@ -173,20 +178,19 @@ class _SocialPageState extends State<SocialPage> {
               Tab(
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: [
+                  children: const [
                     Icon(Icons.handshake_rounded, size: 20),
-                    const SizedBox(width: 8),
-                    Text('Gợi ý bạn chơi'),
+                    SizedBox(width: 8),
+                    Text('Partner'),
                   ],
                 ),
               ),
             ],
-            // Chữ tab đang chọn
+            // các phần còn lại giữ nguyên
             labelStyle: tt.titleMedium?.copyWith(
               fontWeight: FontWeight.w700,
               fontSize: 16,
             ),
-            // Chữ tab chưa chọn
             unselectedLabelStyle: tt.titleMedium?.copyWith(
               fontSize: 16,
               fontWeight: FontWeight.w500,
@@ -194,13 +198,13 @@ class _SocialPageState extends State<SocialPage> {
             labelColor: cs.onPrimary,
             unselectedLabelColor: cs.onPrimary.withOpacity(0.75),
             indicator: BoxDecoration(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(12)),
               color: cs.primary.withOpacity(0.3),
             ),
             indicatorSize: TabBarIndicatorSize.tab,
             indicatorColor: Colors.transparent,
             dividerColor: cs.onPrimary.withOpacity(0.15),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             overlayColor: WidgetStateProperty.all(cs.primary.withOpacity(0.1)),
           ),
           flexibleSpace: Container(
@@ -216,15 +220,15 @@ class _SocialPageState extends State<SocialPage> {
           scrolledUnderElevation: 0,
           shadowColor: Colors.transparent,
         ),
-          body: SafeArea(
-            child: TabBarView(
-              children: [
-                _buildPostsTab(context, manager, avatarUrl),
-                _buildRecruitmentTab(context, manager),
-                _buildPartnerSuggestionTab(context),
-              ],
-            ),
+        body: SafeArea(
+          child: TabBarView(
+            children: [
+              _buildPostsTab(context, manager, avatarUrl),
+              _buildRecruitmentTab(context, manager),
+              _buildPartnerSuggestionTab(context),
+            ],
           ),
+        ),
       ),
     );
   }
@@ -342,7 +346,8 @@ class _SocialPageState extends State<SocialPage> {
     ];
 
     return RefreshIndicator(
-      onRefresh: () async => Future<void>.delayed(const Duration(milliseconds: 800)),
+      onRefresh: () async =>
+          Future<void>.delayed(const Duration(milliseconds: 800)),
       child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
@@ -440,8 +445,8 @@ class _SocialPageState extends State<SocialPage> {
                     onInviteTap: () {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content:
-                              Text('Đã gửi lời mời kết bạn cho ${suggestion.name}'),
+                          content: Text(
+                              'Đã gửi lời mời kết bạn cho ${suggestion.name}'),
                         ),
                       );
                     },
@@ -461,7 +466,8 @@ class _SocialPageState extends State<SocialPage> {
                   const SizedBox(width: 10),
                   Text(
                     'Lời mời vào sân bạn nhận được',
-                    style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                    style:
+                        tt.titleMedium?.copyWith(fontWeight: FontWeight.w800),
                   ),
                 ],
               ),
@@ -898,7 +904,8 @@ class _InviteCard extends StatelessWidget {
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Xem chi tiết lời mời tại ${invite.courtName}'),
+                        content: Text(
+                            'Xem chi tiết lời mời tại ${invite.courtName}'),
                       ),
                     );
                   },
@@ -918,7 +925,8 @@ class _InviteCard extends StatelessWidget {
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Đã phản hồi lời mời của ${invite.hostName}'),
+                        content:
+                            Text('Đã phản hồi lời mời của ${invite.hostName}'),
                       ),
                     );
                   },

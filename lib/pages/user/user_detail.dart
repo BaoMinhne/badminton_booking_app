@@ -128,12 +128,14 @@ class _UserDetailState extends State<UserDetail> {
     }
 
     final String? levelValue = details?.level?.trim();
-    final String? level =
-        (levelValue != null && levelValue.trim().isNotEmpty) ? levelValue : null;
-    final String? genderValue = details?.gender?.trim();
-    final String? gender = (genderValue != null && genderValue.trim().isNotEmpty)
-        ? genderValue
+    final String? level = (levelValue != null && levelValue.trim().isNotEmpty)
+        ? levelValue
         : null;
+    final String? genderValue = details?.gender?.trim();
+    final String? gender =
+        (genderValue != null && genderValue.trim().isNotEmpty)
+            ? genderValue
+            : null;
 
     final List<String> matchTypes =
         List<String>.from(details?.matchTypes ?? const <String>[])
@@ -159,8 +161,7 @@ class _UserDetailState extends State<UserDetail> {
     }
 
     setState(() {
-      _selectedLevel =
-          level ?? _levelFromNumeric(details?.levelNumeric ?? 3),
+      _selectedLevel = level ?? _levelFromNumeric(details?.levelNumeric ?? 3);
       _selectedGender = gender;
       _selectedMatchTypes = List<String>.from(matchTypes);
       _selectedPlayStyleTags = List<String>.from(playStyleTags);

@@ -31,3 +31,9 @@ doc/api/
 pocketbase/
 
 jsons/
+
+recommender_system/myenv
+recommender_system/__pycache__/
+recommender_system/*.pyc
+recommender_system/.env
+

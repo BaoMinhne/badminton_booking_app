@@ -16,6 +16,9 @@ class _UserDetailState extends State<UserDetail> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _birthdayController = TextEditingController();
+  final TextEditingController _experienceYearsController =
+      TextEditingController();
+  final TextEditingController _playsPerWeekController = TextEditingController();
 
   static const List<String> _levelOptions = <String>[
     'Beginner',
@@ -25,10 +28,32 @@ class _UserDetailState extends State<UserDetail> {
     'Advanced',
   ];
 
-  static const List<String> _playStyleOptions = <String>[
+  static const List<String> _matchTypeOptions = <String>[
     'singles',
     'doubles',
     'mixed',
+  ];
+
+  static const List<String> _playStyleTagOptions = <String>[
+    'attack',
+    'defense',
+    'net',
+    'baseline',
+    'all_round',
+    'fun',
+    'competitive',
+  ];
+
+  static const List<String> _preferredRoleOptions = <String>[
+    'front',
+    'back',
+    'flexible',
+  ];
+
+  static const List<String> _intensityOptions = <String>[
+    'casual',
+    'semi_competitive',
+    'competitive',
   ];
 
   static const List<String> _genderOptions = <String>[
@@ -41,7 +66,10 @@ class _UserDetailState extends State<UserDetail> {
   String? _error;
   String? _selectedLevel;
   String? _selectedGender;
-  List<String> _selectedPlayStyles = <String>[];
+  List<String> _selectedMatchTypes = <String>[];
+  List<String> _selectedPlayStyleTags = <String>[];
+  String? _selectedPreferredRole;
+  String? _selectedIntensity;
   DateTime? _selectedBirthday;
 
   @override
@@ -99,23 +127,32 @@ class _UserDetailState extends State<UserDetail> {
       _usernameController.text = user.username;
     }
 
-    final String? level =
-        (details?.level != null && details!.level!.trim().isNotEmpty)
-            ? details.level!.trim()
-            : null;
+    final String? levelValue = details?.level?.trim();
+    final String? level = (levelValue != null && levelValue.trim().isNotEmpty)
+        ? levelValue
+        : null;
+    final String? genderValue = details?.gender?.trim();
     final String? gender =
-        (details?.gender != null && details!.gender!.trim().isNotEmpty)
-            ? details.gender!.trim()
+        (genderValue != null && genderValue.trim().isNotEmpty)
+            ? genderValue
             : null;
 
-    final List<String> playStyles =
-        List<String>.from(details?.playStyle ?? const <String>[])
+    final List<String> matchTypes =
+        List<String>.from(details?.matchTypes ?? const <String>[])
             .where((style) => style.trim().isNotEmpty)
+            .toList();
+
+    final List<String> playStyleTags =
+        List<String>.from(details?.playStyleTags ?? const <String>[])
+            .where((tag) => tag.trim().isNotEmpty)
             .toList();
 
     final DateTime? birthday = details?.birthday;
 
     _fullNameController.text = details?.fullname ?? '';
+    _experienceYearsController.text =
+        details?.experienceYears?.toString() ?? '';
+    _playsPerWeekController.text = details?.playsPerWeek?.toString() ?? '';
 
     if (birthday != null) {
       _birthdayController.text = DateFormat('dd/MM/yyyy').format(birthday);
@@ -124,9 +161,12 @@ class _UserDetailState extends State<UserDetail> {
     }
 
     setState(() {
-      _selectedLevel = level;
+      _selectedLevel = level ?? _levelFromNumeric(details?.levelNumeric ?? 3);
       _selectedGender = gender;
-      _selectedPlayStyles = List<String>.from(playStyles);
+      _selectedMatchTypes = List<String>.from(matchTypes);
+      _selectedPlayStyleTags = List<String>.from(playStyleTags);
+      _selectedPreferredRole = details?.preferredRoleDoubles;
+      _selectedIntensity = details?.intensity;
       _selectedBirthday = birthday;
       _isLoading = false;
       _error = null;
@@ -138,6 +178,8 @@ class _UserDetailState extends State<UserDetail> {
     _usernameController.dispose();
     _fullNameController.dispose();
     _birthdayController.dispose();
+    _experienceYearsController.dispose();
+    _playsPerWeekController.dispose();
     super.dispose();
   }
 
@@ -145,15 +187,17 @@ class _UserDetailState extends State<UserDetail> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('D E T A I L'),
+        title: const Text('Thông tin cá nhân'),
         centerTitle: true,
         actions: [
           IconButton(
             onPressed: _isLoading ? null : _loadDetails,
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded),
             tooltip: 'Tải lại',
           ),
         ],
+        elevation: 0,
+        scrolledUnderElevation: 0,
       ),
       body: SafeArea(
         child: _buildBody(),
@@ -204,7 +248,6 @@ class _UserDetailState extends State<UserDetail> {
           _buildField(
             'Tên đăng nhập',
             _usernameController,
-            helperText: 'Tên tài khoản PocketBase.',
             readOnly: true,
           ),
           _buildField(
@@ -223,7 +266,40 @@ class _UserDetailState extends State<UserDetail> {
               });
             },
           ),
-          _buildMultiSelectField(),
+          _buildMatchTypeMultiSelect(),
+          _buildPlayStyleTagsMultiSelect(),
+          _buildDropdownField(
+            label: 'Vị trí ưa thích khi đánh đôi',
+            value: _selectedPreferredRole,
+            options: _preferredRoleOptions,
+            hintText: 'Chọn vị trí',
+            onChanged: (String? value) {
+              setState(() {
+                _selectedPreferredRole = value;
+              });
+            },
+          ),
+          _buildDropdownField(
+            label: 'Cường độ chơi',
+            value: _selectedIntensity,
+            options: _intensityOptions,
+            hintText: 'Chọn cường độ',
+            onChanged: (String? value) {
+              setState(() {
+                _selectedIntensity = value;
+              });
+            },
+          ),
+          _buildNumberField(
+            'Số năm kinh nghiệm',
+            _experienceYearsController,
+            hintText: 'Ví dụ: 2',
+          ),
+          _buildNumberField(
+            'Số buổi/tuần',
+            _playsPerWeekController,
+            hintText: 'Ví dụ: 3',
+          ),
           _buildDropdownField(
             label: 'Giới tính',
             value: _selectedGender,
@@ -245,15 +321,22 @@ class _UserDetailState extends State<UserDetail> {
           const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
-            child: ElevatedButton(
+            child: FilledButton.icon(
               onPressed: _isSaving ? null : _saveDetails,
-              child: _isSaving
+              icon: _isSaving
                   ? const SizedBox(
                       height: 20,
                       width: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('LƯU THAY ĐỔI'),
+                  : const Icon(Icons.save_rounded),
+              label: Text(_isSaving ? 'Đang lưu...' : 'LƯU THAY ĐỔI'),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
             ),
           ),
         ],
@@ -268,9 +351,11 @@ class _UserDetailState extends State<UserDetail> {
     String? helperText,
     bool readOnly = false,
     VoidCallback? onTap,
+    TextInputType keyboardType = TextInputType.text,
+    ValueChanged<String>? onChanged,
   }) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.only(bottom: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -278,7 +363,7 @@ class _UserDetailState extends State<UserDetail> {
             label,
             style: Theme.of(context)
                 .textTheme
-                .titleSmall
+                .titleMedium
                 ?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
@@ -286,25 +371,46 @@ class _UserDetailState extends State<UserDetail> {
             controller: controller,
             readOnly: readOnly,
             onTap: onTap,
+            onChanged: onChanged,
+            keyboardType: keyboardType,
             decoration: InputDecoration(
               hintText: hintText,
               helperText: helperText,
+              filled: true,
+              fillColor:
+                  Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 borderSide: BorderSide(
                   color: Theme.of(context).colorScheme.primary,
                   width: 2,
                 ),
               ),
               contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildNumberField(
+    String label,
+    TextEditingController controller, {
+    String? hintText,
+    ValueChanged<String>? onChanged,
+  }) {
+    return _buildField(
+      label,
+      controller,
+      hintText: hintText,
+      onChanged: onChanged,
+      keyboardType: TextInputType.number,
     );
   }
 
@@ -321,7 +427,7 @@ class _UserDetailState extends State<UserDetail> {
     }
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.only(bottom: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -329,7 +435,7 @@ class _UserDetailState extends State<UserDetail> {
             label,
             style: Theme.of(context)
                 .textTheme
-                .titleSmall
+                .titleMedium
                 ?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
@@ -338,11 +444,22 @@ class _UserDetailState extends State<UserDetail> {
                 value != null && dropdownOptions.contains(value) ? value : null,
             decoration: InputDecoration(
               hintText: hintText,
+              filled: true,
+              fillColor:
+                  Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(
+                  color: Theme.of(context).colorScheme.primary,
+                  width: 2,
+                ),
               ),
               contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             ),
             hint: Text(hintText),
             items: dropdownOptions
@@ -362,59 +479,157 @@ class _UserDetailState extends State<UserDetail> {
     );
   }
 
-  Widget _buildMultiSelectField() {
-    final List<String> options = List<String>.from(_playStyleOptions);
-    for (final String selected in _selectedPlayStyles) {
+  Widget _buildMatchTypeMultiSelect() {
+    final List<String> options = List<String>.from(_matchTypeOptions);
+    for (final String selected in _selectedMatchTypes) {
       if (!options.contains(selected)) {
         options.add(selected);
       }
     }
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.only(bottom: 24),
       child: InputDecorator(
         decoration: InputDecoration(
-          labelText: 'Lối chơi yêu thích',
+          labelText: 'Hình thức tham gia',
+          filled: true,
+          fillColor:
+              Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(
+              color: Theme.of(context).colorScheme.primary,
+              width: 2,
+            ),
           ),
           contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (_selectedPlayStyles.isEmpty)
+            if (_selectedMatchTypes.isEmpty)
               Padding(
-                padding: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.only(bottom: 12),
                 child: Text(
                   'Vui lòng chọn một hoặc nhiều lựa chọn bên dưới.',
                   style: TextStyle(color: Theme.of(context).hintColor),
                 ),
               ),
             Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: 12,
+              runSpacing: 12,
               children: options.map((String option) {
-                final bool isSelected = _selectedPlayStyles.contains(option);
+                final bool isSelected = _selectedMatchTypes.contains(option);
                 return FilterChip(
                   label: Text(_beautify(option)),
                   selected: isSelected,
                   onSelected: (bool selected) {
                     setState(() {
                       if (selected) {
-                        if (!_selectedPlayStyles.contains(option)) {
-                          _selectedPlayStyles =
-                              List<String>.from(_selectedPlayStyles)
+                        if (!_selectedMatchTypes.contains(option)) {
+                          _selectedMatchTypes =
+                              List<String>.from(_selectedMatchTypes)
                                 ..add(option);
                         }
                       } else {
-                        _selectedPlayStyles = _selectedPlayStyles
+                        _selectedMatchTypes = _selectedMatchTypes
                             .where((String item) => item != option)
                             .toList();
                       }
                     });
                   },
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  selectedColor:
+                      Theme.of(context).colorScheme.primary.withOpacity(0.15),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPlayStyleTagsMultiSelect() {
+    final List<String> options = List<String>.from(_playStyleTagOptions);
+    for (final String selected in _selectedPlayStyleTags) {
+      if (!options.contains(selected)) {
+        options.add(selected);
+      }
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: 'Phong cách chơi',
+          filled: true,
+          fillColor:
+              Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(
+              color: Theme.of(context).colorScheme.primary,
+              width: 2,
+            ),
+          ),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (_selectedPlayStyleTags.isEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Text(
+                  'Chọn các thẻ mô tả phong cách của bạn.',
+                  style: TextStyle(color: Theme.of(context).hintColor),
+                ),
+              ),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: options.map((String option) {
+                final bool isSelected = _selectedPlayStyleTags.contains(option);
+                return FilterChip(
+                  label: Text(_beautify(option)),
+                  selected: isSelected,
+                  onSelected: (bool selected) {
+                    setState(() {
+                      if (selected) {
+                        if (!_selectedPlayStyleTags.contains(option)) {
+                          _selectedPlayStyleTags =
+                              List<String>.from(_selectedPlayStyleTags)
+                                ..add(option);
+                        }
+                      } else {
+                        _selectedPlayStyleTags = _selectedPlayStyleTags
+                            .where((String item) => item != option)
+                            .toList();
+                      }
+                    });
+                  },
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  selectedColor:
+                      Theme.of(context).colorScheme.primary.withOpacity(0.15),
                 );
               }).toList(),
             ),
@@ -426,11 +641,29 @@ class _UserDetailState extends State<UserDetail> {
 
   String _beautify(String value) {
     if (value.isEmpty) return value;
-    final List<String> parts = value.split(' ');
+    final String normalized = value.replaceAll('_', ' ');
+    final List<String> parts = normalized.split(' ');
     return parts
         .map((String part) =>
             part.isEmpty ? part : part[0].toUpperCase() + part.substring(1))
         .join(' ');
+  }
+
+  String _levelFromNumeric(int levelNumeric) {
+    switch (levelNumeric) {
+      case 1:
+        return 'Beginner';
+      case 2:
+        return 'Lower Intermediate';
+      case 3:
+        return 'Intermediate';
+      case 4:
+        return 'Upper Intermediate';
+      case 5:
+        return 'Advanced';
+      default:
+        return 'Intermediate';
+    }
   }
 
   Future<void> _pickBirthday() async {
@@ -465,12 +698,22 @@ class _UserDetailState extends State<UserDetail> {
 
     try {
       final userManager = context.read<UserManager>();
+      final int? parsedExperience =
+          int.tryParse(_experienceYearsController.text.trim());
+      final int? parsedPlaysPerWeek =
+          int.tryParse(_playsPerWeekController.text.trim());
       final updatedDetails = await userManager.updateMyDetails(
         fullname: _fullNameController.text.trim(),
         level: _selectedLevel,
-        playStyles: _selectedPlayStyles,
+        matchTypes: _selectedMatchTypes,
+        playStyleTags: _selectedPlayStyleTags,
+        preferredRoleDoubles: _selectedPreferredRole,
+        intensity: _selectedIntensity,
+        experienceYears: parsedExperience,
+        playsPerWeek: parsedPlaysPerWeek,
         gender: _selectedGender,
         birthday: _selectedBirthday,
+        homeCourtId: null,
       );
 
       if (!mounted) return;

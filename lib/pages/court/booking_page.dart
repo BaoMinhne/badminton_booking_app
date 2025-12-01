@@ -518,7 +518,7 @@ class _BookingPageViewState extends State<_BookingPageView> {
                       width: 22,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('Chuyển sang thanh toán'),
+                  : const Text('Xác nhận'),
             ),
           ),
           const SizedBox(height: 10),

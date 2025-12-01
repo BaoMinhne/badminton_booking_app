@@ -1,4 +1,5 @@
 // lib/components/my_court_time.dart
+import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
@@ -20,6 +21,7 @@ class CourtTimelineRow {
 /// Visual state for each cell in the time grid.
 enum CourtSlotStatus {
   available,
+  lockedPast,
   heldByMe,
   heldByOther,
   pendingApprovalMine, // mapped from awaiting_payment (mine)
@@ -76,6 +78,9 @@ class _CourtTimelineState extends State<CourtTimeline> {
 
   late Map<String, int> _rowIndexById;
   late List<List<CourtSlotStatus>> _statusMatrix;
+  late DateTime _nowLocal;
+  late DateTime _todayLocal;
+  Timer? _clockTicker;
 
   _DragOperation _currentDragOp = _DragOperation.none;
   final Set<_CellCoordinate> _draggedCells = <_CellCoordinate>{};
@@ -98,7 +103,10 @@ class _CourtTimelineState extends State<CourtTimeline> {
         ScrollController(initialScrollOffset: widget.headerLeadingInset);
     _leftColumnCtrl = ScrollController();
     _rowIndexById = _buildRowIndexMap(widget.rows);
+    _nowLocal = DateTime.now();
+    _todayLocal = DateTime(_nowLocal.year, _nowLocal.month, _nowLocal.day);
     _statusMatrix = _buildStatusMatrix();
+    _startClockTicker();
 
     _headerCtrl.addListener(_handleHeaderScroll);
     _gridCtrl.addListener(_handleGridHorizontalScroll);
@@ -118,6 +126,9 @@ class _CourtTimelineState extends State<CourtTimeline> {
         oldWidget.date != widget.date ||
         oldWidget.startHour != widget.startHour ||
         oldWidget.endHour != widget.endHour) {
+      _nowLocal = DateTime.now();
+      _todayLocal =
+          DateTime(_nowLocal.year, _nowLocal.month, _nowLocal.day);
       _statusMatrix = _buildStatusMatrix();
     }
   }
@@ -136,7 +147,21 @@ class _CourtTimelineState extends State<CourtTimeline> {
     _gridVerticalCtrl
       ..removeListener(_handleGridVerticalScroll)
       ..dispose();
+    _clockTicker?.cancel();
     super.dispose();
+  }
+
+  void _startClockTicker() {
+    _clockTicker?.cancel();
+    _clockTicker = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (!mounted) return;
+      setState(() {
+        _nowLocal = DateTime.now();
+        _todayLocal =
+            DateTime(_nowLocal.year, _nowLocal.month, _nowLocal.day);
+        _statusMatrix = _buildStatusMatrix();
+      });
+    });
   }
 
   void _handleHeaderScroll() {
@@ -199,7 +224,7 @@ class _CourtTimelineState extends State<CourtTimeline> {
     );
 
     if (widget.bookings.isEmpty || _slotCount == 0) {
-      return matrix;
+      return _applyPastLocks(matrix);
     }
 
     final now = DateTime.now().toUtc();
@@ -219,7 +244,46 @@ class _CourtTimelineState extends State<CourtTimeline> {
         }
       }
     }
+    return _applyPastLocks(matrix);
+  }
+
+  List<List<CourtSlotStatus>> _applyPastLocks(
+      List<List<CourtSlotStatus>> matrix) {
+    final selectedDay = DateTime(
+      widget.date.year,
+      widget.date.month,
+      widget.date.day,
+    );
+
+    if (selectedDay.isAfter(_todayLocal)) {
+      return matrix;
+    }
+
+    final lockAll = selectedDay.isBefore(_todayLocal);
+    for (var row = 0; row < matrix.length; row++) {
+      for (var column = 0; column < matrix[row].length; column++) {
+        if (matrix[row][column] != CourtSlotStatus.available) continue;
+        if (lockAll || _isPastColumn(column)) {
+          matrix[row][column] = CourtSlotStatus.lockedPast;
+        }
+      }
+    }
     return matrix;
+  }
+
+  bool _isPastColumn(int column) {
+    final slotStart = _slotStartAtColumn(column);
+    return !slotStart.isAfter(_nowLocal);
+  }
+
+  DateTime _slotStartAtColumn(int column) {
+    final base = DateTime(
+      widget.date.year,
+      widget.date.month,
+      widget.date.day,
+      widget.startHour,
+    );
+    return base.add(Duration(minutes: column * widget.slotDuration.inMinutes));
   }
 
   /// Map BookingStatus (DB) -> CourtSlotStatus (UI)
@@ -260,6 +324,8 @@ class _CourtTimelineState extends State<CourtTimeline> {
     switch (status) {
       case CourtSlotStatus.available:
         return 0;
+      case CourtSlotStatus.lockedPast:
+        return 1;
       case CourtSlotStatus.heldByMe:
         return 4;
       case CourtSlotStatus.pendingApprovalMine:
@@ -391,7 +457,8 @@ class _CourtTimelineState extends State<CourtTimeline> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final dividerColor = cs.outline;
+    final dividerColor = cs.outlineVariant
+        .withOpacity(0.5); // Softer divider for better aesthetics
     final colors = _SlotColors.fromColorScheme(cs);
 
     return Column(
@@ -400,7 +467,12 @@ class _CourtTimelineState extends State<CourtTimeline> {
           height: widget.headerHeight,
           decoration: BoxDecoration(
             color: const Color(0xFFBDEFFF),
-            border: Border(bottom: BorderSide(color: dividerColor)),
+            border: Border(
+                bottom: BorderSide(
+                    color: dividerColor,
+                    width: 1.5)), // Thicker border for emphasis
+            borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(8)), // Rounded top corners
           ),
           child: Row(
             children: [
@@ -414,7 +486,9 @@ class _CourtTimelineState extends State<CourtTimeline> {
                     child: Padding(
                       padding: EdgeInsets.only(left: widget.leftColumnWidth),
                       child: SizedBox(
-                        width: _totalWidth + widget.headerLeadingInset,
+                        width: _totalWidth +
+                            widget.headerLeadingInset +
+                            20, // Extra padding to prevent label cutoff
                         height: widget.headerHeight,
                         child: CustomPaint(
                           painter: _TimeHeaderPainterHalfHour(
@@ -423,11 +497,12 @@ class _CourtTimelineState extends State<CourtTimeline> {
                             slotWidth: widget.slotWidth,
                             leadingInset: widget.headerLeadingInset,
                             hourTickColor: const Color(0xFFFFB300),
-                            halfTickColor: const Color(0xFFFFB300),
+                            halfTickColor: const Color(0xFFFFB300)
+                                .withOpacity(0.7), // Softer half tick
                             hourTickStroke: 2.5,
                             halfTickStroke: 2.0,
-                            hourTickHeight: 16,
-                            halfTickHeight: 12,
+                            hourTickHeight: 18, // Slightly taller ticks
+                            halfTickHeight: 14,
                             textStyle: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
@@ -448,8 +523,17 @@ class _CourtTimelineState extends State<CourtTimeline> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SizedBox(
+              Container(
                 width: widget.leftColumnWidth,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE7FFF0),
+                  border: Border(
+                      right: BorderSide(
+                          color: dividerColor,
+                          width: 1.5)), // Right border for separation
+                  borderRadius: const BorderRadius.vertical(
+                      bottom: Radius.circular(8)), // Rounded bottom corners
+                ),
                 child: Scrollbar(
                   controller: _leftColumnCtrl,
                   child: ListView.separated(
@@ -458,12 +542,18 @@ class _CourtTimelineState extends State<CourtTimeline> {
                     itemCount: widget.rows.length,
                     itemBuilder: (_, index) => Container(
                       height: widget.rowHeight,
-                      color: const Color(0xFFE7FFF0),
                       alignment: Alignment.centerLeft,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal:
+                              16), // Increased padding for better spacing
                       child: Text(
                         widget.rows[index].label,
-                        style: const TextStyle(fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15, // Slightly larger font for readability
+                          color:
+                              Color(0xFF123B28), // Matching header text color
+                        ),
                       ),
                     ),
                     separatorBuilder: (_, __) =>
@@ -473,13 +563,15 @@ class _CourtTimelineState extends State<CourtTimeline> {
               ),
               Expanded(
                 child: Container(
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     border: Border(
                       bottom: BorderSide(
-                        color: Colors.black,
-                        width: 2,
+                        color: dividerColor,
+                        width: 1.5,
                       ),
                     ),
+                    borderRadius: const BorderRadius.vertical(
+                        bottom: Radius.circular(8)), // Rounded bottom corners
                   ),
                   child: Scrollbar(
                     controller: _gridCtrl,
@@ -488,7 +580,8 @@ class _CourtTimelineState extends State<CourtTimeline> {
                       controller: _gridCtrl,
                       scrollDirection: Axis.horizontal,
                       child: SizedBox(
-                        width: _totalWidth,
+                        width:
+                            _totalWidth + 20, // Extra width to prevent cutoff
                         child: Scrollbar(
                           controller: _gridVerticalCtrl,
                           child: ListView.separated(
@@ -603,8 +696,14 @@ class _TimeHeaderPainterHalfHour extends CustomPainter {
           DateFormat('H:00').format(DateTime(2000, 1, 1, hourVal));
       tp.text = TextSpan(text: labelHour, style: textStyle);
       tp.layout();
-      final hourTx = hourX - tp.width / 2;
+      double hourTx = hourX - tp.width / 2;
       final hourTy = hourTop - tp.height - 2;
+
+      // Adjust last label to prevent cutoff
+      if (i == slotCount && hourTx + tp.width > size.width) {
+        hourTx = size.width - tp.width - 4; // Align to right with small padding
+      }
+
       tp.paint(canvas, Offset(hourTx, hourTy));
 
       if (showHalf && i < slotCount) {
@@ -703,6 +802,7 @@ class _CourtRowPainter extends CustomPainter {
 class _SlotColors {
   _SlotColors({
     required this.available,
+    required this.lockedPast,
     required this.heldByMe,
     required this.heldByOther,
     required this.pendingMine,
@@ -715,6 +815,7 @@ class _SlotColors {
   factory _SlotColors.fromColorScheme(ColorScheme cs) {
     return _SlotColors(
       available: cs.surface,
+      lockedPast: cs.onSurface.withOpacity(0.08),
       heldByMe: cs.secondaryContainer.withOpacity(0.7),
       heldByOther: cs.errorContainer.withOpacity(0.9),
       pendingMine: cs.tertiaryContainer.withOpacity(0.9),
@@ -726,6 +827,7 @@ class _SlotColors {
   }
 
   final Color available;
+  final Color lockedPast;
   final Color heldByMe;
   final Color heldByOther;
   final Color pendingMine;
@@ -738,6 +840,8 @@ class _SlotColors {
     switch (status) {
       case CourtSlotStatus.available:
         return available;
+      case CourtSlotStatus.lockedPast:
+        return lockedPast;
       case CourtSlotStatus.heldByMe:
         return heldByMe;
       case CourtSlotStatus.heldByOther:
@@ -755,6 +859,7 @@ class _SlotColors {
   bool operator ==(Object other) {
     return other is _SlotColors &&
         other.available == available &&
+        other.lockedPast == lockedPast &&
         other.heldByMe == heldByMe &&
         other.heldByOther == heldByOther &&
         other.pendingMine == pendingMine &&
@@ -765,8 +870,16 @@ class _SlotColors {
   }
 
   @override
-  int get hashCode => Object.hash(available, heldByMe, heldByOther, pendingMine,
-      pending, confirmed, selectedOverlay, gridLine);
+  int get hashCode => Object.hash(
+      available,
+      lockedPast,
+      heldByMe,
+      heldByOther,
+      pendingMine,
+      pending,
+      confirmed,
+      selectedOverlay,
+      gridLine);
 }
 
 class _CellCoordinate {

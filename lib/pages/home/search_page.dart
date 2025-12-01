@@ -9,74 +9,54 @@ class SearchPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      body: Stack(
-        children: [
-          // List Sân
-          Container(
-              margin: EdgeInsets.only(top: screenHeight / 13),
-              padding: const EdgeInsets.only(top: 50, bottom: 40),
-              child: ListView(
-                children: [],
-              )),
-
-          // Title
-          Container(
-            height: screenHeight / 7,
-            decoration: BoxDecoration(
-              color: cs.primary,
+      appBar: AppBar(
+        title: const Text(
+          'Tìm kiếm sân',
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+        ),
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [cs.primary, cs.primary.withOpacity(0.85)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            child: Padding(
-              padding: const EdgeInsets.only(top: 35),
-              child: Center(
-                child: Text(
-                  'S E A R C H',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.onPrimary,
-                  ),
+          ),
+        ),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              MyTextfield(
+                hintText: "Tìm kiếm sân...",
+                controller: searchController,
+                prefixIcon: Icon(Icons.search_rounded, color: cs.primary),
+                suffixIcon: IconButton(
+                  icon: Icon(Icons.tune_rounded, color: cs.primary),
+                  onPressed: () {
+                    // Thêm logic filter nếu cần, hiện tại giữ nguyên
+                  },
                 ),
               ),
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.only(
-              top: screenHeight / 14,
-              left: 12,
-            ),
-            child: GestureDetector(
-              onTap: () => Navigator.pop(context),
-              child: Container(
-                child: Icon(
-                  Icons.arrow_back,
-                  color: Colors.white,
-                  size: 30,
+              const SizedBox(height: 20),
+              Expanded(
+                child: ListView(
+                  children: [
+                    // Nội dung list sân (giữ nguyên rỗng như code cũ)
+                  ],
                 ),
               ),
-            ),
+            ],
           ),
-
-          // Search Bar
-          Container(
-            margin: EdgeInsets.only(top: screenHeight / 38),
-            padding:
-                const EdgeInsets.only(top: 84, bottom: 40, right: 12, left: 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                MyTextfield(
-                  hintText: "Search for courts...",
-                  controller: searchController,
-                  prefixIcon: Icon(Icons.search),
-                ),
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

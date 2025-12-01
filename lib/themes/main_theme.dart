@@ -41,6 +41,13 @@ ThemeData mainTheme = ThemeData(
       fontWeight: FontWeight.w600,
     ),
   ),
+  tabBarTheme: TabBarTheme(
+    labelColor: Colors.white,
+    unselectedLabelColor: Colors.white70,
+    indicatorColor: Colors.white,
+    labelStyle: TextStyle(fontWeight: FontWeight.w600),
+    unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w400),
+  ),
   cardTheme: const CardTheme(
     color: kSurfaceColor,
     elevation: 0,

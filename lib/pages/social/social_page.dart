@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:badminton_booking_app/components/create_post.dart';
 import 'package:badminton_booking_app/components/my_post.dart';
+import 'package:badminton_booking_app/components/player_suggestion_card.dart';
 import 'package:badminton_booking_app/components/post_comments_sheet.dart';
 import 'package:badminton_booking_app/components/recruitment_post_card.dart';
 import 'package:badminton_booking_app/models/community_post.dart';
@@ -93,7 +94,7 @@ class _SocialPageState extends State<SocialPage> {
     final avatarUrl = userManager.avatarUrl;
 
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         backgroundColor: cs.surfaceVariant.withOpacity(0.1),
         appBar: AppBar(
@@ -169,6 +170,16 @@ class _SocialPageState extends State<SocialPage> {
                   ],
                 ),
               ),
+              Tab(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.handshake_rounded, size: 20),
+                    const SizedBox(width: 8),
+                    Text('Gợi ý bạn chơi'),
+                  ],
+                ),
+              ),
             ],
             // Chữ tab đang chọn
             labelStyle: tt.titleMedium?.copyWith(
@@ -205,14 +216,15 @@ class _SocialPageState extends State<SocialPage> {
           scrolledUnderElevation: 0,
           shadowColor: Colors.transparent,
         ),
-        body: SafeArea(
-          child: TabBarView(
-            children: [
-              _buildPostsTab(context, manager, avatarUrl),
-              _buildRecruitmentTab(context, manager),
-            ],
+          body: SafeArea(
+            child: TabBarView(
+              children: [
+                _buildPostsTab(context, manager, avatarUrl),
+                _buildRecruitmentTab(context, manager),
+                _buildPartnerSuggestionTab(context),
+              ],
+            ),
           ),
-        ),
       ),
     );
   }
@@ -277,6 +289,193 @@ class _SocialPageState extends State<SocialPage> {
             ),
           ),
           _buildRecruitmentSection(manager),
+          const SliverPadding(padding: EdgeInsets.only(bottom: 120)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPartnerSuggestionTab(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+
+    final suggestions = <_PartnerSuggestion>[
+      const _PartnerSuggestion(
+        name: 'Minh Anh',
+        level: 'Intermediate',
+        matchScore: 87,
+        playTags: ['Đánh đơn', 'Phản công nhanh'],
+        intensity: 'Medium',
+        colorSeed: Colors.blue,
+      ),
+      const _PartnerSuggestion(
+        name: 'Hải Đăng',
+        level: 'Advanced',
+        matchScore: 92,
+        playTags: ['Đánh đôi', 'Phòng thủ chắc'],
+        intensity: 'High',
+        colorSeed: Colors.deepOrange,
+      ),
+      const _PartnerSuggestion(
+        name: 'Khánh Chi',
+        level: 'Beginner',
+        matchScore: 73,
+        playTags: ['Học hỏi', 'Giao lưu nhẹ nhàng'],
+        intensity: 'Low',
+        colorSeed: Colors.teal,
+      ),
+    ];
+
+    final invites = <_CourtInvite>[
+      const _CourtInvite(
+        hostName: 'Anh Quân',
+        courtName: 'Sân Nhật Hoa',
+        playTime: '19:00 - Thứ 5',
+        note: 'Cần thêm 2 người, mức Intermediate, đánh đôi.',
+      ),
+      const _CourtInvite(
+        hostName: 'Lan Chi',
+        courtName: 'Sân Thống Nhất',
+        playTime: '08:00 - Chủ nhật',
+        note: 'Giao lưu nhẹ nhàng, ưu tiên nữ.',
+      ),
+    ];
+
+    return RefreshIndicator(
+      onRefresh: () async => Future<void>.delayed(const Duration(milliseconds: 800)),
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: cs.primary.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Icon(Icons.handshake_rounded,
+                            color: cs.primary, size: 26),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Gợi ý bạn chơi phù hợp',
+                              style: tt.titleLarge?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Khám phá những partner hợp gu, match score được chuẩn hoá từ 0 - 100%.',
+                              style: tt.bodyMedium?.copyWith(
+                                color: cs.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: cs.primaryContainer,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Row(
+                        children: [
+                          Icon(Icons.tips_and_updates_rounded,
+                              color: cs.onPrimaryContainer),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Gửi lời mời kết bạn hoặc mời vào sân trực tiếp từ danh sách gợi ý.',
+                              style: tt.bodyMedium?.copyWith(
+                                color: cs.onPrimaryContainer,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final suggestion = suggestions[index];
+                  return PlayerSuggestionCard(
+                    name: suggestion.name,
+                    level: suggestion.level,
+                    matchScore: suggestion.matchScore,
+                    playTags: suggestion.playTags,
+                    intensityLabel: suggestion.intensity,
+                    avatarColor: suggestion.colorSeed.withOpacity(0.16),
+                    avatarInitial: suggestion.name.characters.first,
+                    onProfileTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Xem hồ sơ ${suggestion.name}'),
+                        ),
+                      );
+                    },
+                    onInviteTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content:
+                              Text('Đã gửi lời mời kết bạn cho ${suggestion.name}'),
+                        ),
+                      );
+                    },
+                  );
+                },
+                childCount: suggestions.length,
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+              child: Row(
+                children: [
+                  Icon(Icons.mail_outline_rounded,
+                      color: cs.onSurfaceVariant.withOpacity(0.8)),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Lời mời vào sân bạn nhận được',
+                    style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) => _InviteCard(invite: invites[index]),
+                childCount: invites.length,
+              ),
+            ),
+          ),
           const SliverPadding(padding: EdgeInsets.only(bottom: 120)),
         ],
       ),
@@ -567,6 +766,173 @@ class _SocialPageState extends State<SocialPage> {
               size: 42,
               color: cs.primary,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PartnerSuggestion {
+  const _PartnerSuggestion({
+    required this.name,
+    required this.level,
+    required this.matchScore,
+    required this.playTags,
+    required this.intensity,
+    required this.colorSeed,
+  });
+
+  final String name;
+  final String level;
+  final int matchScore;
+  final List<String> playTags;
+  final String intensity;
+  final Color colorSeed;
+}
+
+class _CourtInvite {
+  const _CourtInvite({
+    required this.hostName,
+    required this.courtName,
+    required this.playTime,
+    required this.note,
+  });
+
+  final String hostName;
+  final String courtName;
+  final String playTime;
+  final String note;
+}
+
+class _InviteCard extends StatelessWidget {
+  const _InviteCard({required this.invite});
+
+  final _CourtInvite invite;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: cs.outlineVariant.withOpacity(0.35)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 14,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: cs.secondary.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.sports_tennis_rounded,
+                    color: cs.secondary, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      invite.courtName,
+                      style: tt.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Chủ sân: ${invite.hostName} • ${invite.playTime}',
+                      style: tt.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: cs.secondaryContainer,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  'Lời mời',
+                  style: tt.labelMedium?.copyWith(
+                    color: cs.onSecondaryContainer,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            invite.note,
+            style: tt.bodyMedium?.copyWith(
+              color: cs.onSurface,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.tonalIcon(
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Xem chi tiết lời mời tại ${invite.courtName}'),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.event_available_rounded, size: 18),
+                  label: const Text('Xem lời mời'),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Đã phản hồi lời mời của ${invite.hostName}'),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.reply_rounded, size: 18),
+                  label: const Text('Phản hồi sau'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

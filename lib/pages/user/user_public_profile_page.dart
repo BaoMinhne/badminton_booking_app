@@ -601,7 +601,7 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
         .where((e) => e.trim().isNotEmpty)
         .map(
           (value) => Chip(
-            label: Text(_humanize(value)),
+            label: Text(_humanize(value) ?? value),
             backgroundColor: cs.surfaceVariant,
             labelStyle: TextStyle(color: cs.onSurfaceVariant),
           ),

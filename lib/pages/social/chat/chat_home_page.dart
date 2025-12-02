@@ -4,6 +4,8 @@ import 'package:badminton_booking_app/pages/social/chat/chat_page.dart';
 import 'package:badminton_booking_app/pages/social/chat/widgets/chat_header.dart';
 import 'package:badminton_booking_app/pages/social/chat/widgets/chat_section_header.dart';
 import 'package:badminton_booking_app/pages/social/chat/widgets/contact_list_tile.dart';
+import 'package:badminton_booking_app/models/friend_search_result.dart';
+import 'package:badminton_booking_app/pages/user/user_public_profile_page.dart';
 import 'package:badminton_booking_app/services/chat_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -229,7 +231,7 @@ class _ChatHomePageState extends State<ChatHomePage> {
         ),
       );
     }
-
+    final friends = manager.friends;
     final friendsContacts = manager.friends
         .map(
           (result) => ChatContact(
@@ -287,11 +289,12 @@ class _ChatHomePageState extends State<ChatHomePage> {
           }
 
           final contact = friendsContacts[index - 1];
+          final friendResult = friends[index - 1];
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: ContactListTile.friend(
               contact: contact,
-              onTap: () => _openChat(context, contact),
+              onTap: () => _openFriendProfile(context, friendResult),
               onChatPressed: () => _openChat(context, contact),
             ),
           );
@@ -462,6 +465,14 @@ class _ChatHomePageState extends State<ChatHomePage> {
     );
 
     return result ?? false;
+  }
+
+  void _openFriendProfile(BuildContext context, FriendSearchResult result) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => UserPublicProfilePage(result: result),
+      ),
+    );
   }
 
   void _openChat(BuildContext context, ChatContact contact) {

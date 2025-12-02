@@ -559,6 +559,7 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
           value: _levelLabels[details?.levelNumeric ?? 3] ?? 'Intermediate',
           background: cs.primaryContainer,
           foreground: cs.onPrimaryContainer,
+          fullWidth: true,
         ),
         const SizedBox(height: 12),
         // Hai chip còn lại chia đôi chiều ngang
@@ -572,6 +573,7 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
                 value: details?.playsPerWeek?.toString() ?? 'Chưa rõ',
                 background: cs.secondaryContainer,
                 foreground: cs.onSecondaryContainer,
+                alignHorizontal: true,
               ),
             ),
             const SizedBox(width: 12),
@@ -585,6 +587,7 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
                     : 'Chưa rõ',
                 background: cs.tertiaryContainer,
                 foreground: cs.onTertiaryContainer,
+                alignHorizontal: true,
               ),
             ),
           ],
@@ -600,6 +603,8 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
     required String value,
     required Color background,
     required Color foreground,
+    bool fullWidth = false,
+    bool alignHorizontal = false,
   }) {
     final theme = Theme.of(context);
     return Container(
@@ -608,28 +613,74 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
         borderRadius: BorderRadius.circular(18),
         color: background,
       ),
+      width: fullWidth ? double.infinity : null,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment:
+            alignHorizontal ? CrossAxisAlignment.center : CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: foreground),
-          const SizedBox(height: 12),
-          Text(
-            value,
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: foreground,
-              fontWeight: FontWeight.bold,
-              fontSize: 16, // Giảm font size để tránh overflow và split từ xấu
-            ),
-            maxLines: 2, // Giới hạn 2 dòng
-            overflow: TextOverflow.ellipsis, // Ellipsis nếu vượt
-          ),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            style: theme.textTheme.bodySmall?.copyWith(color: foreground),
-          ),
+          if (alignHorizontal)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                _statIcon(icon, foreground),
+                const SizedBox(width: 12),
+                Expanded(child: _statText(theme, value, label, foreground)),
+              ],
+            )
+          else ...[
+            _statIcon(icon, foreground),
+            const SizedBox(height: 12),
+            _statText(theme, value, label, foreground),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _statIcon(IconData icon, Color foreground) {
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        color: foreground.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Icon(
+        icon,
+        color: foreground,
+        size: 20,
+      ),
+    );
+  }
+
+  Widget _statText(
+    ThemeData theme,
+    String value,
+    String label,
+    Color foreground,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          value,
+          style: theme.textTheme.titleMedium?.copyWith(
+            color: foreground,
+            fontWeight: FontWeight.w700,
+            fontSize: 16,
+          ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: foreground.withOpacity(0.9),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 

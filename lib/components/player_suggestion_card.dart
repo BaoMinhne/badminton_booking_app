@@ -33,6 +33,9 @@ class PlayerSuggestionCard extends StatelessWidget {
     Color matchColor = matchScore >= 80
         ? cs.primary
         : (matchScore >= 50 ? cs.secondary : cs.error);
+    Color matchTextColor = matchScore >= 80
+        ? cs.onPrimary
+        : (matchScore >= 50 ? cs.onSecondary : cs.onError);
 
     return Card(
       elevation: 2, // Elevation nhẹ cho shadow hiện đại
@@ -100,7 +103,7 @@ class PlayerSuggestionCard extends StatelessWidget {
                             child: Text(
                               'Match: $matchScore%',
                               style: tt.labelMedium?.copyWith(
-                                color: matchColor,
+                                color: matchTextColor,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),

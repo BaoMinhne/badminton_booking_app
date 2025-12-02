@@ -129,8 +129,8 @@ class PlayerSuggestionCard extends StatelessWidget {
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        alignment: WrapAlignment
-                            .start, // Lệch về bên trái (align left)
+                        alignment:
+                            WrapAlignment.start, // Lệch về bên trái (align left)
                         children: [
                           ...playTags.map(
                             (tag) => Chip(
@@ -138,14 +138,16 @@ class PlayerSuggestionCard extends StatelessWidget {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 12,
                                   vertical: 4), // Tăng padding để tag lớn hơn
-                              backgroundColor: cs.secondaryContainer
-                                  .withOpacity(
-                                      0.5), // Giảm opacity để bớt rối mắt
-                              side: BorderSide.none,
+                              backgroundColor:
+                                  cs.secondaryContainer, // Tô đậm màu thẻ
+                              side: BorderSide(
+                                color: cs.secondary.withOpacity(0.4),
+                                width: 1,
+                              ),
                               labelStyle: tt.labelMedium?.copyWith(
                                 // Tăng từ labelSmall lên labelMedium để chữ lớn hơn
-                                color: cs.onSecondaryContainer.withOpacity(0.9),
-                                fontWeight: FontWeight.w600,
+                                color: cs.onSecondaryContainer,
+                                fontWeight: FontWeight.w700,
                               ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(
@@ -156,20 +158,22 @@ class PlayerSuggestionCard extends StatelessWidget {
                           Chip(
                             avatar: Icon(
                               Icons.local_fire_department_rounded,
-                              color: cs.onTertiary
-                                  .withOpacity(0.8), // Giảm opacity
+                              color: cs.onTertiary, // Giữ màu rõ ràng
                               size: 18,
                             ),
                             label: Text('Intensity: $intensityLabel'),
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 12,
                                 vertical: 4), // Tăng padding tương tự
-                            backgroundColor: cs.tertiaryContainer
-                                .withOpacity(0.5), // Giảm opacity
-                            side: BorderSide.none,
+                            backgroundColor:
+                                cs.tertiaryContainer, // Đầy màu hơn cho tag chính
+                            side: BorderSide(
+                              color: cs.tertiary.withOpacity(0.45),
+                              width: 1,
+                            ),
                             labelStyle: tt.labelMedium?.copyWith(
                               // Tăng size chữ
-                              color: cs.onTertiaryContainer.withOpacity(0.9),
+                              color: cs.onTertiaryContainer,
                               fontWeight: FontWeight.bold,
                             ),
                             shape: RoundedRectangleBorder(

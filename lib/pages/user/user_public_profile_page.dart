@@ -560,6 +560,8 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
           background: cs.primaryContainer,
           foreground: cs.onPrimaryContainer,
           fullWidth: true,
+          alignHorizontal: true,
+          valueFontSize: 18,
         ),
         const SizedBox(height: 12),
         // Hai chip còn lại chia đôi chiều ngang
@@ -605,6 +607,7 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
     required Color foreground,
     bool fullWidth = false,
     bool alignHorizontal = false,
+    double valueFontSize = 16,
   }) {
     final theme = Theme.of(context);
     return Container(
@@ -624,13 +627,20 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
               children: [
                 _statIcon(icon, foreground),
                 const SizedBox(width: 12),
-                Expanded(child: _statText(theme, value, label, foreground)),
+                Expanded(
+                    child: _statText(
+                  theme,
+                  value,
+                  label,
+                  foreground,
+                  valueFontSize,
+                )),
               ],
             )
           else ...[
             _statIcon(icon, foreground),
             const SizedBox(height: 12),
-            _statText(theme, value, label, foreground),
+            _statText(theme, value, label, foreground, valueFontSize),
           ],
         ],
       ),
@@ -658,6 +668,7 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
     String value,
     String label,
     Color foreground,
+    double valueFontSize,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -667,7 +678,7 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
           style: theme.textTheme.titleMedium?.copyWith(
             color: foreground,
             fontWeight: FontWeight.w700,
-            fontSize: 16,
+            fontSize: valueFontSize,
           ),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,

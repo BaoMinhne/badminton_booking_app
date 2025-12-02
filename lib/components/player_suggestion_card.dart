@@ -35,7 +35,9 @@ class PlayerSuggestionCard extends StatelessWidget {
         : (matchScore >= 50 ? cs.secondary : cs.error);
     Color matchTextColor = matchScore >= 80
         ? cs.onPrimary
-        : (matchScore >= 50 ? cs.onSecondary : cs.onError);
+        : (matchScore >= 50
+            ? cs.onSecondary
+            : matchColor.withOpacity(0.8));
 
     return Card(
       elevation: 2, // Elevation nhẹ cho shadow hiện đại

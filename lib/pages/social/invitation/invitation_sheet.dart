@@ -170,43 +170,46 @@ class _InvitationSheetState extends State<InvitationSheet> {
             ),
             const Divider(),
           ],
-          Text('Đề xuất slot mới', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          DropdownButtonFormField<String>(
-            value: _selectedCourt,
-            items: courts
-                .map(
-                  (court) => DropdownMenuItem(
-                    value: court.id,
-                    child: Text(court.name),
+          if (_selectedRecruitment == null) ...[
+            Text('Đề xuất slot mới', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              value: _selectedCourt,
+              items: courts
+                  .map(
+                    (court) => DropdownMenuItem(
+                      value: court.id,
+                      child: Text(court.name),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) => setState(() => _selectedCourt = value),
+              decoration: const InputDecoration(labelText: 'Chọn sân'),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _DateField(
+                    label: 'Bắt đầu',
+                    value: _proposedStart,
+                    onChanged: (value) => setState(() => _proposedStart = value),
                   ),
-                )
-                .toList(),
-            onChanged: (value) => setState(() => _selectedCourt = value),
-            decoration: const InputDecoration(labelText: 'Chọn sân'),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _DateField(
-                  label: 'Bắt đầu',
-                  value: _proposedStart,
-                  onChanged: (value) => setState(() => _proposedStart = value),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _DateField(
-                  label: 'Kết thúc (tuỳ chọn)',
-                  value: _proposedEnd ?? _proposedStart.add(const Duration(hours: 2)),
-                  onChanged: (value) => setState(() => _proposedEnd = value),
-                  optional: true,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _DateField(
+                    label: 'Kết thúc (tuỳ chọn)',
+                    value:
+                        _proposedEnd ?? _proposedStart.add(const Duration(hours: 2)),
+                    onChanged: (value) => setState(() => _proposedEnd = value),
+                    optional: true,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
+              ],
+            ),
+            const SizedBox(height: 12),
+          ],
           TextField(
             decoration: const InputDecoration(labelText: 'Ghi chú gửi kèm'),
             onChanged: (value) => _note = value,
@@ -229,8 +232,8 @@ class _InvitationSheetState extends State<InvitationSheet> {
     final toUserId = widget.toUser.user.id;
 
     try {
-      if (_data!.recruitments.isNotEmpty) {
-        final recruitmentId = _selectedRecruitment ?? _data!.recruitments.first.id;
+      if (_selectedRecruitment != null) {
+        final recruitmentId = _selectedRecruitment!;
         await widget.manager.sendRecruitmentInvite(
           toUserId: toUserId,
           recruitmentId: recruitmentId,

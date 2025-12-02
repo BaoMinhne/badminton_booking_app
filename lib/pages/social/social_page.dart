@@ -12,12 +12,17 @@ import 'package:badminton_booking_app/pages/social/chat/chat_list_manager.dart';
 import 'package:badminton_booking_app/pages/social/create_post_page.dart';
 import 'package:badminton_booking_app/pages/social/recruitment/recruitment_applicants_page.dart';
 import 'package:badminton_booking_app/pages/social/recruitment/recruitment_page.dart';
+import 'package:badminton_booking_app/pages/social/partner_suggestion_manager.dart';
 import 'package:badminton_booking_app/pages/social/social_manager.dart';
 import 'package:badminton_booking_app/pages/user/user_manager.dart';
+import 'package:badminton_booking_app/pages/user/user_public_profile_page.dart';
 import 'package:flutter/material.dart';
 import 'package:badminton_booking_app/pages/social/chat/friend_list_manager.dart';
 import 'package:badminton_booking_app/pages/social/chat/friend_request_manager.dart';
 import 'package:provider/provider.dart';
+
+import '../../models/friend_search_result.dart';
+import '../../services/friend_request_service.dart';
 
 class SocialPage extends StatefulWidget {
   const SocialPage({super.key});
@@ -27,13 +32,26 @@ class SocialPage extends StatefulWidget {
 }
 
 class _SocialPageState extends State<SocialPage> {
+  late final PartnerSuggestionManager _partnerManager;
+  late final FriendRequestService _friendRequestService;
+  final Set<String> _pendingRequests = <String>{};
+
   @override
   void initState() {
     super.initState();
+    _partnerManager = PartnerSuggestionManager();
+    _friendRequestService = FriendRequestService();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<SocialManager>().loadInitial();
+      _partnerManager.loadSuggestions();
     });
+  }
+
+  @override
+  void dispose() {
+    _partnerManager.dispose();
+    super.dispose();
   }
 
   Future<void> _openCreatePost(BuildContext context) async {
@@ -94,7 +112,7 @@ class _SocialPageState extends State<SocialPage> {
     final avatarUrl = userManager.avatarUrl;
 
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         backgroundColor: cs.surfaceVariant.withOpacity(0.1),
         appBar: AppBar(
@@ -185,6 +203,16 @@ class _SocialPageState extends State<SocialPage> {
                   ],
                 ),
               ),
+              Tab(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(Icons.mail_outline_rounded, size: 20),
+                    SizedBox(width: 8),
+                    Text('Invited'),
+                  ],
+                ),
+              ),
             ],
             // các phần còn lại giữ nguyên
             labelStyle: tt.titleMedium?.copyWith(
@@ -225,7 +253,8 @@ class _SocialPageState extends State<SocialPage> {
             children: [
               _buildPostsTab(context, manager, avatarUrl),
               _buildRecruitmentTab(context, manager),
-              _buildPartnerSuggestionTab(context),
+              _buildPartnerSuggestionTab(context, _partnerManager),
+              _buildCourtInvitesTab(context),
             ],
           ),
         ),
@@ -299,36 +328,157 @@ class _SocialPageState extends State<SocialPage> {
     );
   }
 
-  Widget _buildPartnerSuggestionTab(BuildContext context) {
+  Widget _buildPartnerSuggestionTab(
+    BuildContext context,
+    PartnerSuggestionManager partnerManager,
+  ) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
-    final suggestions = <_PartnerSuggestion>[
-      const _PartnerSuggestion(
-        name: 'Minh Anh',
-        level: 'Intermediate',
-        matchScore: 87,
-        playTags: ['Đánh đơn', 'Phản công nhanh'],
-        intensity: 'Medium',
-        colorSeed: Colors.blue,
+    return RefreshIndicator(
+      onRefresh: () => partnerManager.loadSuggestions(force: true),
+      child: AnimatedBuilder(
+        animation: partnerManager,
+        builder: (context, _) {
+          final suggestions = partnerManager.suggestions;
+
+          return CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: cs.primary.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Icon(Icons.handshake_rounded,
+                                color: cs.primary, size: 26),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Gợi ý bạn chơi phù hợp',
+                                  style: tt.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Khám phá những partner hợp gu, match score được chuẩn hoá từ 0 - 100%.',
+                                  style: tt.bodyMedium?.copyWith(
+                                    color: cs.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: cs.primaryContainer,
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Row(
+                            children: [
+                              Icon(Icons.tips_and_updates_rounded,
+                                  color: cs.onPrimaryContainer),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  'Gửi lời mời kết bạn hoặc mời vào sân trực tiếp từ danh sách gợi ý.',
+                                  style: tt.bodyMedium?.copyWith(
+                                    color: cs.onPrimaryContainer,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              if (partnerManager.isLoading && suggestions.isEmpty)
+                const SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else if (partnerManager.error != null && suggestions.isEmpty)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: _PartnerErrorState(
+                    message: partnerManager.error ?? '',
+                    onRetry: () => partnerManager.loadSuggestions(force: true),
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final suggestion = suggestions[index];
+                        final details = suggestion.friend.details;
+                        final displayName = suggestion.friend.displayName;
+                        final level = details?.level ??
+                            'Level ${details?.levelNumeric ?? 3}';
+                        final intensityLabel =
+                            _humanize(details?.intensity) ?? 'Chưa cập nhật';
+
+                        return PlayerSuggestionCard(
+                          name: displayName,
+                          level: level,
+                          matchScore: suggestion.matchScore.round(),
+                          playTags: details?.playStyleTags ?? const <String>[],
+                          intensityLabel: intensityLabel,
+                          avatarInitial: suggestion.friend.initials,
+                          onProfileTap: () =>
+                              _openProfile(context, suggestion.friend),
+                          onInviteTap: () =>
+                              _sendFriendRequest(context, suggestion.friend),
+                        );
+                      },
+                      childCount: suggestions.length,
+                    ),
+                  ),
+                ),
+              const SliverPadding(padding: EdgeInsets.only(bottom: 120)),
+            ],
+          );
+        },
       ),
-      const _PartnerSuggestion(
-        name: 'Hải Đăng',
-        level: 'Advanced',
-        matchScore: 92,
-        playTags: ['Đánh đôi', 'Phòng thủ chắc'],
-        intensity: 'High',
-        colorSeed: Colors.deepOrange,
-      ),
-      const _PartnerSuggestion(
-        name: 'Khánh Chi',
-        level: 'Beginner',
-        matchScore: 73,
-        playTags: ['Học hỏi', 'Giao lưu nhẹ nhàng'],
-        intensity: 'Low',
-        colorSeed: Colors.teal,
-      ),
-    ];
+    );
+  }
+
+  String? _humanize(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return null;
+    return raw
+        .split('_')
+        .map((word) =>
+            word.isEmpty ? '' : '${word[0].toUpperCase()}${word.substring(1)}')
+        .join(' ');
+  }
+
+  Widget _buildCourtInvitesTab(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
 
     final invites = <_CourtInvite>[
       const _CourtInvite(
@@ -346,128 +496,44 @@ class _SocialPageState extends State<SocialPage> {
     ];
 
     return RefreshIndicator(
-      onRefresh: () async =>
-          Future<void>.delayed(const Duration(milliseconds: 800)),
+      onRefresh: () async {},
       child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: cs.primary.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Icon(Icons.handshake_rounded,
-                            color: cs.primary, size: 26),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Gợi ý bạn chơi phù hợp',
-                              style: tt.titleLarge?.copyWith(
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Khám phá những partner hợp gu, match score được chuẩn hoá từ 0 - 100%.',
-                              style: tt.bodyMedium?.copyWith(
-                                color: cs.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: cs.primaryContainer,
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(14),
-                      child: Row(
-                        children: [
-                          Icon(Icons.tips_and_updates_rounded,
-                              color: cs.onPrimaryContainer),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              'Gửi lời mời kết bạn hoặc mời vào sân trực tiếp từ danh sách gợi ý.',
-                              style: tt.bodyMedium?.copyWith(
-                                color: cs.onPrimaryContainer,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  final suggestion = suggestions[index];
-                  return PlayerSuggestionCard(
-                    name: suggestion.name,
-                    level: suggestion.level,
-                    matchScore: suggestion.matchScore,
-                    playTags: suggestion.playTags,
-                    intensityLabel: suggestion.intensity,
-                    avatarColor: suggestion.colorSeed.withOpacity(0.16),
-                    avatarInitial: suggestion.name.characters.first,
-                    onProfileTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Xem hồ sơ ${suggestion.name}'),
-                        ),
-                      );
-                    },
-                    onInviteTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                              'Đã gửi lời mời kết bạn cho ${suggestion.name}'),
-                        ),
-                      );
-                    },
-                  );
-                },
-                childCount: suggestions.length,
-              ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
               child: Row(
                 children: [
-                  Icon(Icons.mail_outline_rounded,
-                      color: cs.onSurfaceVariant.withOpacity(0.8)),
-                  const SizedBox(width: 10),
-                  Text(
-                    'Lời mời vào sân bạn nhận được',
-                    style:
-                        tt.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: cs.primary.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Icon(Icons.mail_outline_rounded,
+                        color: cs.primary, size: 26),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Lời mời vào sân',
+                          style: tt.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Theo dõi các lời mời chơi gần đây và phản hồi nhanh chóng.',
+                          style: tt.bodyMedium?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -475,17 +541,60 @@ class _SocialPageState extends State<SocialPage> {
           ),
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) => _InviteCard(invite: invites[index]),
-                childCount: invites.length,
-              ),
+            sliver: SliverList.separated(
+              itemBuilder: (context, index) =>
+                  _InviteCard(invite: invites[index]),
+              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              itemCount: invites.length,
             ),
           ),
           const SliverPadding(padding: EdgeInsets.only(bottom: 120)),
         ],
       ),
     );
+  }
+
+  void _openProfile(BuildContext context, FriendSearchResult friend) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => UserPublicProfilePage(result: friend),
+      ),
+    );
+  }
+
+  Future<void> _sendFriendRequest(
+    BuildContext context,
+    FriendSearchResult friend,
+  ) async {
+    final userId = friend.user.id;
+    if (_pendingRequests.contains(userId)) return;
+
+    setState(() {
+      _pendingRequests.add(userId);
+    });
+
+    try {
+      await _friendRequestService.sendFriendRequest(userId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Đã gửi lời mời kết bạn cho ${friend.displayName}'),
+          ),
+        );
+      }
+    } catch (err) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$err')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _pendingRequests.remove(userId);
+        });
+      }
+    }
   }
 
   Widget _buildCreatePostCard(BuildContext context, String? avatarUrl) {
@@ -779,24 +888,6 @@ class _SocialPageState extends State<SocialPage> {
   }
 }
 
-class _PartnerSuggestion {
-  const _PartnerSuggestion({
-    required this.name,
-    required this.level,
-    required this.matchScore,
-    required this.playTags,
-    required this.intensity,
-    required this.colorSeed,
-  });
-
-  final String name;
-  final String level;
-  final int matchScore;
-  final List<String> playTags;
-  final String intensity;
-  final Color colorSeed;
-}
-
 class _CourtInvite {
   const _CourtInvite({
     required this.hostName,
@@ -822,17 +913,17 @@ class _InviteCard extends StatelessWidget {
     final tt = Theme.of(context).textTheme;
 
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
+      margin: const EdgeInsets.symmetric(vertical: 6),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: cs.outlineVariant.withOpacity(0.35)),
+        color: cs.primaryContainer.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: cs.primary.withOpacity(0.08)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 14,
-            offset: const Offset(0, 8),
+            color: cs.primary.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -842,13 +933,20 @@ class _InviteCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: cs.secondary.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(12),
+                  gradient: LinearGradient(
+                    colors: [
+                      cs.primary.withOpacity(0.12),
+                      cs.primary.withOpacity(0.2),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  border: Border.all(color: cs.primary.withOpacity(0.18)),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(Icons.sports_tennis_rounded,
-                    color: cs.secondary, size: 22),
+                child: Icon(Icons.search_rounded, color: cs.primary, size: 22),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -872,18 +970,22 @@ class _InviteCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              DecoratedBox(
                 decoration: BoxDecoration(
-                  color: cs.secondaryContainer,
-                  borderRadius: BorderRadius.circular(10),
+                  color: cs.primary.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: cs.primary.withOpacity(0.25)),
                 ),
-                child: Text(
-                  'Lời mời',
-                  style: tt.labelMedium?.copyWith(
-                    color: cs.onSecondaryContainer,
-                    fontWeight: FontWeight.w800,
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  child: Text(
+                    'Lời mời',
+                    style: tt.labelMedium?.copyWith(
+                      color: cs.primary,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.1,
+                    ),
                   ),
                 ),
               ),
@@ -893,7 +995,8 @@ class _InviteCard extends StatelessWidget {
           Text(
             invite.note,
             style: tt.bodyMedium?.copyWith(
-              color: cs.onSurface,
+              color: cs.onSurface.withOpacity(0.9),
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 14),
@@ -913,6 +1016,8 @@ class _InviteCard extends StatelessWidget {
                   label: const Text('Xem lời mời'),
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
+                    backgroundColor: cs.primary,
+                    foregroundColor: cs.onPrimary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
@@ -934,6 +1039,8 @@ class _InviteCard extends StatelessWidget {
                   label: const Text('Phản hồi sau'),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
+                    side: BorderSide(color: cs.primary.withOpacity(0.35)),
+                    foregroundColor: cs.primary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
@@ -941,6 +1048,39 @@ class _InviteCard extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PartnerErrorState extends StatelessWidget {
+  const _PartnerErrorState({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final tt = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline_rounded, size: 36, color: Colors.red),
+          const SizedBox(height: 12),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: tt.bodyMedium,
+          ),
+          const SizedBox(height: 12),
+          FilledButton(
+            onPressed: onRetry,
+            child: const Text('Thử lại'),
           ),
         ],
       ),

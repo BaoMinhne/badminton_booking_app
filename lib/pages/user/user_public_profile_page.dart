@@ -1,5 +1,7 @@
+import 'package:badminton_booking_app/models/friend_relation.dart';
 import 'package:badminton_booking_app/models/friend_search_result.dart';
 import 'package:badminton_booking_app/models/user_details.dart';
+import 'package:badminton_booking_app/services/friend_request_service.dart';
 import 'package:badminton_booking_app/services/user_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -23,14 +25,21 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
   };
 
   late final UserDetailsService _service;
+  late final FriendRequestService _friendRequestService;
   UserDetails? _details;
   bool _isLoading = true;
   String? _error;
+  FriendRelationStatus _relation = const FriendRelationStatus.none();
+  bool _isRelationLoading = true;
+  bool _isActionLoading = false;
+  String? _relationError;
+  String? _currentUserId;
 
   @override
   void initState() {
     super.initState();
     _service = UserDetailsService();
+    _friendRequestService = FriendRequestService();
     _details = widget.result.details;
     _isLoading = _details == null;
     if (_details == null) {
@@ -38,6 +47,7 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
     } else {
       _isLoading = false;
     }
+    _loadRelation();
   }
 
   Future<void> _fetchDetails() async {
@@ -62,6 +72,39 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
     }
   }
 
+  Future<void> _loadRelation() async {
+    setState(() {
+      _isRelationLoading = true;
+      _relationError = null;
+    });
+
+    try {
+      final currentUserId = await _service.getCurrentUserId();
+      if (!mounted) return;
+
+      _currentUserId = currentUserId;
+
+      if (currentUserId == null || currentUserId == widget.result.user.id) {
+        _relation = const FriendRelationStatus.none();
+      } else {
+        _relation =
+            await _friendRequestService.getRelationStatus(widget.result.user.id);
+      }
+    } catch (_) {
+      if (!mounted) return;
+      _relationError = 'Không thể kiểm tra trạng thái kết bạn.';
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _isRelationLoading = false;
+      });
+    }
+  }
+
+  Future<void> _refreshAll() async {
+    await Future.wait([_fetchDetails(), _loadRelation()]);
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -70,7 +113,7 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
       backgroundColor: cs.surface,
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: _fetchDetails,
+          onRefresh: _refreshAll,
           child: CustomScrollView(
             slivers: [
               _buildAppBar(context),
@@ -426,6 +469,11 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
 
   Widget _buildActionRow(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final isSelf = _currentUserId != null &&
+        widget.result.user.id == _currentUserId;
+    final isFriend = _relation.type == FriendRelationType.friends;
+    final isPending = _relation.isPending;
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -440,23 +488,57 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: FilledButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.send_rounded),
-              label: const Text('Nhắn tin'),
+          if (_isRelationLoading)
+            const Center(child: CircularProgressIndicator())
+          else if (isSelf)
+            const Text('Đây là hồ sơ của bạn.')
+          else if (isFriend)
+            Row(
+              children: [
+                Chip(
+                  label: const Text('Bạn bè'),
+                  avatar:
+                      const Icon(Icons.check_circle_outline, color: Colors.green),
+                  backgroundColor: cs.primaryContainer,
+                  labelStyle: TextStyle(color: cs.onPrimaryContainer),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: _openChat,
+                    icon: const Icon(Icons.send_rounded),
+                    label: const Text('Nhắn tin'),
+                  ),
+                ),
+              ],
+            )
+          else
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed:
+                        (isPending || _isActionLoading) ? null : _handleSendFriendRequest,
+                    icon: const Icon(Icons.person_add_alt_1_rounded),
+                    label: Text(
+                      isPending
+                          ? 'Đã gửi lời mời'
+                          : 'Gửi lời mời kết bạn',
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: FilledButton.tonalIcon(
-              onPressed: () {},
-              icon: const Icon(Icons.person_add_alt_1_rounded),
-              label: const Text('Kết bạn'),
+          if (_relationError != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              _relationError!,
+              style: TextStyle(color: cs.error),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -477,6 +559,9 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
           value: _levelLabels[details?.levelNumeric ?? 3] ?? 'Intermediate',
           background: cs.primaryContainer,
           foreground: cs.onPrimaryContainer,
+          fullWidth: true,
+          alignHorizontal: true,
+          valueFontSize: 18,
         ),
         const SizedBox(height: 12),
         // Hai chip còn lại chia đôi chiều ngang
@@ -490,6 +575,7 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
                 value: details?.playsPerWeek?.toString() ?? 'Chưa rõ',
                 background: cs.secondaryContainer,
                 foreground: cs.onSecondaryContainer,
+                alignHorizontal: true,
               ),
             ),
             const SizedBox(width: 12),
@@ -503,6 +589,7 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
                     : 'Chưa rõ',
                 background: cs.tertiaryContainer,
                 foreground: cs.onTertiaryContainer,
+                alignHorizontal: true,
               ),
             ),
           ],
@@ -518,6 +605,9 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
     required String value,
     required Color background,
     required Color foreground,
+    bool fullWidth = false,
+    bool alignHorizontal = false,
+    double valueFontSize = 16,
   }) {
     final theme = Theme.of(context);
     return Container(
@@ -526,28 +616,82 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
         borderRadius: BorderRadius.circular(18),
         color: background,
       ),
+      width: fullWidth ? double.infinity : null,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment:
+            alignHorizontal ? CrossAxisAlignment.center : CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: foreground),
-          const SizedBox(height: 12),
-          Text(
-            value,
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: foreground,
-              fontWeight: FontWeight.bold,
-              fontSize: 16, // Giảm font size để tránh overflow và split từ xấu
-            ),
-            maxLines: 2, // Giới hạn 2 dòng
-            overflow: TextOverflow.ellipsis, // Ellipsis nếu vượt
-          ),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            style: theme.textTheme.bodySmall?.copyWith(color: foreground),
-          ),
+          if (alignHorizontal)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                _statIcon(icon, foreground),
+                const SizedBox(width: 12),
+                Expanded(
+                    child: _statText(
+                  theme,
+                  value,
+                  label,
+                  foreground,
+                  valueFontSize,
+                )),
+              ],
+            )
+          else ...[
+            _statIcon(icon, foreground),
+            const SizedBox(height: 12),
+            _statText(theme, value, label, foreground, valueFontSize),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _statIcon(IconData icon, Color foreground) {
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        color: foreground.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Icon(
+        icon,
+        color: foreground,
+        size: 20,
+      ),
+    );
+  }
+
+  Widget _statText(
+    ThemeData theme,
+    String value,
+    String label,
+    Color foreground,
+    double valueFontSize,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          value,
+          style: theme.textTheme.titleMedium?.copyWith(
+            color: foreground,
+            fontWeight: FontWeight.w700,
+            fontSize: valueFontSize,
+          ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: foreground.withOpacity(0.9),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 
@@ -685,5 +829,45 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
         .map((word) =>
             word.isEmpty ? '' : '${word[0].toUpperCase()}${word.substring(1)}')
         .join(' ');
+  }
+
+  Future<void> _handleSendFriendRequest() async {
+    if (_isActionLoading) return;
+
+    setState(() {
+      _isActionLoading = true;
+    });
+
+    try {
+      final requestId =
+          await _friendRequestService.sendFriendRequest(widget.result.user.id);
+      if (!mounted) return;
+      setState(() {
+        _relation = FriendRelationStatus(
+          type: FriendRelationType.outgoingRequest,
+          requestId: requestId,
+        );
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã gửi lời mời kết bạn.')),
+      );
+    } catch (err) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$err')),
+      );
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _isActionLoading = false;
+      });
+    }
+  }
+
+  void _openChat() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Tính năng nhắn tin sẽ sớm ra mắt.')),
+    );
   }
 }

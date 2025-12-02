@@ -265,7 +265,9 @@ class InvitationService {
         recruitmentIds: result.items.map((e) => e.id).toList(growable: false),
       );
 
-      return result.items
+      final today = DateTime.now();
+
+      final posts = result.items
           .map(
             (record) => RecruitmentPost.fromRecord(
               record: record,
@@ -274,7 +276,23 @@ class InvitationService {
               applicants: applicantsMap[record.id] ?? const [],
             ),
           )
+          .where((post) {
+            final eventTime = post.eventTime;
+            if (eventTime == null) return false;
+
+            final matchesToday = eventTime.year == today.year &&
+                eventTime.month == today.month &&
+                eventTime.day == today.day;
+
+            final hasCapacity = post.requiredPlayers <= 0
+                ? true
+                : post.joinedPlayers < post.requiredPlayers;
+
+            return matchesToday && post.isActive && hasCapacity;
+          })
           .toList(growable: false);
+
+      return posts;
     } on ClientException catch (error) {
       throw InvitationServiceException(_mapClientError(error));
     } catch (_) {

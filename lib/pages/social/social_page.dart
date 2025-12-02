@@ -112,7 +112,7 @@ class _SocialPageState extends State<SocialPage> {
     final avatarUrl = userManager.avatarUrl;
 
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         backgroundColor: cs.surfaceVariant.withOpacity(0.1),
         appBar: AppBar(
@@ -203,6 +203,16 @@ class _SocialPageState extends State<SocialPage> {
                   ],
                 ),
               ),
+              Tab(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(Icons.mail_outline_rounded, size: 20),
+                    SizedBox(width: 8),
+                    Text('Lời mời sân'),
+                  ],
+                ),
+              ),
             ],
             // các phần còn lại giữ nguyên
             labelStyle: tt.titleMedium?.copyWith(
@@ -244,6 +254,7 @@ class _SocialPageState extends State<SocialPage> {
               _buildPostsTab(context, manager, avatarUrl),
               _buildRecruitmentTab(context, manager),
               _buildPartnerSuggestionTab(context, _partnerManager),
+              _buildCourtInvitesTab(context),
             ],
           ),
         ),
@@ -323,21 +334,6 @@ class _SocialPageState extends State<SocialPage> {
   ) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-
-    final invites = <_CourtInvite>[
-      const _CourtInvite(
-        hostName: 'Anh Quân',
-        courtName: 'Sân Nhật Hoa',
-        playTime: '19:00 - Thứ 5',
-        note: 'Cần thêm 2 người, mức Intermediate, đánh đôi.',
-      ),
-      const _CourtInvite(
-        hostName: 'Lan Chi',
-        courtName: 'Sân Thống Nhất',
-        playTime: '08:00 - Chủ nhật',
-        note: 'Giao lưu nhẹ nhàng, ưu tiên nữ.',
-      ),
-    ];
 
     return RefreshIndicator(
       onRefresh: () => partnerManager.loadSuggestions(force: true),
@@ -463,32 +459,6 @@ class _SocialPageState extends State<SocialPage> {
                     ),
                   ),
                 ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
-                  child: Row(
-                    children: [
-                      Icon(Icons.mail_outline_rounded,
-                          color: cs.onSurfaceVariant.withOpacity(0.8)),
-                      const SizedBox(width: 10),
-                      Text(
-                        'Lời mời vào sân bạn nhận được',
-                        style: tt.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w800),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) => _InviteCard(invite: invites[index]),
-                    childCount: invites.length,
-                  ),
-                ),
-              ),
               const SliverPadding(padding: EdgeInsets.only(bottom: 120)),
             ],
           );
@@ -504,6 +474,83 @@ class _SocialPageState extends State<SocialPage> {
         .map((word) =>
             word.isEmpty ? '' : '${word[0].toUpperCase()}${word.substring(1)}')
         .join(' ');
+  }
+
+  Widget _buildCourtInvitesTab(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+
+    final invites = <_CourtInvite>[
+      const _CourtInvite(
+        hostName: 'Anh Quân',
+        courtName: 'Sân Nhật Hoa',
+        playTime: '19:00 - Thứ 5',
+        note: 'Cần thêm 2 người, mức Intermediate, đánh đôi.',
+      ),
+      const _CourtInvite(
+        hostName: 'Lan Chi',
+        courtName: 'Sân Thống Nhất',
+        playTime: '08:00 - Chủ nhật',
+        note: 'Giao lưu nhẹ nhàng, ưu tiên nữ.',
+      ),
+    ];
+
+    return RefreshIndicator(
+      onRefresh: () async {},
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: cs.primary.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Icon(Icons.mail_outline_rounded,
+                        color: cs.primary, size: 26),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Lời mời vào sân bạn nhận được',
+                          style: tt.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Theo dõi các lời mời chơi gần đây và phản hồi nhanh chóng.',
+                          style: tt.bodyMedium?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            sliver: SliverList.separated(
+              itemBuilder: (context, index) => _InviteCard(invite: invites[index]),
+              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              itemCount: invites.length,
+            ),
+          ),
+          const SliverPadding(padding: EdgeInsets.only(bottom: 120)),
+        ],
+      ),
+    );
   }
 
   void _openProfile(BuildContext context, FriendSearchResult friend) {
@@ -865,17 +912,17 @@ class _InviteCard extends StatelessWidget {
     final tt = Theme.of(context).textTheme;
 
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
+      margin: const EdgeInsets.symmetric(vertical: 6),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: cs.outlineVariant.withOpacity(0.35)),
+        color: cs.primaryContainer.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: cs.primary.withOpacity(0.08)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 14,
-            offset: const Offset(0, 8),
+            color: cs.primary.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -885,13 +932,20 @@ class _InviteCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: cs.secondary.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(12),
+                  gradient: LinearGradient(
+                    colors: [
+                      cs.primary.withOpacity(0.12),
+                      cs.primary.withOpacity(0.2),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  border: Border.all(color: cs.primary.withOpacity(0.18)),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(Icons.sports_tennis_rounded,
-                    color: cs.secondary, size: 22),
+                child: Icon(Icons.search_rounded, color: cs.primary, size: 22),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -915,18 +969,22 @@ class _InviteCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              DecoratedBox(
                 decoration: BoxDecoration(
-                  color: cs.secondaryContainer,
-                  borderRadius: BorderRadius.circular(10),
+                  color: cs.primary.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: cs.primary.withOpacity(0.25)),
                 ),
-                child: Text(
-                  'Lời mời',
-                  style: tt.labelMedium?.copyWith(
-                    color: cs.onSecondaryContainer,
-                    fontWeight: FontWeight.w800,
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  child: Text(
+                    'Lời mời',
+                    style: tt.labelMedium?.copyWith(
+                      color: cs.primary,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.1,
+                    ),
                   ),
                 ),
               ),
@@ -936,7 +994,8 @@ class _InviteCard extends StatelessWidget {
           Text(
             invite.note,
             style: tt.bodyMedium?.copyWith(
-              color: cs.onSurface,
+              color: cs.onSurface.withOpacity(0.9),
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 14),
@@ -956,6 +1015,8 @@ class _InviteCard extends StatelessWidget {
                   label: const Text('Xem lời mời'),
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
+                    backgroundColor: cs.primary,
+                    foregroundColor: cs.onPrimary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
@@ -977,6 +1038,8 @@ class _InviteCard extends StatelessWidget {
                   label: const Text('Phản hồi sau'),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
+                    side: BorderSide(color: cs.primary.withOpacity(0.35)),
+                    foregroundColor: cs.primary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),

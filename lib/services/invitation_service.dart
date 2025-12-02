@@ -76,13 +76,19 @@ class InvitationService {
 
     try {
       final result = await pb.collection(collection).getList(
-            filter: "to_user='${_escape(currentUserId)}'",
+            filter:
+                "to_user='${_escape(currentUserId)}' || from_user='${_escape(currentUserId)}'",
             sort: '-created',
-            expand: 'from_user,recruitment,recruitment.court,booking,booking.court_id,court',
+            expand:
+                'from_user,to_user,recruitment,recruitment.court,booking,booking.court_id,court',
           );
 
       return result.items
-          .map((record) => Invitation.fromRecord(record, pb))
+          .map((record) => Invitation.fromRecord(
+                record,
+                pb,
+                viewerId: currentUserId,
+              ))
           .toList(growable: false);
     } on ClientException catch (error) {
       throw InvitationServiceException(_mapClientError(error));
@@ -193,9 +199,9 @@ class InvitationService {
       final hydrated = await pb.collection(collection).getOne(
             record.id,
             expand:
-                'from_user,recruitment,recruitment.court,booking,booking.court_id,court',
+                'from_user,to_user,recruitment,recruitment.court,booking,booking.court_id,court',
           );
-      return Invitation.fromRecord(hydrated, pb);
+      return Invitation.fromRecord(hydrated, pb, viewerId: fromUserId);
     } on ClientException catch (error) {
       throw InvitationServiceException(_mapClientError(error));
     } catch (_) {

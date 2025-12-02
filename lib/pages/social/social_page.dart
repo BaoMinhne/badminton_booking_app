@@ -564,14 +564,18 @@ class _SocialPageState extends State<SocialPage> {
                   sliver: SliverList.separated(
                     itemBuilder: (context, index) => _InviteCard(
                       invite: invites[index],
-                      onAccept: () => invitationManager.respond(
-                        invites[index],
-                        accept: true,
-                      ),
-                      onReject: () => invitationManager.respond(
-                        invites[index],
-                        accept: false,
-                      ),
+                      onAccept: invites[index].isOutgoing
+                          ? null
+                          : () => invitationManager.respond(
+                                invites[index],
+                                accept: true,
+                              ),
+                      onReject: invites[index].isOutgoing
+                          ? null
+                          : () => invitationManager.respond(
+                                invites[index],
+                                accept: false,
+                              ),
                     ),
                     separatorBuilder: (_, __) => const SizedBox(height: 8),
                     itemCount: invites.length,
@@ -928,13 +932,14 @@ class _InviteCard extends StatelessWidget {
   });
 
   final Invitation invite;
-  final VoidCallback onAccept;
-  final VoidCallback onReject;
+  final VoidCallback? onAccept;
+  final VoidCallback? onReject;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
+    final isOutgoing = invite.isOutgoing;
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6),
@@ -985,7 +990,7 @@ class _InviteCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      _subtitle(invite),
+                      _subtitle(invite, isOutgoing),
                       style: tt.bodySmall?.copyWith(
                         color: cs.onSurfaceVariant,
                         fontWeight: FontWeight.w600,
@@ -1032,7 +1037,7 @@ class _InviteCard extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 14),
-          if (invite.isPending)
+          if (!isOutgoing && invite.isPending)
             Row(
               children: [
                 Expanded(
@@ -1069,19 +1074,16 @@ class _InviteCard extends StatelessWidget {
               ],
             )
           else
-            Text(
-              invite.status == 'accepted'
-                  ? 'Bạn đã chấp nhận lời mời này.'
-                  : 'Bạn đã từ chối lời mời này.',
-              style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
-            ),
+            _StatusLabel(invite: invite, isOutgoing: isOutgoing),
         ],
       ),
     );
   }
 
-  String _subtitle(Invitation invite) {
-    final host = invite.fromUserName ?? 'Người chơi';
+  String _subtitle(Invitation invite, bool isOutgoing) {
+    final host = isOutgoing
+        ? 'Bạn đã mời ${invite.toUserName ?? 'người chơi'}'
+        : invite.fromUserName ?? 'Người chơi';
     final slot = _formatTime(invite);
     return '$host • ${slot ?? 'Slot đang chờ cập nhật'}';
   }
@@ -1111,6 +1113,41 @@ class _InviteCard extends StatelessWidget {
 
   String _formatDate(DateTime date) {
     return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}';
+  }
+}
+
+class _StatusLabel extends StatelessWidget {
+  const _StatusLabel({required this.invite, required this.isOutgoing});
+
+  final Invitation invite;
+  final bool isOutgoing;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+
+    String text;
+    switch (invite.status) {
+      case 'accepted':
+        text = isOutgoing
+            ? 'Đã được chấp nhận'
+            : 'Bạn đã chấp nhận lời mời này.';
+        break;
+      case 'rejected':
+        text = isOutgoing ? 'Đã bị từ chối' : 'Bạn đã từ chối lời mời này.';
+        break;
+      case 'cancelled':
+        text = isOutgoing ? 'Bạn đã huỷ lời mời này.' : 'Lời mời đã bị huỷ.';
+        break;
+      default:
+        text = isOutgoing ? 'Đã gửi • Chờ phản hồi' : 'Đang chờ phản hồi của bạn.';
+    }
+
+    return Text(
+      text,
+      style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+    );
   }
 }
 

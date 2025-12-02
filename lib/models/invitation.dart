@@ -11,8 +11,11 @@ class Invitation {
     required this.toUserId,
     required this.type,
     required this.status,
+    this.viewerId,
     this.fromUserName,
     this.fromAvatarUrl,
+    this.toUserName,
+    this.toAvatarUrl,
     this.recruitmentId,
     this.bookingId,
     this.courtId,
@@ -22,7 +25,11 @@ class Invitation {
     this.message,
   });
 
-  factory Invitation.fromRecord(RecordModel record, PocketBase pb) {
+  factory Invitation.fromRecord(
+    RecordModel record,
+    PocketBase pb, {
+    String? viewerId,
+  }) {
     final data = record.data;
 
     final fromUserRecord = resolveExpandedRecord(record.expand?['from_user']);
@@ -32,6 +39,9 @@ class Invitation {
       (fromUserData?['username'] as String?) ??
           (fromUserData?['email'] as String?),
     );
+
+    final toUserRecord = resolveExpandedRecord(record.expand?['to_user']);
+    final toUserData = toUserRecord?.data;
 
     final recruitmentRecord = resolveExpandedRecord(record.expand?['recruitment']);
     final recruitmentData = recruitmentRecord?.data;
@@ -50,8 +60,14 @@ class Invitation {
       toUserId: (data['to_user'] as String?) ?? '',
       type: _mapType(data['type'] as String?),
       status: (data['status'] as String?) ?? 'pending',
+      viewerId: viewerId,
       fromUserName: fromName,
       fromAvatarUrl: resolveFileUrl(pb, fromUserRecord, fromUserData?['avatar']),
+      toUserName: sanitizeDisplayName(
+        (toUserData?['username'] as String?) ??
+            (toUserData?['email'] as String?),
+      ),
+      toAvatarUrl: resolveFileUrl(pb, toUserRecord, toUserData?['avatar']),
       recruitmentId: (data['recruitment'] as String?) ?? recruitmentRecord?.id,
       bookingId: (data['booking'] as String?) ?? bookingRecord?.id,
       courtId: (data['court'] as String?) ??
@@ -75,8 +91,11 @@ class Invitation {
   final String toUserId;
   final InvitationType type;
   final String status;
+  final String? viewerId;
   final String? fromUserName;
   final String? fromAvatarUrl;
+  final String? toUserName;
+  final String? toAvatarUrl;
   final String? recruitmentId;
   final String? bookingId;
   final String? courtId;
@@ -85,6 +104,7 @@ class Invitation {
   final DateTime? endTime;
   final String? message;
 
+  bool get isOutgoing => viewerId != null && viewerId == fromUserId;
   bool get isPending => status == 'pending';
 
   Invitation copyWith({String? status}) {
@@ -94,8 +114,11 @@ class Invitation {
       toUserId: toUserId,
       type: type,
       status: status ?? this.status,
+      viewerId: viewerId,
       fromUserName: fromUserName,
       fromAvatarUrl: fromAvatarUrl,
+      toUserName: toUserName,
+      toAvatarUrl: toAvatarUrl,
       recruitmentId: recruitmentId,
       bookingId: bookingId,
       courtId: courtId,

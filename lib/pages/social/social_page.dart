@@ -209,7 +209,7 @@ class _SocialPageState extends State<SocialPage> {
                   children: const [
                     Icon(Icons.mail_outline_rounded, size: 20),
                     SizedBox(width: 8),
-                    Text('Lời mời sân'),
+                    Text('Invited'),
                   ],
                 ),
               ),
@@ -520,7 +520,7 @@ class _SocialPageState extends State<SocialPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Lời mời vào sân bạn nhận được',
+                          'Lời mời vào sân',
                           style: tt.titleLarge?.copyWith(
                             fontWeight: FontWeight.w800,
                           ),
@@ -542,7 +542,8 @@ class _SocialPageState extends State<SocialPage> {
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             sliver: SliverList.separated(
-              itemBuilder: (context, index) => _InviteCard(invite: invites[index]),
+              itemBuilder: (context, index) =>
+                  _InviteCard(invite: invites[index]),
               separatorBuilder: (_, __) => const SizedBox(height: 8),
               itemCount: invites.length,
             ),

@@ -6,6 +6,7 @@ import '../../../models/friend_search_result.dart';
 import '../../../models/invitation.dart';
 import '../../../models/recruitment_post.dart';
 import '../../../models/user_booking_view.dart';
+import '../../../services/invitation_service.dart';
 import 'invitation_manager.dart';
 
 class InvitationSheet extends StatefulWidget {

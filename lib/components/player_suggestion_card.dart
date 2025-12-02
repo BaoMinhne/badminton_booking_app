@@ -85,20 +85,22 @@ class PlayerSuggestionCard extends StatelessWidget {
                                 horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
-                                // Thêm gradient cho badge
+                                // Tăng độ tương phản cho badge match score
                                 colors: [
-                                  matchColor.withOpacity(
-                                      0.15), // Giảm opacity để bớt rối mắt
-                                  matchColor.withOpacity(0.03)
+                                  matchColor.withOpacity(0.28),
+                                  matchColor.withOpacity(0.14)
                                 ],
+                              ),
+                              border: Border.all(
+                                color: matchColor.withOpacity(0.55),
+                                width: 0.9,
                               ),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
                               'Match: $matchScore%',
                               style: tt.labelMedium?.copyWith(
-                                color:
-                                    matchColor.withOpacity(0.8), // Mềm mại hơn
+                                color: matchColor,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),

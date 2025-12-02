@@ -6,10 +6,13 @@ import 'package:badminton_booking_app/components/player_suggestion_card.dart';
 import 'package:badminton_booking_app/components/post_comments_sheet.dart';
 import 'package:badminton_booking_app/components/recruitment_post_card.dart';
 import 'package:badminton_booking_app/models/community_post.dart';
+import 'package:badminton_booking_app/models/invitation.dart';
 import 'package:badminton_booking_app/models/recruitment_post.dart';
 import 'package:badminton_booking_app/pages/social/chat/chat_home_page.dart';
 import 'package:badminton_booking_app/pages/social/chat/chat_list_manager.dart';
 import 'package:badminton_booking_app/pages/social/create_post_page.dart';
+import 'package:badminton_booking_app/pages/social/invitation/invitation_manager.dart';
+import 'package:badminton_booking_app/pages/social/invitation/invitation_sheet.dart';
 import 'package:badminton_booking_app/pages/social/recruitment/recruitment_applicants_page.dart';
 import 'package:badminton_booking_app/pages/social/recruitment/recruitment_page.dart';
 import 'package:badminton_booking_app/pages/social/partner_suggestion_manager.dart';
@@ -22,7 +25,6 @@ import 'package:badminton_booking_app/pages/social/chat/friend_request_manager.d
 import 'package:provider/provider.dart';
 
 import '../../models/friend_search_result.dart';
-import '../../services/friend_request_service.dart';
 
 class SocialPage extends StatefulWidget {
   const SocialPage({super.key});
@@ -33,24 +35,26 @@ class SocialPage extends StatefulWidget {
 
 class _SocialPageState extends State<SocialPage> {
   late final PartnerSuggestionManager _partnerManager;
-  late final FriendRequestService _friendRequestService;
+  late final InvitationManager _invitationManager;
   final Set<String> _pendingRequests = <String>{};
 
   @override
   void initState() {
     super.initState();
     _partnerManager = PartnerSuggestionManager();
-    _friendRequestService = FriendRequestService();
+    _invitationManager = InvitationManager();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<SocialManager>().loadInitial();
       _partnerManager.loadSuggestions();
+      _invitationManager.refreshIncoming();
     });
   }
 
   @override
   void dispose() {
     _partnerManager.dispose();
+    _invitationManager.dispose();
     super.dispose();
   }
 
@@ -254,7 +258,7 @@ class _SocialPageState extends State<SocialPage> {
               _buildPostsTab(context, manager, avatarUrl),
               _buildRecruitmentTab(context, manager),
               _buildPartnerSuggestionTab(context, _partnerManager),
-              _buildCourtInvitesTab(context),
+              _buildCourtInvitesTab(context, _invitationManager),
             ],
           ),
         ),
@@ -451,8 +455,10 @@ class _SocialPageState extends State<SocialPage> {
                           avatarInitial: suggestion.friend.initials,
                           onProfileTap: () =>
                               _openProfile(context, suggestion.friend),
-                          onInviteTap: () =>
-                              _sendFriendRequest(context, suggestion.friend),
+                          onInviteTap: () => _openInviteSheet(
+                            context: context,
+                            friend: suggestion.friend,
+                          ),
                         );
                       },
                       childCount: suggestions.length,
@@ -476,80 +482,105 @@ class _SocialPageState extends State<SocialPage> {
         .join(' ');
   }
 
-  Widget _buildCourtInvitesTab(BuildContext context) {
+  Widget _buildCourtInvitesTab(
+    BuildContext context,
+    InvitationManager invitationManager,
+  ) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
-    final invites = <_CourtInvite>[
-      const _CourtInvite(
-        hostName: 'Anh Quân',
-        courtName: 'Sân Nhật Hoa',
-        playTime: '19:00 - Thứ 5',
-        note: 'Cần thêm 2 người, mức Intermediate, đánh đôi.',
-      ),
-      const _CourtInvite(
-        hostName: 'Lan Chi',
-        courtName: 'Sân Thống Nhất',
-        playTime: '08:00 - Chủ nhật',
-        note: 'Giao lưu nhẹ nhàng, ưu tiên nữ.',
-      ),
-    ];
-
     return RefreshIndicator(
-      onRefresh: () async {},
-      child: CustomScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        slivers: [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: cs.primary.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Icon(Icons.mail_outline_rounded,
-                        color: cs.primary, size: 26),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Lời mời vào sân',
-                          style: tt.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
+      onRefresh: invitationManager.refreshIncoming,
+      child: AnimatedBuilder(
+        animation: invitationManager,
+        builder: (context, _) {
+          final invites = invitationManager.invitations;
+
+          return CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: cs.primary.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Theo dõi các lời mời chơi gần đây và phản hồi nhanh chóng.',
-                          style: tt.bodyMedium?.copyWith(
-                            color: cs.onSurfaceVariant,
-                          ),
+                        child: Icon(Icons.mail_outline_rounded,
+                            color: cs.primary, size: 26),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Lời mời vào sân',
+                              style: tt.titleLarge?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Theo dõi các lời mời chơi gần đây và phản hồi nhanh chóng.',
+                              style: tt.bodyMedium?.copyWith(
+                                color: cs.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            sliver: SliverList.separated(
-              itemBuilder: (context, index) =>
-                  _InviteCard(invite: invites[index]),
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
-              itemCount: invites.length,
-            ),
-          ),
-          const SliverPadding(padding: EdgeInsets.only(bottom: 120)),
-        ],
+              if (invitationManager.isLoading)
+                const SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else if (invitationManager.error != null)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: _PartnerErrorState(
+                    message: invitationManager.error!,
+                    onRetry: invitationManager.refreshIncoming,
+                  ),
+                )
+              else if (invites.isEmpty)
+                const SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(
+                    child: Text('Chưa có lời mời nào.'),
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  sliver: SliverList.separated(
+                    itemBuilder: (context, index) => _InviteCard(
+                      invite: invites[index],
+                      onAccept: () => invitationManager.respond(
+                        invites[index],
+                        accept: true,
+                      ),
+                      onReject: () => invitationManager.respond(
+                        invites[index],
+                        accept: false,
+                      ),
+                    ),
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemCount: invites.length,
+                  ),
+                ),
+              const SliverPadding(padding: EdgeInsets.only(bottom: 120)),
+            ],
+          );
+        },
       ),
     );
   }
@@ -562,10 +593,10 @@ class _SocialPageState extends State<SocialPage> {
     );
   }
 
-  Future<void> _sendFriendRequest(
-    BuildContext context,
-    FriendSearchResult friend,
-  ) async {
+  Future<void> _openInviteSheet({
+    required BuildContext context,
+    required FriendSearchResult friend,
+  }) async {
     final userId = friend.user.id;
     if (_pendingRequests.contains(userId)) return;
 
@@ -574,14 +605,15 @@ class _SocialPageState extends State<SocialPage> {
     });
 
     try {
-      await _friendRequestService.sendFriendRequest(userId);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Đã gửi lời mời kết bạn cho ${friend.displayName}'),
-          ),
-        );
-      }
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => InvitationSheet(
+          toUser: friend,
+          manager: _invitationManager,
+        ),
+      );
     } catch (err) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -888,24 +920,16 @@ class _SocialPageState extends State<SocialPage> {
   }
 }
 
-class _CourtInvite {
-  const _CourtInvite({
-    required this.hostName,
-    required this.courtName,
-    required this.playTime,
-    required this.note,
+class _InviteCard extends StatelessWidget {
+  const _InviteCard({
+    required this.invite,
+    required this.onAccept,
+    required this.onReject,
   });
 
-  final String hostName;
-  final String courtName;
-  final String playTime;
-  final String note;
-}
-
-class _InviteCard extends StatelessWidget {
-  const _InviteCard({required this.invite});
-
-  final _CourtInvite invite;
+  final Invitation invite;
+  final VoidCallback onAccept;
+  final VoidCallback onReject;
 
   @override
   Widget build(BuildContext context) {
@@ -954,14 +978,14 @@ class _InviteCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      invite.courtName,
+                      invite.courtName ?? 'Slot đang chờ xác nhận',
                       style: tt.titleMedium?.copyWith(
                         fontWeight: FontWeight.w800,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Chủ sân: ${invite.hostName} • ${invite.playTime}',
+                      _subtitle(invite),
                       style: tt.bodySmall?.copyWith(
                         color: cs.onSurfaceVariant,
                         fontWeight: FontWeight.w600,
@@ -980,7 +1004,7 @@ class _InviteCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   child: Text(
-                    'Lời mời',
+                    _typeLabel(invite.type),
                     style: tt.labelMedium?.copyWith(
                       color: cs.primary,
                       fontWeight: FontWeight.w900,
@@ -992,66 +1016,101 @@ class _InviteCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          Text(
-            invite.note,
-            style: tt.bodyMedium?.copyWith(
-              color: cs.onSurface.withOpacity(0.9),
-              fontWeight: FontWeight.w600,
+          if (invite.message?.isNotEmpty == true)
+            Text(
+              invite.message!,
+              style: tt.bodyMedium?.copyWith(
+                color: cs.onSurface.withOpacity(0.9),
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
+          if (invite.startTime != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              _formatTime(invite),
+              style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+            ),
+          ],
           const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton.tonalIcon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                            'Xem chi tiết lời mời tại ${invite.courtName}'),
+          if (invite.isPending)
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.tonalIcon(
+                    onPressed: onAccept,
+                    icon: const Icon(Icons.event_available_rounded, size: 18),
+                    label: const Text('Chấp nhận'),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      backgroundColor: cs.primary,
+                      foregroundColor: cs.onPrimary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                    );
-                  },
-                  icon: const Icon(Icons.event_available_rounded, size: 18),
-                  label: const Text('Xem lời mời'),
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    backgroundColor: cs.primary,
-                    foregroundColor: cs.onPrimary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content:
-                            Text('Đã phản hồi lời mời của ${invite.hostName}'),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: onReject,
+                    icon: const Icon(Icons.reply_rounded, size: 18),
+                    label: const Text('Từ chối'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      side: BorderSide(color: cs.primary.withOpacity(0.35)),
+                      foregroundColor: cs.primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                    );
-                  },
-                  icon: const Icon(Icons.reply_rounded, size: 18),
-                  label: const Text('Phản hồi sau'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    side: BorderSide(color: cs.primary.withOpacity(0.35)),
-                    foregroundColor: cs.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
                     ),
                   ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            )
+          else
+            Text(
+              invite.status == 'accepted'
+                  ? 'Bạn đã chấp nhận lời mời này.'
+                  : 'Bạn đã từ chối lời mời này.',
+              style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+            ),
         ],
       ),
     );
+  }
+
+  String _subtitle(Invitation invite) {
+    final host = invite.fromUserName ?? 'Người chơi';
+    final slot = _formatTime(invite);
+    return '$host • ${slot ?? 'Slot đang chờ cập nhật'}';
+  }
+
+  String _typeLabel(InvitationType type) {
+    switch (type) {
+      case InvitationType.booking:
+        return 'Booking có sẵn';
+      case InvitationType.proposed:
+        return 'Lời mời dự kiến';
+      case InvitationType.recruitment:
+        return 'Theo bài tuyển';
+    }
+  }
+
+  String _formatTime(Invitation invite) {
+    if (invite.startTime == null) return 'Thời gian đang đề xuất';
+    final start = invite.startTime!;
+    final end = invite.endTime;
+    final timeString = '${start.hour.toString().padLeft(2, '0')}:${start.minute.toString().padLeft(2, '0')}';
+    if (end == null) {
+      return '$timeString - ${_formatDate(start)}';
+    }
+    final endStr = '${end.hour.toString().padLeft(2, '0')}:${end.minute.toString().padLeft(2, '0')}';
+    return '$timeString - $endStr • ${_formatDate(start)}';
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}';
   }
 }
 

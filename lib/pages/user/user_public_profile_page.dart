@@ -104,7 +104,7 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
       foregroundColor: cs.onSurface,
       elevation: 0,
       scrolledUnderElevation: 0,
-      title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
+      // Loại bỏ title để không hiển thị tên ngay đầu trang (tên đã có trong header card)
       flexibleSpace: FlexibleSpaceBar(
         background: Stack(
           fit: StackFit.expand,
@@ -203,10 +203,12 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  Row(
+                  Wrap(
+                    // Thay Row bằng Wrap để tránh overflow khi chip dài
+                    spacing: 8,
+                    runSpacing: 4,
                     children: [
                       _buildLevelChip(cs),
-                      const SizedBox(width: 8),
                       _buildIntensityChip(cs),
                     ],
                   ),
@@ -281,14 +283,20 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
         : _levelLabels[numeric ?? 3] ?? 'Level 3';
 
     return Chip(
-      label: Text(label),
+      label: Text(
+        label,
+        maxLines: 1, // Giới hạn 1 dòng để tránh wrap xấu
+        overflow: TextOverflow.ellipsis, // Ellipsis nếu dài
+      ),
       avatar: const Icon(Icons.emoji_events_rounded, size: 18),
       backgroundColor: cs.primaryContainer,
       labelStyle: TextStyle(
         color: cs.onPrimaryContainer,
         fontWeight: FontWeight.w600,
+        fontSize: 14, // Giảm font size để fit tốt hơn
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 6),
+      padding: const EdgeInsets.symmetric(
+          horizontal: 12), // Tăng padding để chip rộng hơn
     );
   }
 
@@ -303,13 +311,19 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
     }
 
     return Chip(
-      label: Text(_humanize(intensity)),
+      label: Text(
+        _humanize(intensity) ?? intensity,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
       avatar: const Icon(Icons.local_fire_department_outlined, size: 18),
       backgroundColor: cs.secondaryContainer,
       labelStyle: TextStyle(
         color: cs.onSecondaryContainer,
         fontWeight: FontWeight.w600,
+        fontSize: 14,
       ),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
     );
   }
 
@@ -330,7 +344,8 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline_rounded, size: 40, color: Colors.red),
+            const Icon(Icons.error_outline_rounded,
+                size: 40, color: Colors.red),
             const SizedBox(height: 8),
             Text(
               _error!,
@@ -338,7 +353,8 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 12),
-            FilledButton(onPressed: _fetchDetails, child: const Text('Thử lại')),
+            FilledButton(
+                onPressed: _fetchDetails, child: const Text('Thử lại')),
           ],
         ),
       );
@@ -450,41 +466,46 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
     final cs = Theme.of(context).colorScheme;
     final details = _details;
 
-    return Row(
+    // Chọn cách cho chip trình độ (level) một hàng riêng và chiếm hết chiều ngang để dễ dàng hơn
+    return Column(
       children: [
-        Expanded(
-          child: _statCard(
-            context,
-            icon: Icons.stacked_line_chart_rounded,
-            label: 'Trình độ',
-            value: _levelLabels[details?.levelNumeric ?? 3] ?? 'Intermediate',
-            background: cs.primaryContainer,
-            foreground: cs.onPrimaryContainer,
-          ),
+        // Chip trình độ chiếm hết chiều ngang
+        _statCard(
+          context,
+          icon: Icons.stacked_line_chart_rounded,
+          label: 'Trình độ',
+          value: _levelLabels[details?.levelNumeric ?? 3] ?? 'Intermediate',
+          background: cs.primaryContainer,
+          foreground: cs.onPrimaryContainer,
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _statCard(
-            context,
-            icon: Icons.calendar_month_outlined,
-            label: 'Số buổi/tuần',
-            value: details?.playsPerWeek?.toString() ?? 'Chưa rõ',
-            background: cs.secondaryContainer,
-            foreground: cs.onSecondaryContainer,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _statCard(
-            context,
-            icon: Icons.military_tech_outlined,
-            label: 'Kinh nghiệm',
-            value: details?.experienceYears != null
-                ? '${details!.experienceYears} năm'
-                : 'Chưa rõ',
-            background: cs.tertiaryContainer,
-            foreground: cs.onTertiaryContainer,
-          ),
+        const SizedBox(height: 12),
+        // Hai chip còn lại chia đôi chiều ngang
+        Row(
+          children: [
+            Expanded(
+              child: _statCard(
+                context,
+                icon: Icons.calendar_month_outlined,
+                label: 'Số buổi/tuần',
+                value: details?.playsPerWeek?.toString() ?? 'Chưa rõ',
+                background: cs.secondaryContainer,
+                foreground: cs.onSecondaryContainer,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _statCard(
+                context,
+                icon: Icons.military_tech_outlined,
+                label: 'Kinh nghiệm',
+                value: details?.experienceYears != null
+                    ? '${details!.experienceYears} năm'
+                    : 'Chưa rõ',
+                background: cs.tertiaryContainer,
+                foreground: cs.onTertiaryContainer,
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -515,7 +536,10 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
             style: theme.textTheme.titleMedium?.copyWith(
               color: foreground,
               fontWeight: FontWeight.bold,
+              fontSize: 16, // Giảm font size để tránh overflow và split từ xấu
             ),
+            maxLines: 2, // Giới hạn 2 dòng
+            overflow: TextOverflow.ellipsis, // Ellipsis nếu vượt
           ),
           const SizedBox(height: 6),
           Text(
@@ -601,9 +625,17 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
         .where((e) => e.trim().isNotEmpty)
         .map(
           (value) => Chip(
-            label: Text(_humanize(value) ?? value),
+            label: Text(
+              _humanize(value) ?? value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
             backgroundColor: cs.surfaceVariant,
-            labelStyle: TextStyle(color: cs.onSurfaceVariant),
+            labelStyle: TextStyle(
+              color: cs.onSurfaceVariant,
+              fontSize: 14, // Giảm size để fit tốt hơn nếu cần
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
           ),
         )
         .toList();

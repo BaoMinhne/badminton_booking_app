@@ -271,13 +271,7 @@ class AddFriendPage extends StatelessWidget {
     final isProcessing = friendManager.isActionInProgress(result.user.id);
     final cs = Theme.of(context).colorScheme;
 
-    final actions = <Widget>[
-      FilledButton.tonalIcon(
-        onPressed: () => _openProfile(context, result),
-        icon: const Icon(Icons.person_search_rounded),
-        label: const Text('Xem hồ sơ'),
-      ),
-    ];
+    final actions = <Widget>[];
 
     switch (relation.type) {
       case FriendRelationType.friends:
@@ -389,8 +383,7 @@ class AddFriendPage extends StatelessWidget {
     final confirmed = await _showConfirmDialog(
       context,
       title: 'Xóa lời mời kết bạn?',
-      message:
-          'Bạn có chắc muốn xóa lời mời kết bạn từ ${result.displayName}?',
+      message: 'Bạn có chắc muốn xóa lời mời kết bạn từ ${result.displayName}?',
     );
 
     if (!confirmed) return;

@@ -47,12 +47,13 @@ class _InvitationSheetState extends State<InvitationSheet> {
       final data = await widget.manager.loadComposerData();
       setState(() {
         _data = data;
-        _selectedRecruitment = data.recruitments.length == 1
-            ? data.recruitments.first.id
-            : null;
-        _selectedBooking = data.bookings.length == 1
-            ? data.bookings.first
-            : null;
+
+        if (data.recruitments.length == 1) {
+          _selectedRecruitment = data.recruitments.first.id;
+        } else if (data.recruitments.isEmpty && data.bookings.length == 1) {
+          _selectedBooking = data.bookings.first;
+        }
+
         _selectedCourt = data.courts.isNotEmpty ? data.courts.first.id : null;
       });
     } catch (err) {
@@ -141,6 +142,7 @@ class _InvitationSheetState extends State<InvitationSheet> {
                 onChanged: (value) {
                   setState(() {
                     _selectedRecruitment = value;
+                    _selectedBooking = null;
                   });
                 },
                 title: Text(post.courtName ?? 'Chưa chọn sân'),
@@ -151,7 +153,7 @@ class _InvitationSheetState extends State<InvitationSheet> {
             ),
             const Divider(),
           ],
-          if (recruitments.isEmpty && bookings.isNotEmpty) ...[
+          if (bookings.isNotEmpty) ...[
             Text('Booking hiện có', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             ...bookings.map(
@@ -239,7 +241,7 @@ class _InvitationSheetState extends State<InvitationSheet> {
           recruitmentId: recruitmentId,
           message: _note,
         );
-      } else if (_data!.bookings.isNotEmpty) {
+      } else if (_selectedBooking != null || _data!.bookings.isNotEmpty) {
         final booking = _selectedBooking ?? _data!.bookings.first;
         await widget.manager.sendBookingInvite(
           toUserId: toUserId,

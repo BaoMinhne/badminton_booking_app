@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:badminton_booking_app/models/friend_relation.dart';
 import 'package:badminton_booking_app/models/friend_search_result.dart';
 import 'package:badminton_booking_app/services/friend_request_service.dart';
 import 'package:badminton_booking_app/services/pocketbase_client.dart';
+import 'package:badminton_booking_app/services/recommender_service.dart';
 import 'package:badminton_booking_app/services/user_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:pocketbase/pocketbase.dart';
@@ -11,17 +13,24 @@ import 'package:pocketbase/pocketbase.dart';
 class FriendManager extends ChangeNotifier {
   FriendManager()
       : _userDetailsService = UserDetailsService(),
-        _friendRequestService = FriendRequestService();
+        _friendRequestService = FriendRequestService(),
+        _recommenderService = RecommenderService();
 
   Timer? _searchDebounce;
 
   final UserDetailsService _userDetailsService;
   final FriendRequestService _friendRequestService;
+  final RecommenderService _recommenderService;
 
   List<FriendSearchResult> _searchResults = const <FriendSearchResult>[];
   bool _isSearching = false;
   String _currentQuery = '';
   String? _error;
+
+  List<FriendSearchResult> _friendSuggestions = const <FriendSearchResult>[];
+  bool _isLoadingSuggestions = false;
+  String? _suggestionsError;
+  int _visibleSuggestions = 0;
 
   final Map<String, FriendRelationStatus> _relations = {};
   final Map<String, bool> _actionLoading = {};
@@ -41,6 +50,10 @@ class FriendManager extends ChangeNotifier {
   bool isFriend(String userId) =>
       _relations[userId]?.type == FriendRelationType.friends;
   bool isActionInProgress(String userId) => _actionLoading[userId] == true;
+  List<FriendSearchResult> get friendSuggestions => _friendSuggestions;
+  bool get isLoadingSuggestions => _isLoadingSuggestions;
+  String? get suggestionsError => _suggestionsError;
+  int get visibleSuggestions => _visibleSuggestions;
 
   FriendRelationStatus relationFor(String userId) =>
       _relations[userId] ?? const FriendRelationStatus.none();
@@ -197,7 +210,11 @@ class FriendManager extends ChangeNotifier {
         return;
       }
       _searchResults = results;
-      _loadRelationsForResults(results, term);
+      _loadRelationsForResults(
+        results,
+        term: term,
+        clearExisting: true,
+      );
     } catch (_) {
       if (_currentQuery.trim() != term) return;
       _error = 'Không thể tìm kiếm. Vui lòng thử lại.';
@@ -210,9 +227,10 @@ class FriendManager extends ChangeNotifier {
   }
 
   void _loadRelationsForResults(
-    List<FriendSearchResult> results,
-    String term,
-  ) {
+    List<FriendSearchResult> results, {
+    String? term,
+    bool clearExisting = false,
+  }) {
     unawaited(() async {
       try {
         final entries = await Future.wait(
@@ -223,16 +241,48 @@ class FriendManager extends ChangeNotifier {
           }),
         );
 
-        if (_currentQuery.trim() != term.trim()) return;
+        if (term != null && _currentQuery.trim() != term.trim()) return;
 
-        _relations
-          ..clear()
-          ..addEntries(entries);
+        if (clearExisting) {
+          _relations.clear();
+        }
+        _relations.addEntries(entries);
         notifyListeners();
       } catch (_) {
         // ignore background errors
       }
     }());
+  }
+
+  Future<void> loadFriendSuggestions({int limit = 20}) async {
+    _isLoadingSuggestions = true;
+    _suggestionsError = null;
+    notifyListeners();
+
+    try {
+      final results = await _recommenderService.fetchFriendSuggestions(
+        limit: limit,
+      );
+      _friendSuggestions = results;
+      _visibleSuggestions =
+          results.isEmpty ? 0 : math.min(5, _friendSuggestions.length);
+      _loadRelationsForResults(results);
+    } catch (_) {
+      _suggestionsError = 'Không thể tải gợi ý kết bạn. Vui lòng thử lại.';
+    } finally {
+      _isLoadingSuggestions = false;
+      notifyListeners();
+    }
+  }
+
+  void showMoreSuggestions() {
+    if (_visibleSuggestions >= _friendSuggestions.length) return;
+
+    _visibleSuggestions = math.min(
+      _visibleSuggestions + 5,
+      _friendSuggestions.length,
+    );
+    notifyListeners();
   }
 
   Future<void> sendFriendRequest(FriendSearchResult target) async {

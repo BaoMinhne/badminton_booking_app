@@ -213,7 +213,7 @@ class _SocialPageState extends State<SocialPage> {
                   children: const [
                     Icon(Icons.mail_outline_rounded, size: 20),
                     SizedBox(width: 8),
-                    Text('Invited'),
+                    Text('Invitations'),
                   ],
                 ),
               ),
@@ -514,7 +514,8 @@ class _SocialPageState extends State<SocialPage> {
                   children: [
                     Text(
                       'Lọc nâng cao',
-                      style: tt.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                      style:
+                          tt.titleLarge?.copyWith(fontWeight: FontWeight.w700),
                     ),
                     const Spacer(),
                     IconButton(
@@ -540,8 +541,7 @@ class _SocialPageState extends State<SocialPage> {
                 const SizedBox(height: 4),
                 Text(
                   'Match score tối thiểu: ${manager.minMatchScore.round()}%',
-                  style:
-                      tt.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                  style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 Slider(
                   min: 0,
@@ -1203,11 +1203,13 @@ class _InviteCard extends StatelessWidget {
     if (invite.startTime == null) return 'Thời gian đang đề xuất';
     final start = invite.startTime!;
     final end = invite.endTime;
-    final timeString = '${start.hour.toString().padLeft(2, '0')}:${start.minute.toString().padLeft(2, '0')}';
+    final timeString =
+        '${start.hour.toString().padLeft(2, '0')}:${start.minute.toString().padLeft(2, '0')}';
     if (end == null) {
       return '$timeString - ${_formatDate(start)}';
     }
-    final endStr = '${end.hour.toString().padLeft(2, '0')}:${end.minute.toString().padLeft(2, '0')}';
+    final endStr =
+        '${end.hour.toString().padLeft(2, '0')}:${end.minute.toString().padLeft(2, '0')}';
     return '$timeString - $endStr • ${_formatDate(start)}';
   }
 
@@ -1237,7 +1239,8 @@ class _StatusLabel extends StatelessWidget {
         fg = Colors.green.shade700;
         bg = Colors.green.withOpacity(0.12);
         icon = Icons.check_circle_rounded;
-        title = isOutgoing ? 'Đã được chấp nhận' : 'Bạn đã chấp nhận lời mời này';
+        title =
+            isOutgoing ? 'Đã được chấp nhận' : 'Bạn đã chấp nhận lời mời này';
         subtitle = 'Đã khoá lịch hẹn, hãy liên hệ để xác nhận chi tiết.';
         break;
       case 'rejected':
@@ -1258,7 +1261,8 @@ class _StatusLabel extends StatelessWidget {
         fg = cs.primary;
         bg = cs.primary.withOpacity(0.08);
         icon = Icons.hourglass_top_rounded;
-        title = isOutgoing ? 'Đã gửi • Chờ phản hồi' : 'Đang chờ phản hồi của bạn';
+        title =
+            isOutgoing ? 'Đã gửi • Chờ phản hồi' : 'Đang chờ phản hồi của bạn';
         subtitle = isOutgoing
             ? 'Người nhận sẽ xem và phản hồi sớm.'
             : 'Chấp nhận để chốt lịch, hoặc từ chối nếu chưa phù hợp.';
@@ -1425,8 +1429,8 @@ class _QuickFilterPanel extends StatelessWidget {
                       color: cs.primary.withOpacity(0.12),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(Icons.tune_rounded,
-                        color: cs.primary, size: 20),
+                    child:
+                        Icon(Icons.tune_rounded, color: cs.primary, size: 20),
                   ),
                   const SizedBox(width: 10),
                   Column(
@@ -1434,8 +1438,8 @@ class _QuickFilterPanel extends StatelessWidget {
                     children: [
                       Text(
                         'Bộ lọc nhanh',
-                        style:
-                            tt.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                        style: tt.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w800),
                       ),
                     ],
                   ),
@@ -1575,8 +1579,7 @@ class _FilterPill extends StatelessWidget {
               if (selected) ...[
                 Icon(Icons.check_rounded, size: 18, color: color),
                 const SizedBox(width: 6),
-              ]
-              else if (icon != null) ...[
+              ] else if (icon != null) ...[
                 Icon(icon, size: 18, color: cs.onSurfaceVariant),
                 const SizedBox(width: 6),
               ],

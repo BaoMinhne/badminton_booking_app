@@ -366,3 +366,138 @@ async def recommend_players_endpoint(user_id: str, limit: int = 10):
     # 3. Tính score & trả về top
     candidates = recommend_partners(me, others, limit=limit, weights=DEFAULT_WEIGHTS)
     return candidates
+
+
+# ---------------- FRIEND MODE CONFIG ---------------- #
+
+class FriendScoringWeights(BaseModel):
+    """
+    Cấu hình trọng số dành riêng cho gợi ý kết bạn.
+    Mục tiêu: tìm người có "gu chơi" và "sân nhà" giống nhau.
+    """
+
+    # Gợi ý kết bạn không cần trình độ quá sát
+    level: float = 20.0
+
+    # Hợp lối chơi khiến dễ làm bạn khi đánh chung
+    play_style: float = 25.0
+
+    # Intensity quan trọng vì những người cùng độ máu dễ hợp nhau
+    intensity: float = 30.0
+
+    # Rất quan trọng cho chức năng kết bạn: cùng sân → khả năng gặp nhau cao
+    home_court: float = 25.0
+
+    # Cho phép chênh level lớn hơn partner-mode
+    max_level_diff: int = 2   # vd: 1 vs 3 vẫn accept
+
+
+FRIEND_WEIGHTS = FriendScoringWeights()
+
+
+def compute_friend_score(
+    me: UserDetails,
+    other: UserDetails,
+    weights: FriendScoringWeights = FRIEND_WEIGHTS,
+) -> Tuple[float, Dict[str, Any]]:
+    """
+    Mode FRIEND:
+    - Không áp dụng giới tính / match_types
+    - Level chỉ loại nếu quá lệch (>2)
+    - Tập trung vào intensity, style và sân nhà
+    """
+
+    if me.user_id == other.user_id:
+        return 0.0, {"reason": "same_user"}
+
+    # 1. Level filter rất mềm
+    if abs(me.level_numeric - other.level_numeric) > weights.max_level_diff:
+        return 0.0, {"reason": "level_diff_too_high_for_friend"}
+
+    # 2. Scoring
+    scores = {}
+
+    # level
+    diff = abs(me.level_numeric - other.level_numeric)
+    if diff == 0:
+        scores["level"] = 1.0 * weights.level
+    elif diff == 1:
+        scores["level"] = 0.6 * weights.level
+    elif diff == 2:
+        scores["level"] = 0.2 * weights.level
+    else:
+        scores["level"] = 0.0
+
+    # play style
+    scores["style"] = _jaccard(me.play_style_tags, other.play_style_tags) * weights.play_style
+
+    # intensity
+    int_diff = abs(_intensity_value(me.intensity) - _intensity_value(other.intensity))
+    if int_diff == 0:
+        scores["intensity"] = 1.0 * weights.intensity
+    elif int_diff == 1:
+        scores["intensity"] = 0.5 * weights.intensity
+    else:
+        scores["intensity"] = 0.0
+
+    # home court
+    scores["home_court"] = (
+        weights.home_court if me.home_court and me.home_court == other.home_court else 0.0
+    )
+
+    total = sum(scores.values())
+    return total, scores
+
+
+def recommend_friends(
+    me: UserDetails,
+    others: List[UserDetails],
+    limit: int = 10,
+    weights: FriendScoringWeights = FRIEND_WEIGHTS,
+) -> List[MatchCandidate]:
+
+    candidates = []
+
+    for other in others:
+        score, details = compute_friend_score(me, other, weights=weights)
+        if score <= 0:
+            continue
+
+        candidates.append(
+            MatchCandidate(
+                user=other,
+                score=round(score, 2),
+                debug_info=details,
+            )
+        )
+
+    candidates.sort(key=lambda c: c.score, reverse=True)
+    return candidates[:limit]
+
+
+# ---------------- FASTAPI ENDPOINT: FRIENDS ---------------- #
+
+@app.get("/recommend/friends", response_model=List[MatchCandidate])
+async def recommend_friends_endpoint(user_id: str, limit: int = 10):
+    """
+    Gợi ý KẾT BẠN:
+    - Không xét giới tính
+    - Không xét match_types
+    - Level filter mềm
+    - Ưu tiên: intensity, playstyle, home_court
+    """
+
+    me_record = await get_user_details_by_user_id(user_id)
+    if not me_record:
+        raise HTTPException(status_code=404, detail="User details not found")
+
+    me = UserDetails.from_pb_record(me_record)
+
+    others_records = await get_all_other_user_details(user_id)
+    if not others_records:
+        return []
+
+    others = [UserDetails.from_pb_record(r) for r in others_records]
+
+    candidates = recommend_friends(me, others, limit=limit, weights=FRIEND_WEIGHTS)
+    return candidates

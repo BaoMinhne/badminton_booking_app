@@ -213,7 +213,7 @@ class _SocialPageState extends State<SocialPage> {
                   children: const [
                     Icon(Icons.mail_outline_rounded, size: 20),
                     SizedBox(width: 8),
-                    Text('Invited'),
+                    Text('Invitations'),
                   ],
                 ),
               ),
@@ -345,6 +345,8 @@ class _SocialPageState extends State<SocialPage> {
         animation: partnerManager,
         builder: (context, _) {
           final suggestions = partnerManager.suggestions;
+          final userManager = context.watch<UserManager>();
+          partnerManager.setHomeCourtId(userManager.myDetails?.homeCourtId);
 
           return CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -390,6 +392,12 @@ class _SocialPageState extends State<SocialPage> {
                         ],
                       ),
                       const SizedBox(height: 14),
+                      _QuickFilterPanel(
+                        manager: partnerManager,
+                        onAdvancedTap: () =>
+                            _openPartnerFilterSheet(context, partnerManager),
+                      ),
+                      const SizedBox(height: 12),
                       DecoratedBox(
                         decoration: BoxDecoration(
                           color: cs.primaryContainer,
@@ -432,6 +440,13 @@ class _SocialPageState extends State<SocialPage> {
                     onRetry: () => partnerManager.loadSuggestions(force: true),
                   ),
                 )
+              else if (suggestions.isEmpty)
+                const SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(
+                    child: Text('Không có gợi ý phù hợp với bộ lọc hiện tại.'),
+                  ),
+                )
               else
                 SliverPadding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -467,6 +482,91 @@ class _SocialPageState extends State<SocialPage> {
                 ),
               const SliverPadding(padding: EdgeInsets.only(bottom: 120)),
             ],
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _openPartnerFilterSheet(
+    BuildContext context,
+    PartnerSuggestionManager manager,
+  ) async {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => AnimatedBuilder(
+        animation: manager,
+        builder: (context, __) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      'Lọc nâng cao',
+                      style:
+                          tt.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).maybePop(),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Chỉ hiện người cùng sân nhà'),
+                  subtitle: Text(
+                    manager.homeCourtId == null
+                        ? 'Bạn chưa chọn sân nhà trong hồ sơ.'
+                        : 'Ưu tiên các partner có home court trùng với bạn.',
+                  ),
+                  value: manager.homeCourtId != null && manager.onlyHomeCourt,
+                  onChanged: manager.homeCourtId == null
+                      ? null
+                      : manager.setHomeCourtOnly,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Match score tối thiểu: ${manager.minMatchScore.round()}%',
+                  style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                Slider(
+                  min: 0,
+                  max: 100,
+                  divisions: 20,
+                  label: '${manager.minMatchScore.round()}%',
+                  value: manager.minMatchScore.clamp(0, 100),
+                  activeColor: cs.primary,
+                  onChanged: manager.setMinMatchScore,
+                ),
+                const SizedBox(height: 4),
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Ẩn người đã gửi lời mời hoặc đã là bạn'),
+                  subtitle: const Text(
+                    'Loại bỏ các profile bạn đã gửi/nhận lời mời hoặc đã trở thành bạn bè.',
+                  ),
+                  value: manager.hideExistingRelations,
+                  onChanged: (value) {
+                    if (value == null) return;
+                    unawaited(manager.setHideExistingRelations(value));
+                  },
+                ),
+              ],
+            ),
           );
         },
       ),
@@ -1103,11 +1203,13 @@ class _InviteCard extends StatelessWidget {
     if (invite.startTime == null) return 'Thời gian đang đề xuất';
     final start = invite.startTime!;
     final end = invite.endTime;
-    final timeString = '${start.hour.toString().padLeft(2, '0')}:${start.minute.toString().padLeft(2, '0')}';
+    final timeString =
+        '${start.hour.toString().padLeft(2, '0')}:${start.minute.toString().padLeft(2, '0')}';
     if (end == null) {
       return '$timeString - ${_formatDate(start)}';
     }
-    final endStr = '${end.hour.toString().padLeft(2, '0')}:${end.minute.toString().padLeft(2, '0')}';
+    final endStr =
+        '${end.hour.toString().padLeft(2, '0')}:${end.minute.toString().padLeft(2, '0')}';
     return '$timeString - $endStr • ${_formatDate(start)}';
   }
 
@@ -1137,7 +1239,8 @@ class _StatusLabel extends StatelessWidget {
         fg = Colors.green.shade700;
         bg = Colors.green.withOpacity(0.12);
         icon = Icons.check_circle_rounded;
-        title = isOutgoing ? 'Đã được chấp nhận' : 'Bạn đã chấp nhận lời mời này';
+        title =
+            isOutgoing ? 'Đã được chấp nhận' : 'Bạn đã chấp nhận lời mời này';
         subtitle = 'Đã khoá lịch hẹn, hãy liên hệ để xác nhận chi tiết.';
         break;
       case 'rejected':
@@ -1158,7 +1261,8 @@ class _StatusLabel extends StatelessWidget {
         fg = cs.primary;
         bg = cs.primary.withOpacity(0.08);
         icon = Icons.hourglass_top_rounded;
-        title = isOutgoing ? 'Đã gửi • Chờ phản hồi' : 'Đang chờ phản hồi của bạn';
+        title =
+            isOutgoing ? 'Đã gửi • Chờ phản hồi' : 'Đang chờ phản hồi của bạn';
         subtitle = isOutgoing
             ? 'Người nhận sẽ xem và phản hồi sớm.'
             : 'Chấp nhận để chốt lịch, hoặc từ chối nếu chưa phù hợp.';
@@ -1264,6 +1368,231 @@ class _ErrorBox extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _QuickFilterPanel extends StatelessWidget {
+  const _QuickFilterPanel({
+    required this.manager,
+    required this.onAdvancedTap,
+  });
+
+  final PartnerSuggestionManager manager;
+  final VoidCallback onAdvancedTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+
+    const matchTypeOptions = [
+      (label: 'Tất cả', value: null as String?),
+      (label: 'Đánh đơn', value: 'singles'),
+      (label: 'Đánh đôi', value: 'doubles'),
+      (label: 'Đôi nam nữ', value: 'mixed'),
+    ];
+
+    const intensityOptions = [
+      (label: 'Chơi vui', value: 'casual'),
+      (label: 'Vừa phải', value: 'semi_competitive'),
+      (label: 'Đánh giải', value: 'competitive'),
+    ];
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: cs.outlineVariant.withOpacity(0.6)),
+        boxShadow: [
+          BoxShadow(
+            color: cs.shadow.withOpacity(0.08),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: cs.primary.withOpacity(0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child:
+                        Icon(Icons.tune_rounded, color: cs.primary, size: 20),
+                  ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Bộ lọc nhanh',
+                        style: tt.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w800),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              TextButton.icon(
+                onPressed: onAdvancedTap,
+                icon: const Icon(Icons.expand_more_rounded),
+                label: const Text('Lọc nâng cao'),
+                style: TextButton.styleFrom(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  foregroundColor: cs.primary,
+                  backgroundColor: cs.primary.withOpacity(0.08),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Loại kèo',
+            style: tt.labelLarge?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 10,
+            children: [
+              for (final option in matchTypeOptions)
+                _FilterPill(
+                  label: option.label,
+                  icon: option.value == null
+                      ? Icons.all_inclusive_rounded
+                      : option.value == 'singles'
+                          ? Icons.person_outline_rounded
+                          : option.value == 'doubles'
+                              ? Icons.groups_2_outlined
+                              : Icons.favorite_outline_rounded,
+                  selected: manager.selectedMatchType == option.value,
+                  onTap: () => manager.setMatchType(
+                    manager.selectedMatchType == option.value
+                        ? null
+                        : option.value,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Độ "máu"',
+            style: tt.labelLarge?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 10,
+            children: [
+              for (final option in intensityOptions)
+                _FilterPill(
+                  label: option.label,
+                  icon: option.value == 'casual'
+                      ? Icons.sentiment_satisfied_alt_rounded
+                      : option.value == 'semi_competitive'
+                          ? Icons.bolt_rounded
+                          : Icons.emoji_events_outlined,
+                  selected: manager.selectedIntensity == option.value,
+                  onTap: () => manager.setIntensity(
+                    manager.selectedIntensity == option.value
+                        ? null
+                        : option.value,
+                  ),
+                  accentColor: cs.secondary,
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FilterPill extends StatelessWidget {
+  const _FilterPill({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.icon,
+    this.accentColor,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final IconData? icon;
+  final Color? accentColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+
+    final color = accentColor ?? cs.primary;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: selected
+                ? color.withOpacity(0.14)
+                : cs.surfaceVariant.withOpacity(0.45),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: selected ? color : cs.outlineVariant,
+              width: 1.2,
+            ),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: color.withOpacity(0.16),
+                      blurRadius: 14,
+                      offset: const Offset(0, 6),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (selected) ...[
+                Icon(Icons.check_rounded, size: 18, color: color),
+                const SizedBox(width: 6),
+              ] else if (icon != null) ...[
+                Icon(icon, size: 18, color: cs.onSurfaceVariant),
+                const SizedBox(width: 6),
+              ],
+              Text(
+                label,
+                style: tt.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: selected ? color : cs.onSurface,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

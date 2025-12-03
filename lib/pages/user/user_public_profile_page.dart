@@ -51,13 +51,14 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
     _service = UserDetailsService();
     _friendRequestService = FriendRequestService();
     _courtService = CourtService();
-    _details = widget.result.details;
-    _isLoading = _details == null;
-    if (_details == null) {
+    final initialDetails = widget.result.details;
+    _details = initialDetails;
+    _isLoading = initialDetails == null;
+    if (initialDetails == null) {
       _fetchDetails();
     } else {
       _isLoading = false;
-      _loadHomeCourtName(_details!.homeCourtId);
+      _loadHomeCourtName(initialDetails.homeCourtId);
     }
     _loadRelation();
   }

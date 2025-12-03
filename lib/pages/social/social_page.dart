@@ -1126,27 +1126,79 @@ class _StatusLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
+    Color fg;
+    Color bg;
+    IconData icon;
+    String title;
+    String subtitle;
 
-    String text;
     switch (invite.status) {
       case 'accepted':
-        text = isOutgoing
-            ? 'Đã được chấp nhận'
-            : 'Bạn đã chấp nhận lời mời này.';
+        fg = Colors.green.shade700;
+        bg = Colors.green.withOpacity(0.12);
+        icon = Icons.check_circle_rounded;
+        title = isOutgoing ? 'Đã được chấp nhận' : 'Bạn đã chấp nhận lời mời này';
+        subtitle = 'Đã khoá lịch hẹn, hãy liên hệ để xác nhận chi tiết.';
         break;
       case 'rejected':
-        text = isOutgoing ? 'Đã bị từ chối' : 'Bạn đã từ chối lời mời này.';
+        fg = Colors.red.shade600;
+        bg = Colors.red.withOpacity(0.1);
+        icon = Icons.cancel_rounded;
+        title = isOutgoing ? 'Đã bị từ chối' : 'Bạn đã từ chối lời mời này';
+        subtitle = 'Bạn có thể gửi lời mời khác hoặc chọn slot khác.';
         break;
       case 'cancelled':
-        text = isOutgoing ? 'Bạn đã huỷ lời mời này.' : 'Lời mời đã bị huỷ.';
+        fg = cs.onSurfaceVariant;
+        bg = cs.surfaceVariant.withOpacity(0.3);
+        icon = Icons.block_rounded;
+        title = isOutgoing ? 'Bạn đã huỷ lời mời này' : 'Lời mời đã bị huỷ';
+        subtitle = 'Nếu cần, hãy gửi lại lời mời mới với thông tin cập nhật.';
         break;
       default:
-        text = isOutgoing ? 'Đã gửi • Chờ phản hồi' : 'Đang chờ phản hồi của bạn.';
+        fg = cs.primary;
+        bg = cs.primary.withOpacity(0.08);
+        icon = Icons.hourglass_top_rounded;
+        title = isOutgoing ? 'Đã gửi • Chờ phản hồi' : 'Đang chờ phản hồi của bạn';
+        subtitle = isOutgoing
+            ? 'Người nhận sẽ xem và phản hồi sớm.'
+            : 'Chấp nhận để chốt lịch, hoặc từ chối nếu chưa phù hợp.';
     }
 
-    return Text(
-      text,
-      style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: fg.withOpacity(0.25)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: fg, size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: tt.bodyMedium?.copyWith(
+                    color: fg,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

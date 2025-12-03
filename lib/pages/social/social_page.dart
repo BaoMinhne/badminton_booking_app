@@ -1396,79 +1396,209 @@ class _QuickFilterPanel extends StatelessWidget {
       (label: 'Đánh giải', value: 'competitive'),
     ];
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Bộ lọc nhanh',
-              style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: cs.outlineVariant.withOpacity(0.6)),
+        boxShadow: [
+          BoxShadow(
+            color: cs.shadow.withOpacity(0.08),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: cs.primary.withOpacity(0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.tune_rounded,
+                        color: cs.primary, size: 20),
+                  ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Bộ lọc nhanh',
+                        style:
+                            tt.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Thu gọn gợi ý theo kèo và độ "máu"',
+                        style: tt.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              TextButton.icon(
+                onPressed: onAdvancedTap,
+                icon: const Icon(Icons.expand_more_rounded),
+                label: const Text('Lọc nâng cao'),
+                style: TextButton.styleFrom(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  foregroundColor: cs.primary,
+                  backgroundColor: cs.primary.withOpacity(0.08),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Loại kèo',
+            style: tt.labelLarge?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 10,
+            children: [
+              for (final option in matchTypeOptions)
+                _FilterPill(
+                  label: option.label,
+                  icon: option.value == null
+                      ? Icons.all_inclusive_rounded
+                      : option.value == 'singles'
+                          ? Icons.person_outline_rounded
+                          : option.value == 'doubles'
+                              ? Icons.groups_2_outlined
+                              : Icons.favorite_outline_rounded,
+                  selected: manager.selectedMatchType == option.value,
+                  onTap: () => manager.setMatchType(
+                    manager.selectedMatchType == option.value
+                        ? null
+                        : option.value,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Độ "máu"',
+            style: tt.labelLarge?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 10,
+            children: [
+              for (final option in intensityOptions)
+                _FilterPill(
+                  label: option.label,
+                  icon: option.value == 'casual'
+                      ? Icons.sentiment_satisfied_alt_rounded
+                      : option.value == 'semi_competitive'
+                          ? Icons.bolt_rounded
+                          : Icons.emoji_events_outlined,
+                  selected: manager.selectedIntensity == option.value,
+                  onTap: () => manager.setIntensity(
+                    manager.selectedIntensity == option.value
+                        ? null
+                        : option.value,
+                  ),
+                  accentColor: cs.secondary,
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FilterPill extends StatelessWidget {
+  const _FilterPill({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.icon,
+    this.accentColor,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final IconData? icon;
+  final Color? accentColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+
+    final color = accentColor ?? cs.primary;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: selected
+                ? color.withOpacity(0.14)
+                : cs.surfaceVariant.withOpacity(0.45),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: selected ? color : cs.outlineVariant,
+              width: 1.2,
             ),
-            OutlinedButton.icon(
-              onPressed: onAdvancedTap,
-              icon: const Icon(Icons.filter_alt_rounded),
-              label: const Text('Lọc nâng cao'),
-              style: OutlinedButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: color.withOpacity(0.16),
+                      blurRadius: 14,
+                      offset: const Offset(0, 6),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (selected) ...[
+                Icon(Icons.check_rounded, size: 18, color: color),
+                const SizedBox(width: 6),
+              ]
+              else if (icon != null) ...[
+                Icon(icon, size: 18, color: cs.onSurfaceVariant),
+                const SizedBox(width: 6),
+              ],
+              Text(
+                label,
+                style: tt.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: selected ? color : cs.onSurface,
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-        const SizedBox(height: 8),
-        Text(
-          'Loại kèo',
-          style: tt.labelLarge?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final option in matchTypeOptions)
-              FilterChip(
-                selected: manager.selectedMatchType == option.value,
-                label: Text(option.label),
-                onSelected: (selected) =>
-                    manager.setMatchType(selected ? option.value : null),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                selectedColor: cs.primaryContainer,
-                checkmarkColor: cs.onPrimaryContainer,
-              ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Text(
-          'Độ "máu"',
-          style: tt.labelLarge?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final option in intensityOptions)
-              FilterChip(
-                selected: manager.selectedIntensity == option.value,
-                label: Text(option.label),
-                onSelected: (selected) =>
-                    manager.setIntensity(selected ? option.value : null),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                selectedColor: cs.secondaryContainer,
-                checkmarkColor: cs.onSecondaryContainer,
-              ),
-          ],
-        ),
-      ],
+      ),
     );
   }
 }

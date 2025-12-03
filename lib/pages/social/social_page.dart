@@ -1437,14 +1437,6 @@ class _QuickFilterPanel extends StatelessWidget {
                         style:
                             tt.titleMedium?.copyWith(fontWeight: FontWeight.w800),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Thu gọn gợi ý theo kèo và độ "máu"',
-                        style: tt.bodySmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
                     ],
                   ),
                 ],

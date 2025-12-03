@@ -1,10 +1,16 @@
+import 'package:badminton_booking_app/models/chat_contact.dart';
 import 'package:badminton_booking_app/models/friend_relation.dart';
 import 'package:badminton_booking_app/models/friend_search_result.dart';
 import 'package:badminton_booking_app/models/user_details.dart';
+import 'package:badminton_booking_app/pages/social/chat/chat_page.dart';
+import 'package:badminton_booking_app/services/chat_service.dart';
 import 'package:badminton_booking_app/services/friend_request_service.dart';
 import 'package:badminton_booking_app/services/user_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+
+import '../social/chat/chat_conversation_manager.dart';
 
 class UserPublicProfilePage extends StatefulWidget {
   const UserPublicProfilePage({super.key, required this.result});
@@ -866,8 +872,59 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
   }
 
   void _openChat() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Tính năng nhắn tin sẽ sớm ra mắt.')),
+    final contact = ChatContact(
+      id: widget.result.user.id,
+      userId: widget.result.user.id,
+      name: widget.result.displayName,
+      avatarText: widget.result.initials,
+      avatarUrl: _details?.avatarUrl,
+      statusMessage:
+          _details?.level ?? widget.result.user.email ?? widget.result.user.phone,
     );
+
+    final service = ChatService();
+    final navigator = Navigator.of(context);
+    final scaffold = ScaffoldMessenger.of(context);
+
+    () async {
+      try {
+        final targetUserId = contact.userId ?? contact.id;
+
+        if (targetUserId == null) {
+          throw Exception('Không xác định được người nhận tin nhắn.');
+        }
+
+        String? roomId = contact.chatId;
+        if (roomId == null &&
+            contact.userId != null &&
+            contact.id != null &&
+            contact.id != contact.userId) {
+          roomId = contact.id;
+        }
+
+        final ensuredRoom = roomId ?? await service.ensureRoomWith(targetUserId);
+
+        if (!mounted) return;
+
+        final targetContact = contact.copyWith(
+          id: ensuredRoom,
+          chatId: ensuredRoom,
+        );
+
+        navigator.push(
+          MaterialPageRoute(
+            builder: (_) => ChangeNotifierProvider(
+              create: (_) =>
+                  ChatConversationManager(chatId: ensuredRoom)..initialize(),
+              child: ChatPage(contact: targetContact),
+            ),
+          ),
+        );
+      } catch (error) {
+        scaffold.showSnackBar(
+          SnackBar(content: Text('$error')),
+        );
+      }
+    }();
   }
 }

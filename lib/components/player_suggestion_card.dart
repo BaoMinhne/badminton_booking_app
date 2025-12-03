@@ -30,11 +30,12 @@ class PlayerSuggestionCard extends StatelessWidget {
     final tt = Theme.of(context).textTheme;
 
     // Gradient cho match score dựa trên giá trị (hiện đại hóa visual feedback)
+    final Color highMatchColor = const Color(0xFF66BB6A); // xanh lá nhạt dễ nhìn
     Color matchColor = matchScore >= 80
-        ? cs.primary
+        ? highMatchColor
         : (matchScore >= 50 ? cs.secondary : cs.error);
     Color matchTextColor = matchScore >= 80
-        ? cs.onPrimary
+        ? const Color(0xFF1B5E20)
         : (matchScore >= 50
             ? cs.onSecondary
             : matchColor.withOpacity(0.8));

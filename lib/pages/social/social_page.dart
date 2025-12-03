@@ -1434,7 +1434,8 @@ class _QuickFilterPanel extends StatelessWidget {
               FilterChip(
                 selected: manager.selectedMatchType == option.value,
                 label: Text(option.label),
-                onSelected: (_) => manager.setMatchType(option.value),
+                onSelected: (selected) =>
+                    manager.setMatchType(selected ? option.value : null),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -1457,7 +1458,8 @@ class _QuickFilterPanel extends StatelessWidget {
               FilterChip(
                 selected: manager.selectedIntensity == option.value,
                 label: Text(option.label),
-                onSelected: (_) => manager.setIntensity(option.value),
+                onSelected: (selected) =>
+                    manager.setIntensity(selected ? option.value : null),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),

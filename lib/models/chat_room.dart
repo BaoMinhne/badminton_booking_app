@@ -85,6 +85,9 @@ DateTime? _parseDateTime(dynamic value) {
 }
 
 String _resolveDisplayName(RecordModel userRecord) {
+  final fullname = userRecord.getStringValue('fullname').trim();
+  if (fullname.isNotEmpty) return fullname;
+
   final username = userRecord.getStringValue('username');
   if (username.isNotEmpty) return username;
 

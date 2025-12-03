@@ -345,6 +345,8 @@ class _SocialPageState extends State<SocialPage> {
         animation: partnerManager,
         builder: (context, _) {
           final suggestions = partnerManager.suggestions;
+          final userManager = context.watch<UserManager>();
+          partnerManager.setHomeCourtId(userManager.myDetails?.homeCourtId);
 
           return CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -390,6 +392,12 @@ class _SocialPageState extends State<SocialPage> {
                         ],
                       ),
                       const SizedBox(height: 14),
+                      _QuickFilterPanel(
+                        manager: partnerManager,
+                        onAdvancedTap: () =>
+                            _openPartnerFilterSheet(context, partnerManager),
+                      ),
+                      const SizedBox(height: 12),
                       DecoratedBox(
                         decoration: BoxDecoration(
                           color: cs.primaryContainer,
@@ -432,6 +440,13 @@ class _SocialPageState extends State<SocialPage> {
                     onRetry: () => partnerManager.loadSuggestions(force: true),
                   ),
                 )
+              else if (suggestions.isEmpty)
+                const SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(
+                    child: Text('Không có gợi ý phù hợp với bộ lọc hiện tại.'),
+                  ),
+                )
               else
                 SliverPadding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -467,6 +482,91 @@ class _SocialPageState extends State<SocialPage> {
                 ),
               const SliverPadding(padding: EdgeInsets.only(bottom: 120)),
             ],
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _openPartnerFilterSheet(
+    BuildContext context,
+    PartnerSuggestionManager manager,
+  ) async {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => AnimatedBuilder(
+        animation: manager,
+        builder: (context, __) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      'Lọc nâng cao',
+                      style: tt.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).maybePop(),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Chỉ hiện người cùng sân nhà'),
+                  subtitle: Text(
+                    manager.homeCourtId == null
+                        ? 'Bạn chưa chọn sân nhà trong hồ sơ.'
+                        : 'Ưu tiên các partner có home court trùng với bạn.',
+                  ),
+                  value: manager.homeCourtId != null && manager.onlyHomeCourt,
+                  onChanged: manager.homeCourtId == null
+                      ? null
+                      : manager.setHomeCourtOnly,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Match score tối thiểu: ${manager.minMatchScore.round()}%',
+                  style:
+                      tt.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                Slider(
+                  min: 0,
+                  max: 100,
+                  divisions: 20,
+                  label: '${manager.minMatchScore.round()}%',
+                  value: manager.minMatchScore.clamp(0, 100),
+                  activeColor: cs.primary,
+                  onChanged: manager.setMinMatchScore,
+                ),
+                const SizedBox(height: 4),
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Ẩn người đã gửi lời mời hoặc đã là bạn'),
+                  subtitle: const Text(
+                    'Loại bỏ các profile bạn đã gửi/nhận lời mời hoặc đã trở thành bạn bè.',
+                  ),
+                  value: manager.hideExistingRelations,
+                  onChanged: (value) {
+                    if (value == null) return;
+                    unawaited(manager.setHideExistingRelations(value));
+                  },
+                ),
+              ],
+            ),
           );
         },
       ),
@@ -1265,6 +1365,108 @@ class _ErrorBox extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _QuickFilterPanel extends StatelessWidget {
+  const _QuickFilterPanel({
+    required this.manager,
+    required this.onAdvancedTap,
+  });
+
+  final PartnerSuggestionManager manager;
+  final VoidCallback onAdvancedTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+
+    const matchTypeOptions = [
+      (label: 'Tất cả', value: null as String?),
+      (label: 'Đánh đơn', value: 'singles'),
+      (label: 'Đánh đôi', value: 'doubles'),
+      (label: 'Đôi nam nữ', value: 'mixed'),
+    ];
+
+    const intensityOptions = [
+      (label: 'Chơi vui', value: 'casual'),
+      (label: 'Vừa phải', value: 'semi_competitive'),
+      (label: 'Đánh giải', value: 'competitive'),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Bộ lọc nhanh',
+              style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            OutlinedButton.icon(
+              onPressed: onAdvancedTap,
+              icon: const Icon(Icons.filter_alt_rounded),
+              label: const Text('Lọc nâng cao'),
+              style: OutlinedButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Loại kèo',
+          style: tt.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final option in matchTypeOptions)
+              FilterChip(
+                selected: manager.selectedMatchType == option.value,
+                label: Text(option.label),
+                onSelected: (_) => manager.setMatchType(option.value),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                selectedColor: cs.primaryContainer,
+                checkmarkColor: cs.onPrimaryContainer,
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Độ "máu"',
+          style: tt.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final option in intensityOptions)
+              FilterChip(
+                selected: manager.selectedIntensity == option.value,
+                label: Text(option.label),
+                onSelected: (_) => manager.setIntensity(option.value),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                selectedColor: cs.secondaryContainer,
+                checkmarkColor: cs.onSecondaryContainer,
+              ),
+          ],
+        ),
+      ],
     );
   }
 }

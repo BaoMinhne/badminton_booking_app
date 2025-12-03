@@ -42,7 +42,15 @@ class ChatRoom {
     String avatarText = '??';
 
     if (otherUser is RecordModel) {
-      otherUserName = _resolveDisplayName(otherUser);
+      final expandedDetails =
+          (otherUser.expand['user_details_via_user_id'] as List<dynamic>?)
+              ?.whereType<RecordModel>()
+              .toList(growable: false);
+      final details =
+          (expandedDetails != null && expandedDetails.isNotEmpty)
+              ? expandedDetails.first
+              : null;
+      otherUserName = _resolveDisplayName(otherUser, details: details);
       avatarText = _initials(otherUserName);
     }
 
@@ -84,7 +92,12 @@ DateTime? _parseDateTime(dynamic value) {
   return null;
 }
 
-String _resolveDisplayName(RecordModel userRecord) {
+String _resolveDisplayName(RecordModel userRecord, {RecordModel? details}) {
+  final fullnameFromDetails = details?.getStringValue('fullname').trim();
+  if (fullnameFromDetails != null && fullnameFromDetails.isNotEmpty) {
+    return fullnameFromDetails;
+  }
+
   final fullname = userRecord.getStringValue('fullname').trim();
   if (fullname.isNotEmpty) return fullname;
 

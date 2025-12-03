@@ -72,6 +72,18 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
     try {
       final details = await _service.getByUserId(widget.result.user.id);
       if (!mounted) return;
+
+      if (details == null) {
+        setState(() {
+          _details = null;
+          _homeCourtName = null;
+          _isHomeCourtLoading = false;
+          _error = 'Không thể tải hồ sơ người dùng. Vui lòng thử lại sau.';
+          _isLoading = false;
+        });
+        return;
+      }
+
       setState(() {
         _details = details;
         _isLoading = false;

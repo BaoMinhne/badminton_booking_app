@@ -234,13 +234,30 @@ class InvitationService {
       }
 
       if (existing == null) {
-        await pb
-            .collection(RecruitmentService.recruitmentApplicantsCollection)
-            .create(body: {
-          'recruitment': recruitmentId,
-          'user': userId,
-          'status': 'accepted',
-        });
+        try {
+          await pb
+              .collection(RecruitmentService.recruitmentApplicantsCollection)
+              .create(body: {
+            'recruitment': recruitmentId,
+            'user': userId,
+            'status': 'accepted',
+          });
+        } on ClientException catch (error) {
+          // Nếu record đã tồn tại (hoặc đột biến khác) khiến create thất bại,
+          // thử tìm lại và cập nhật để tránh làm hỏng luồng accept.
+          try {
+            final fallback = await pb
+                .collection(RecruitmentService.recruitmentApplicantsCollection)
+                .getFirstListItem(filter);
+            await pb
+                .collection(RecruitmentService.recruitmentApplicantsCollection)
+                .update(fallback.id, body: {
+              'status': 'accepted',
+            });
+          } on ClientException catch (nested) {
+            throw InvitationServiceException(_mapClientError(nested));
+          }
+        }
       } else {
         await pb
             .collection(RecruitmentService.recruitmentApplicantsCollection)

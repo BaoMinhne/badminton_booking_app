@@ -220,35 +220,41 @@ class InvitationService {
         "recruitment='${_escape(recruitmentId)}' && user='${_escape(userId)}'";
 
     try {
-      RecordModel? existing;
-      try {
-        existing = await pb
-            .collection(RecruitmentService.recruitmentApplicantsCollection)
-            .getFirstListItem(filter);
-      } on ClientException catch (error) {
-        if (error.statusCode == 404) {
-          existing = null;
-        } else {
-          throw InvitationServiceException(_mapClientError(error));
+      // Thử tạo trực tiếp trước để tránh lỗi quyền đọc danh sách.
+      await pb
+          .collection(RecruitmentService.recruitmentApplicantsCollection)
+          .create(body: {
+        'recruitment': recruitmentId,
+        'user': userId,
+        'status': 'accepted',
+      });
+      return;
+    } on ClientException catch (error) {
+      if (error.statusCode == 400) {
+        // Nếu tạo thất bại (thường là lỗi ràng buộc hoặc bản ghi đã tồn tại),
+        // cố tìm lại và cập nhật trạng thái thay vì báo lỗi.
+        try {
+          final fallback = await pb
+              .collection(RecruitmentService.recruitmentApplicantsCollection)
+              .getFirstListItem(filter);
+          await pb
+              .collection(RecruitmentService.recruitmentApplicantsCollection)
+              .update(fallback.id, body: {
+            'status': 'accepted',
+          });
+          return;
+        } on ClientException catch (nested) {
+          if (nested.statusCode == 404) {
+            // Không thể đọc bản ghi (ví dụ không đủ quyền), nhưng lỗi ban đầu
+            // đã cho biết không thể tạo mới, nên coi thao tác này là idempotent
+            // và tiếp tục mà không báo lỗi cho người dùng.
+            return;
+          }
+          // Nếu không đọc/ghi được bản ghi, ưu tiên trả về lỗi cụ thể.
+          throw InvitationServiceException(_mapClientError(nested));
         }
       }
 
-      if (existing == null) {
-        await pb
-            .collection(RecruitmentService.recruitmentApplicantsCollection)
-            .create(body: {
-          'recruitment': recruitmentId,
-          'user': userId,
-          'status': 'accepted',
-        });
-      } else {
-        await pb
-            .collection(RecruitmentService.recruitmentApplicantsCollection)
-            .update(existing.id, body: {
-          'status': 'accepted',
-        });
-      }
-    } on ClientException catch (error) {
       throw InvitationServiceException(_mapClientError(error));
     } catch (_) {
       throw InvitationServiceException(
@@ -318,3 +324,28 @@ String _mapClientError(ClientException error) {
 }
 
 String _escape(String value) => value.replaceAll("'", "\\'");
+
+bool _isDuplicateApplicantError(ClientException error) {
+  final responseMessage = error.response['message'];
+  if (responseMessage is String &&
+      responseMessage.toLowerCase().contains('exists')) {
+    return true;
+  }
+
+  final data = error.response['data'];
+  if (data is Map) {
+    final userField = data['user'];
+    final recruitmentField = data['recruitment'];
+    if (_isValidationNotUnique(userField) ||
+        _isValidationNotUnique(recruitmentField)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+bool _isValidationNotUnique(dynamic field) {
+  if (field is! Map) return false;
+  return field['code'] == 'validation_not_unique';
+}

@@ -230,31 +230,32 @@ class InvitationService {
       });
       return;
     } on ClientException catch (error) {
-      if (error.statusCode != 400 || !_isDuplicateApplicantError(error)) {
-        throw InvitationServiceException(_mapClientError(error));
+      if (error.statusCode == 400) {
+        // Nếu tạo thất bại (thường là lỗi ràng buộc hoặc bản ghi đã tồn tại),
+        // cố tìm lại và cập nhật trạng thái thay vì báo lỗi.
+        try {
+          final fallback = await pb
+              .collection(RecruitmentService.recruitmentApplicantsCollection)
+              .getFirstListItem(filter);
+          await pb
+              .collection(RecruitmentService.recruitmentApplicantsCollection)
+              .update(fallback.id, body: {
+            'status': 'accepted',
+          });
+          return;
+        } on ClientException catch (nested) {
+          if (nested.statusCode == 404) {
+            // Không thể đọc bản ghi (ví dụ không đủ quyền), nhưng lỗi ban đầu
+            // đã cho biết không thể tạo mới, nên coi thao tác này là idempotent
+            // và tiếp tục mà không báo lỗi cho người dùng.
+            return;
+          }
+          // Nếu không đọc/ghi được bản ghi, ưu tiên trả về lỗi cụ thể.
+          throw InvitationServiceException(_mapClientError(nested));
+        }
       }
 
-      // Nếu tạo thất bại do vi phạm ràng buộc (ví dụ bản ghi đã tồn tại),
-      // cố tìm lại và cập nhật trạng thái thay vì báo lỗi.
-      try {
-        final fallback = await pb
-            .collection(RecruitmentService.recruitmentApplicantsCollection)
-            .getFirstListItem(filter);
-        await pb
-            .collection(RecruitmentService.recruitmentApplicantsCollection)
-            .update(fallback.id, body: {
-          'status': 'accepted',
-        });
-        return;
-      } on ClientException catch (nested) {
-        if (nested.statusCode == 404) {
-          // Không thể đọc bản ghi (ví dụ không đủ quyền), nhưng lỗi ban đầu
-          // cho biết đã có ứng viên tồn tại nên coi như thao tác thành công.
-          return;
-        }
-        // Nếu không đọc/ghi được bản ghi, ưu tiên trả về lỗi cụ thể.
-        throw InvitationServiceException(_mapClientError(nested));
-      }
+      throw InvitationServiceException(_mapClientError(error));
     } catch (_) {
       throw InvitationServiceException(
           'Không thể thêm thành viên vào bài tuyển.');

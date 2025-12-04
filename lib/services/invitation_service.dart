@@ -230,7 +230,7 @@ class InvitationService {
       });
       return;
     } on ClientException catch (error) {
-      if (error.statusCode != 400) {
+      if (error.statusCode != 400 || !_isDuplicateApplicantError(error)) {
         throw InvitationServiceException(_mapClientError(error));
       }
 
@@ -247,8 +247,12 @@ class InvitationService {
         });
         return;
       } on ClientException catch (nested) {
-        // Nếu không đọc/ghi được bản ghi, ưu tiên trả về lỗi gốc để người dùng
-        // biết thao tác chưa hoàn tất.
+        if (nested.statusCode == 404) {
+          // Không thể đọc bản ghi (ví dụ không đủ quyền), nhưng lỗi ban đầu
+          // cho biết đã có ứng viên tồn tại nên coi như thao tác thành công.
+          return;
+        }
+        // Nếu không đọc/ghi được bản ghi, ưu tiên trả về lỗi cụ thể.
         throw InvitationServiceException(_mapClientError(nested));
       }
     } catch (_) {
@@ -319,3 +323,28 @@ String _mapClientError(ClientException error) {
 }
 
 String _escape(String value) => value.replaceAll("'", "\\'");
+
+bool _isDuplicateApplicantError(ClientException error) {
+  final responseMessage = error.response['message'];
+  if (responseMessage is String &&
+      responseMessage.toLowerCase().contains('exists')) {
+    return true;
+  }
+
+  final data = error.response['data'];
+  if (data is Map) {
+    final userField = data['user'];
+    final recruitmentField = data['recruitment'];
+    if (_isValidationNotUnique(userField) ||
+        _isValidationNotUnique(recruitmentField)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+bool _isValidationNotUnique(dynamic field) {
+  if (field is! Map) return false;
+  return field['code'] == 'validation_not_unique';
+}

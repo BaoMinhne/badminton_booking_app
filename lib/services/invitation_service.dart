@@ -220,53 +220,37 @@ class InvitationService {
         "recruitment='${_escape(recruitmentId)}' && user='${_escape(userId)}'";
 
     try {
-      RecordModel? existing;
-      try {
-        existing = await pb
-            .collection(RecruitmentService.recruitmentApplicantsCollection)
-            .getFirstListItem(filter);
-      } on ClientException catch (error) {
-        if (error.statusCode == 404) {
-          existing = null;
-        } else {
-          throw InvitationServiceException(_mapClientError(error));
-        }
+      // Thử tạo trực tiếp trước để tránh lỗi quyền đọc danh sách.
+      await pb
+          .collection(RecruitmentService.recruitmentApplicantsCollection)
+          .create(body: {
+        'recruitment': recruitmentId,
+        'user': userId,
+        'status': 'accepted',
+      });
+      return;
+    } on ClientException catch (error) {
+      if (error.statusCode != 400) {
+        throw InvitationServiceException(_mapClientError(error));
       }
 
-      if (existing == null) {
-        try {
-          await pb
-              .collection(RecruitmentService.recruitmentApplicantsCollection)
-              .create(body: {
-            'recruitment': recruitmentId,
-            'user': userId,
-            'status': 'accepted',
-          });
-        } on ClientException catch (error) {
-          // Nếu record đã tồn tại (hoặc đột biến khác) khiến create thất bại,
-          // thử tìm lại và cập nhật để tránh làm hỏng luồng accept.
-          try {
-            final fallback = await pb
-                .collection(RecruitmentService.recruitmentApplicantsCollection)
-                .getFirstListItem(filter);
-            await pb
-                .collection(RecruitmentService.recruitmentApplicantsCollection)
-                .update(fallback.id, body: {
-              'status': 'accepted',
-            });
-          } on ClientException catch (nested) {
-            throw InvitationServiceException(_mapClientError(nested));
-          }
-        }
-      } else {
+      // Nếu tạo thất bại do vi phạm ràng buộc (ví dụ bản ghi đã tồn tại),
+      // cố tìm lại và cập nhật trạng thái thay vì báo lỗi.
+      try {
+        final fallback = await pb
+            .collection(RecruitmentService.recruitmentApplicantsCollection)
+            .getFirstListItem(filter);
         await pb
             .collection(RecruitmentService.recruitmentApplicantsCollection)
-            .update(existing.id, body: {
+            .update(fallback.id, body: {
           'status': 'accepted',
         });
+        return;
+      } on ClientException catch (nested) {
+        // Nếu không đọc/ghi được bản ghi, ưu tiên trả về lỗi gốc để người dùng
+        // biết thao tác chưa hoàn tất.
+        throw InvitationServiceException(_mapClientError(nested));
       }
-    } on ClientException catch (error) {
-      throw InvitationServiceException(_mapClientError(error));
     } catch (_) {
       throw InvitationServiceException(
           'Không thể thêm thành viên vào bài tuyển.');

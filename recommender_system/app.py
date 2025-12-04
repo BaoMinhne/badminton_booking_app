@@ -3,10 +3,12 @@ from typing import List, Optional, Any, Dict, Tuple
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-# DÙNG IMPORT THẬT TỪ POCKETBASE CLIENT CỦA BẠN
-from pocketbase_client import (
+# DÙNG IMPORT THẬT TỪ POCKETBASE CLIENT/SERVICE CỦA BẠN
+from pocketbase_service import (
     get_user_details_by_user_id,
     get_all_other_user_details,
+    create_recommendation_log,
+    create_match_feedback,
 )
 
 
@@ -76,6 +78,17 @@ class MatchCandidate(BaseModel):
     score: float
     # Để debug: lưu được cả số điểm từng tiêu chí hoặc reason bị loại
     debug_info: Optional[Dict[str, Any]] = None
+
+
+class MatchFeedbackRequest(BaseModel):
+    """
+    Payload nhận feedback sau khi chơi.
+    """
+    from_user_id: str           # ai đang đánh giá
+    to_user_id: str             # đang đánh giá ai
+    booking_id: Optional[str] = None  # trận / booking cụ thể (có thể None)
+    feedback: str               # "good" | "ok" | "bad"
+    comment: Optional[str] = None
 
 
 # ---------- SCORING CONFIG ----------
@@ -332,6 +345,45 @@ def recommend_partners(
     return candidates[:limit]
 
 
+# ---------- LOGGING HELPERS ----------
+
+
+async def log_recommendations(
+    *,
+    from_user_id: str,
+    candidates: List[MatchCandidate],
+    mode: str,  # "partner" | "friend"
+) -> None:
+    """
+    Ghi log cho mỗi candidate vào collection recommendation_logs.
+
+    - from_user_id: user đang được gợi ý danh sách
+    - candidates  : danh sách gợi ý (MatchCandidate)
+    - mode        : "partner" hoặc "friend" (để sau này dễ phân tích)
+    """
+    for index, c in enumerate(candidates, start=1):
+        try:
+            # copy debug_info (có thể là None)
+            features: Dict[str, Any] = dict(c.debug_info or {})
+            features["mode"] = mode
+
+            await create_recommendation_log(
+                from_user_id=from_user_id,
+                to_user_id=c.user.user_id,
+                rule_score=c.score,
+                rank_in_list=index,
+                features=features,
+                invited=False,
+                accepted=False,
+            )
+        except Exception as e:
+            # Không làm vỡ response chỉ vì log lỗi
+            print(
+                f"[RECO_LOG][ERROR] cannot log recommendation "
+                f"{from_user_id} -> {c.user.user_id}: {e}"
+            )
+
+
 # ---------- FASTAPI APP ----------
 
 
@@ -341,6 +393,30 @@ app = FastAPI(title="Badminton Recommendation Service")
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
+
+
+@app.post("/feedback/match")
+async def submit_match_feedback(payload: MatchFeedbackRequest):
+    """
+    Nhận feedback sau khi chơi:
+    - from_user_id: người cho feedback
+    - to_user_id  : người được đánh giá
+    - booking_id  : trận/booking liên quan (có thể None)
+    - feedback    : "good" | "ok" | "bad"
+    - comment     : ghi chú thêm
+    """
+    try:
+        record = await create_match_feedback(
+            from_user_id=payload.from_user_id,
+            to_user_id=payload.to_user_id,
+            booking_id=payload.booking_id,
+            feedback=payload.feedback,
+            comment=payload.comment,
+        )
+        return {"status": "ok", "id": record.get("id")}
+    except Exception as e:
+        print("[MATCH_FEEDBACK][ERROR] cannot create match_feedback record:", e)
+        raise HTTPException(status_code=500, detail="Cannot save feedback")
 
 
 @app.get("/recommend/players", response_model=List[MatchCandidate])
@@ -365,10 +441,19 @@ async def recommend_players_endpoint(user_id: str, limit: int = 10):
 
     # 3. Tính score & trả về top
     candidates = recommend_partners(me, others, limit=limit, weights=DEFAULT_WEIGHTS)
+
+    # 4. Ghi log recommendation (mode = "partner")
+    await log_recommendations(
+        from_user_id=user_id,
+        candidates=candidates,
+        mode="partner",
+    )
+
     return candidates
 
 
 # ---------------- FRIEND MODE CONFIG ---------------- #
+
 
 class FriendScoringWeights(BaseModel):
     """
@@ -415,7 +500,7 @@ def compute_friend_score(
         return 0.0, {"reason": "level_diff_too_high_for_friend"}
 
     # 2. Scoring
-    scores = {}
+    scores: Dict[str, float] = {}
 
     # level
     diff = abs(me.level_numeric - other.level_numeric)
@@ -456,7 +541,7 @@ def recommend_friends(
     weights: FriendScoringWeights = FRIEND_WEIGHTS,
 ) -> List[MatchCandidate]:
 
-    candidates = []
+    candidates: List[MatchCandidate] = []
 
     for other in others:
         score, details = compute_friend_score(me, other, weights=weights)
@@ -476,6 +561,7 @@ def recommend_friends(
 
 
 # ---------------- FASTAPI ENDPOINT: FRIENDS ---------------- #
+
 
 @app.get("/recommend/friends", response_model=List[MatchCandidate])
 async def recommend_friends_endpoint(user_id: str, limit: int = 10):
@@ -500,4 +586,12 @@ async def recommend_friends_endpoint(user_id: str, limit: int = 10):
     others = [UserDetails.from_pb_record(r) for r in others_records]
 
     candidates = recommend_friends(me, others, limit=limit, weights=FRIEND_WEIGHTS)
+
+    # Ghi log recommendation (mode = "friend")
+    await log_recommendations(
+        from_user_id=user_id,
+        candidates=candidates,
+        mode="friend",
+    )
+
     return candidates

@@ -4,6 +4,7 @@ import 'package:badminton_booking_app/models/friend_search_result.dart';
 import 'package:badminton_booking_app/models/user_details.dart';
 import 'package:badminton_booking_app/pages/social/chat/chat_page.dart';
 import 'package:badminton_booking_app/services/chat_service.dart';
+import 'package:badminton_booking_app/services/court_service.dart';
 import 'package:badminton_booking_app/services/friend_request_service.dart';
 import 'package:badminton_booking_app/services/user_service.dart';
 import 'package:flutter/material.dart';
@@ -32,6 +33,7 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
 
   late final UserDetailsService _service;
   late final FriendRequestService _friendRequestService;
+  late final CourtService _courtService;
   UserDetails? _details;
   bool _isLoading = true;
   String? _error;
@@ -40,18 +42,23 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
   bool _isActionLoading = false;
   String? _relationError;
   String? _currentUserId;
+  bool _isHomeCourtLoading = false;
+  String? _homeCourtName;
 
   @override
   void initState() {
     super.initState();
     _service = UserDetailsService();
     _friendRequestService = FriendRequestService();
-    _details = widget.result.details;
-    _isLoading = _details == null;
-    if (_details == null) {
+    _courtService = CourtService();
+    final initialDetails = widget.result.details;
+    _details = initialDetails;
+    _isLoading = initialDetails == null;
+    if (initialDetails == null) {
       _fetchDetails();
     } else {
       _isLoading = false;
+      _loadHomeCourtName(initialDetails.homeCourtId);
     }
     _loadRelation();
   }
@@ -65,10 +72,23 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
     try {
       final details = await _service.getByUserId(widget.result.user.id);
       if (!mounted) return;
+
+      if (details == null) {
+        setState(() {
+          _details = null;
+          _homeCourtName = null;
+          _isHomeCourtLoading = false;
+          _error = 'Không thể tải hồ sơ người dùng. Vui lòng thử lại sau.';
+          _isLoading = false;
+        });
+        return;
+      }
+
       setState(() {
         _details = details;
         _isLoading = false;
       });
+      _loadHomeCourtName(details.homeCourtId);
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -109,6 +129,40 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
 
   Future<void> _refreshAll() async {
     await Future.wait([_fetchDetails(), _loadRelation()]);
+  }
+
+  Future<void> _loadHomeCourtName(String? homeCourtId) async {
+    final id = homeCourtId?.trim();
+    if (id == null || id.isEmpty) {
+      setState(() {
+        _homeCourtName = null;
+        _isHomeCourtLoading = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isHomeCourtLoading = true;
+      _homeCourtName = null;
+    });
+
+    try {
+      final court = await _courtService.getCourt(id);
+      if (!mounted) return;
+      setState(() {
+        _homeCourtName = court.name.trim().isNotEmpty ? court.name : null;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _homeCourtName = null;
+      });
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _isHomeCourtLoading = false;
+      });
+    }
   }
 
   @override
@@ -436,7 +490,10 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
             _infoTile(
               Icons.house_outlined,
               'Sân yêu thích',
-              details.homeCourtId ?? 'Chưa cập nhật',
+              _homeCourtName ??
+                  (_isHomeCourtLoading
+                      ? 'Đang tải...'
+                      : (details.homeCourtId ?? 'Chưa cập nhật')),
             ),
           ],
         ),

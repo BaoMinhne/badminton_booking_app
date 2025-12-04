@@ -7,30 +7,21 @@ import 'package:badminton_booking_app/pages/user/user_public_profile_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-class AddFriendPage extends StatelessWidget {
+class AddFriendPage extends StatefulWidget {
   const AddFriendPage({super.key});
 
-  static const List<ChatContact> _suggestedFriends = [
-    ChatContact(
-      id: 'suggest-1',
-      name: 'Linh Trần',
-      avatarText: 'LT',
-      statusMessage: 'Bạn chung: Bảo Minh, Ngọc Anh',
-      isOnline: true,
-    ),
-    ChatContact(
-      id: 'suggest-2',
-      name: 'Phúc Nguyễn',
-      avatarText: 'PN',
-      statusMessage: 'Tham gia các nhóm giao lưu Quận 7',
-    ),
-    ChatContact(
-      id: 'suggest-3',
-      name: 'Thuỷ Tiên',
-      avatarText: 'TT',
-      statusMessage: 'Đánh đơn nữ trình trung bình khá',
-    ),
-  ];
+  @override
+  State<AddFriendPage> createState() => _AddFriendPageState();
+}
+
+class _AddFriendPageState extends State<AddFriendPage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<FriendManager>().loadFriendSuggestions();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -66,18 +57,7 @@ class AddFriendPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            ..._suggestedFriends.map(
-              (contact) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: ContactListTile.suggestion(
-                  contact: contact,
-                  onTap: () {},
-                  onChatPressed: () {},
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            _buildCommunityCard(context),
+            _buildSuggestions(context, friendManager, theme),
           ],
         ),
       ),
@@ -181,6 +161,79 @@ class AddFriendPage extends StatelessWidget {
             ),
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildSuggestions(
+    BuildContext context,
+    FriendManager friendManager,
+    ThemeData theme,
+  ) {
+    if (friendManager.isLoadingSuggestions) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (friendManager.suggestionsError != null) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Text(
+              friendManager.suggestionsError!,
+              style: theme.textTheme.bodyMedium,
+            ),
+          ),
+          TextButton(
+            onPressed: () => friendManager.loadFriendSuggestions(),
+            child: const Text('Thử lại'),
+          ),
+        ],
+      );
+    }
+
+    if (friendManager.friendSuggestions.isEmpty) {
+      return Text(
+        'Hiện chưa có gợi ý kết bạn.',
+        style: theme.textTheme.bodyMedium,
+      );
+    }
+
+    final visibleSuggestions = friendManager.friendSuggestions
+        .take(friendManager.visibleSuggestions)
+        .toList();
+
+    return Column(
+      children: [
+        ...visibleSuggestions.map(
+          (result) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: ContactListTile.suggestion(
+              contact: ChatContact(
+                id: result.user.id,
+                name: result.displayName,
+                avatarText: result.initials,
+                statusMessage:
+                    result.subtitle.isEmpty ? null : result.subtitle,
+              ),
+              trailing: _buildTrailingActions(
+                context,
+                friendManager,
+                result,
+              ),
+              onTap: () => _openProfile(context, result),
+            ),
+          ),
+        ),
+        if (friendManager.visibleSuggestions <
+            friendManager.friendSuggestions.length)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              onPressed: friendManager.showMoreSuggestions,
+              child: const Text('Xem thêm'),
+            ),
+          ),
       ],
     );
   }
@@ -402,54 +455,5 @@ class AddFriendPage extends StatelessWidget {
         );
       }
     }
-  }
-
-  Widget _buildCommunityCard(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: LinearGradient(
-          colors: [cs.primary, cs.primary.withOpacity(0.8)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: cs.primary.withOpacity(0.25),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Kết nối nhiều hơn',
-            style: theme.textTheme.titleLarge?.copyWith(
-              color: cs.onPrimary,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Tham gia các nhóm cầu lông địa phương để tìm thêm nhiều người bạn cùng sở thích.',
-            style: theme.textTheme.bodyMedium?.copyWith(color: cs.onPrimary),
-          ),
-          const SizedBox(height: 16),
-          FilledButton.tonal(
-            style: FilledButton.styleFrom(
-              backgroundColor: cs.onPrimary.withOpacity(0.15),
-              foregroundColor: cs.onPrimary,
-            ),
-            onPressed: () {},
-            child: const Text('Khám phá nhóm mới'),
-          ),
-        ],
-      ),
-    );
   }
 }

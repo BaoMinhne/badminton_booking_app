@@ -170,6 +170,8 @@ class InvitationService {
       }
 
       return Invitation.fromRecord(record, pb);
+    } on InvitationServiceException {
+      rethrow;
     } on ClientException catch (error) {
       throw InvitationServiceException(_mapClientError(error));
     } catch (_) {
@@ -223,19 +225,25 @@ class InvitationService {
         existing = await pb
             .collection(RecruitmentService.recruitmentApplicantsCollection)
             .getFirstListItem(filter);
-      } catch (_) {
-        existing = null;
+      } on ClientException catch (error) {
+        if (error.statusCode == 404) {
+          existing = null;
+        } else {
+          throw InvitationServiceException(_mapClientError(error));
+        }
       }
 
       if (existing == null) {
-        await pb.collection(RecruitmentService.recruitmentApplicantsCollection)
+        await pb
+            .collection(RecruitmentService.recruitmentApplicantsCollection)
             .create(body: {
           'recruitment': recruitmentId,
           'user': userId,
           'status': 'accepted',
         });
       } else {
-        await pb.collection(RecruitmentService.recruitmentApplicantsCollection)
+        await pb
+            .collection(RecruitmentService.recruitmentApplicantsCollection)
             .update(existing.id, body: {
           'status': 'accepted',
         });
@@ -253,7 +261,9 @@ class InvitationService {
     String userId,
   ) async {
     try {
-      final result = await pb.collection(RecruitmentService.recruitmentPostsCollection).getList(
+      final result = await pb
+          .collection(RecruitmentService.recruitmentPostsCollection)
+          .getList(
             page: 1,
             perPage: 50,
             filter: "author='${_escape(userId)}' && is_active=true",
@@ -269,28 +279,27 @@ class InvitationService {
 
       final posts = result.items
           .map(
-            (record) => RecruitmentPost.fromRecord(
-              record: record,
-              pocketBase: pb,
-              currentUserId: userId,
-              applicants: applicantsMap[record.id] ?? const [],
-            ),
-          )
+        (record) => RecruitmentPost.fromRecord(
+          record: record,
+          pocketBase: pb,
+          currentUserId: userId,
+          applicants: applicantsMap[record.id] ?? const [],
+        ),
+      )
           .where((post) {
-            final eventTime = post.eventTime;
-            if (eventTime == null) return false;
+        final eventTime = post.eventTime;
+        if (eventTime == null) return false;
 
-            final matchesToday = eventTime.year == today.year &&
-                eventTime.month == today.month &&
-                eventTime.day == today.day;
+        final matchesToday = eventTime.year == today.year &&
+            eventTime.month == today.month &&
+            eventTime.day == today.day;
 
-            final hasCapacity = post.requiredPlayers <= 0
-                ? true
-                : post.joinedPlayers < post.requiredPlayers;
+        final hasCapacity = post.requiredPlayers <= 0
+            ? true
+            : post.joinedPlayers < post.requiredPlayers;
 
-            return matchesToday && post.isActive && hasCapacity;
-          })
-          .toList(growable: false);
+        return matchesToday && post.isActive && hasCapacity;
+      }).toList(growable: false);
 
       return posts;
     } on ClientException catch (error) {

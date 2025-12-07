@@ -1,7 +1,7 @@
 # pocketbase_service.py
 from typing import Any, Dict, List, Optional
 
-from   pocketbase_client import create_record, update_record, get_list
+from   pocketbase_client import create_record, update_record, get_list, delete_record
 
 
 # ---------- USER_DETAILS ----------
@@ -75,6 +75,46 @@ async def mark_recommendation_accepted(from_user_id: str, to_user_id: str) -> No
     if not rec:
         return
     await update_record("recommendation_logs", rec["id"], {"accepted": True})
+    
+
+async def delete_recommendation_logs(
+    filter_expr: Optional[str] = None,
+    batch_size: int = 200,
+) -> int:
+    """
+    Xóa các record trong recommendation_logs.
+    - Nếu filter_expr = None  -> xóa tất cả.
+    - Nếu có filter_expr      -> chỉ xóa các record match filter đó.
+    Trả về: số record đã xóa.
+    """
+    total_deleted = 0
+    page = 1
+
+    while True:
+        data = await get_list(
+            "recommendation_logs",
+            page=page,
+            per_page=batch_size,
+            filter_expr=filter_expr,
+        )
+        items = data.get("items", [])
+        if not items:
+            break
+
+        for rec in items:
+            try:
+                await delete_record("recommendation_logs", rec["id"])
+                total_deleted += 1
+            except Exception as e:
+                print("[DELETE_RECO_LOG][ERROR]", rec.get("id"), e)
+
+        # Nếu số item ít hơn batch_size thì không còn trang tiếp theo
+        if len(items) < batch_size:
+            break
+
+        page += 1
+
+    return total_deleted
 
 
 # ---------- MATCH_FEEDBACK ----------

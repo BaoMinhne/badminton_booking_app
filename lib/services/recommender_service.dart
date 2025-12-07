@@ -20,7 +20,8 @@ class RecommenderService {
   String get _baseUrl =>
       dotenv.env['RECOMMENDER_BASE_URL'] ?? 'http://10.0.2.2:8000';
 
-  Future<List<PartnerRecommendation>> fetchRecommendations({int limit = 10}) async {
+  Future<List<PartnerRecommendation>> fetchRecommendations(
+      {int limit = 10}) async {
     final pb = await getPocketbaseInstance();
     final currentUserId = pb.authStore.record?.id;
     if (currentUserId == null) {
@@ -48,7 +49,8 @@ class RecommenderService {
     return results;
   }
 
-  Future<List<FriendSearchResult>> fetchFriendSuggestions({int limit = 20}) async {
+  Future<List<FriendSearchResult>> fetchFriendSuggestions(
+      {int limit = 20}) async {
     final pb = await getPocketbaseInstance();
     final currentUserId = pb.authStore.record?.id;
     if (currentUserId == null) {
@@ -80,7 +82,8 @@ class RecommenderService {
     Map<String, dynamic> json,
     PocketBase pb,
   ) async {
-    final userJson = json['user'] as Map<String, dynamic>? ?? <String, dynamic>{};
+    final userJson =
+        json['user'] as Map<String, dynamic>? ?? <String, dynamic>{};
     final userId = (userJson['user_id'] ?? '') as String;
     final rawScore = (json['score'] as num?)?.toDouble() ?? 0;
 
@@ -98,7 +101,8 @@ class RecommenderService {
     Map<String, dynamic> json,
     PocketBase pb,
   ) async {
-    final userJson = json['user'] as Map<String, dynamic>? ?? <String, dynamic>{};
+    final userJson =
+        json['user'] as Map<String, dynamic>? ?? <String, dynamic>{};
     final userId = (userJson['user_id'] ?? '') as String;
 
     final details = await _userDetailsService.getByUserIdWithClient(pb, userId);
@@ -106,5 +110,64 @@ class RecommenderService {
     final user = User.fromJson(userRecord.toJson());
 
     return FriendSearchResult(user: user, details: details);
+  }
+
+  Future<void> notifyInvitationSent({
+    required String fromUserId,
+    required String toUserId,
+    String? invitationId,
+    String? mode, // 'partner', 'friend', or null
+  }) async {
+    final uri = Uri.parse('$_baseUrl/events/invitations/sent');
+
+    final body = jsonEncode({
+      'from_user_id': fromUserId,
+      'to_user_id': toUserId,
+      'invitation_id': invitationId,
+      'mode': mode,
+    });
+
+    final res = await _client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: body,
+    );
+
+    if (res.statusCode != 200) {
+      throw Exception(
+        'notifyInvitationSent failed: ${res.statusCode} -> ${res.body}',
+      );
+    }
+  }
+
+// ============================================================================
+// NOTIFY: Accepted invitation
+// ============================================================================
+  Future<void> notifyInvitationAccepted({
+    required String fromUserId, // người gửi invite
+    required String toUserId, // người accept invite
+    String? invitationId,
+    String? mode,
+  }) async {
+    final uri = Uri.parse('$_baseUrl/events/invitations/accepted');
+
+    final body = jsonEncode({
+      'from_user_id': fromUserId,
+      'to_user_id': toUserId,
+      'invitation_id': invitationId,
+      'mode': mode,
+    });
+
+    final res = await _client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: body,
+    );
+
+    if (res.statusCode != 200) {
+      throw Exception(
+        'notifyInvitationAccepted failed: ${res.statusCode} -> ${res.body}',
+      );
+    }
   }
 }

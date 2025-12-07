@@ -76,3 +76,24 @@ async def get_list(
     )
     resp.raise_for_status()
     return resp.json()
+
+
+# ---------------------------------------------------------
+# DELETE RECORD (CORRECT VERSION FOR HTTPX)
+# ---------------------------------------------------------
+async def delete_record(collection: str, record_id: str) -> bool:
+    """
+    Xóa 1 record trong collection bất kỳ bằng HTTP API.
+    """
+    await ensure_user_login()
+
+    resp = await client.delete(
+        f"/api/collections/{collection}/records/{record_id}",
+        headers=_auth_headers(),
+    )
+
+    if resp.status_code >= 400:
+        print(f"[PB][DELETE][ERROR] {collection}/{record_id} -> {resp.text}")
+        resp.raise_for_status()
+
+    return True

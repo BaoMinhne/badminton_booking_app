@@ -5,6 +5,7 @@ import 'package:badminton_booking_app/models/user_booking_view.dart';
 import 'package:badminton_booking_app/services/booking_service.dart';
 import 'package:badminton_booking_app/services/court_service.dart';
 import 'package:badminton_booking_app/services/recruitment_service.dart';
+import 'package:badminton_booking_app/services/recommender_service.dart'; // <-- THÊM DÒNG NÀY
 import 'package:pocketbase/pocketbase.dart';
 
 import '../utils/pocketbase_utils.dart';
@@ -169,6 +170,25 @@ class InvitationService {
         );
       }
 
+      // ---------------- AI RECOMMENDER: LOG ACCEPT ----------------
+      if (accept) {
+        try {
+          final recommender = RecommenderService();
+          await recommender.notifyInvitationAccepted(
+            fromUserId: invitation.fromUserId, // người gửi lời mời ban đầu
+            toUserId: invitation.toUserId, // người accept
+            invitationId: invitation.id,
+            // map type -> mode cho backend (tùy bạn xử lý ở app.py)
+            mode:
+                invitation.type.name, // 'recruitment' | 'booking' | 'proposed'
+          );
+        } catch (e) {
+          // Không để lỗi log làm hỏng UX accept
+          print('[INVITATION][ACCEPT][RECO_ERROR] $e');
+        }
+      }
+      // ------------------------------------------------------------
+
       return Invitation.fromRecord(record, pb);
     } on InvitationServiceException {
       rethrow;
@@ -191,6 +211,7 @@ class InvitationService {
     }
 
     try {
+      // 1. Tạo record invitations
       final record = await pb.collection(collection).create(body: {
         'from_user': fromUserId,
         'to_user': toUserId,
@@ -198,12 +219,35 @@ class InvitationService {
         'status': 'pending',
         ...body,
       });
+
+      // 2. Hydrate đầy đủ expand để trả về UI
       final hydrated = await pb.collection(collection).getOne(
             record.id,
             expand:
                 'from_user,to_user,recruitment,recruitment.court,booking,booking.court_id,court',
           );
-      return Invitation.fromRecord(hydrated, pb, viewerId: fromUserId);
+
+      final invitation =
+          Invitation.fromRecord(hydrated, pb, viewerId: fromUserId);
+
+      // ---------------- AI RECOMMENDER: LOG INVITED ----------------
+      try {
+        final recommender = RecommenderService();
+        await recommender.notifyInvitationSent(
+          fromUserId: fromUserId,
+          toUserId: toUserId,
+          invitationId: record.id,
+          // map type -> mode: bạn có thể xử lý trong app.py
+          // hoặc dùng luôn type cho dễ debug
+          mode: type, // 'recruitment' | 'booking' | 'proposed'
+        );
+      } catch (e) {
+        // Không để lỗi log làm hỏng UX gửi lời mời
+        print('[INVITATION][SEND][RECO_ERROR] $e');
+      }
+      // ------------------------------------------------------------
+
+      return invitation;
     } on ClientException catch (error) {
       throw InvitationServiceException(_mapClientError(error));
     } catch (_) {

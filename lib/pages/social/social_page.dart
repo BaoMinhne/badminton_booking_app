@@ -113,6 +113,7 @@ class _SocialPageState extends State<SocialPage> {
     UserDetails? myDetails,
   ) {
     final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
     final friendDetails = suggestion.friend.details;
 
     final myStyles = myDetails?.playStyleTags ?? const <String>[];
@@ -125,72 +126,219 @@ class _SocialPageState extends State<SocialPage> {
     final sharedMatchTypes =
         friendMatchTypes.where((type) => myMatchTypes.contains(type)).toList();
 
-    final reasons = <String>[];
+    final reasons = <_ReasonDetail>[];
 
     if (sharedStyles.isNotEmpty) {
-      reasons.add('Cùng phong cách ${sharedStyles.join(' / ')}');
+      reasons.add(
+        _ReasonDetail(
+          icon: Icons.style_rounded,
+          iconColor: cs.primary,
+          text: 'Cùng phong cách ${sharedStyles.join(' / ')}',
+        ),
+      );
     } else if (friendStyles.isNotEmpty) {
-      reasons
-          .add('Phong cách bổ trợ: ${friendStyles.take(2).join(' / ')}');
+      reasons.add(
+        _ReasonDetail(
+          icon: Icons.auto_awesome_rounded,
+          iconColor: cs.primary,
+          text: 'Phong cách bổ trợ: ${friendStyles.take(2).join(' / ')}',
+        ),
+      );
     }
 
     final intensity = friendDetails?.intensity;
     if (intensity != null) {
       final intensityLabel = _humanize(intensity) ?? intensity;
-      if (intensity == myDetails?.intensity) {
-        reasons.add('Cùng cường độ thi đấu $intensityLabel');
-      } else {
-        reasons.add('Cường độ thi đấu phù hợp: $intensityLabel');
-      }
+      reasons.add(
+        _ReasonDetail(
+          icon: Icons.local_fire_department_rounded,
+          iconColor: cs.tertiary,
+          text: intensity == myDetails?.intensity
+              ? 'Cùng cường độ thi đấu $intensityLabel'
+              : 'Cường độ thi đấu phù hợp: $intensityLabel',
+        ),
+      );
     }
 
     if (sharedMatchTypes.isNotEmpty) {
-      reasons.add('Ưu tiên kiểu trận: ${sharedMatchTypes.join(' / ')}');
+      reasons.add(
+        _ReasonDetail(
+          icon: Icons.sports_tennis,
+          iconColor: cs.secondary,
+          text: 'Ưu tiên kiểu trận: ${sharedMatchTypes.join(' / ')}',
+        ),
+      );
     }
 
-    reasons.add('Mức độ phù hợp dự đoán: ${suggestion.matchScore.round()}%');
+    reasons.add(
+      _ReasonDetail(
+        icon: Icons.stars_rounded,
+        iconColor: cs.primary,
+        text: 'Mức độ phù hợp dự đoán: ${suggestion.matchScore.round()}%',
+      ),
+    );
 
-    showDialog<void>(
+    showModalBottomSheet<void>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: Text('Vì sao gợi ý ${suggestion.friend.displayName}?'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: reasons
-              .map(
-                (reason) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        Icons.check_circle_rounded,
-                        color: cs.primary,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          reason,
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.copyWith(fontWeight: FontWeight.w600),
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  cs.surface,
+                  cs.surfaceVariant.withOpacity(0.9),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: cs.outlineVariant.withOpacity(0.4)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.12),
+                  blurRadius: 24,
+                  offset: const Offset(0, 14),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [cs.primary, cs.primary.withOpacity(0.75)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
                       ),
-                    ],
+                      child: Icon(
+                        Icons.recommend_rounded,
+                        color: cs.onPrimary,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Vì sao gợi ý ${suggestion.friend.displayName}?',
+                            style: tt.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.2,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Được cá nhân hóa dựa trên hồ sơ thi đấu của bạn',
+                            style: tt.bodySmall?.copyWith(
+                              color: cs.onSurfaceVariant.withOpacity(0.8),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: cs.primaryContainer,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            '${suggestion.matchScore.round()}%',
+                            style: tt.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              color: cs.onPrimaryContainer,
+                            ),
+                          ),
+                          Text(
+                            'Match',
+                            style: tt.labelSmall?.copyWith(
+                              color: cs.onPrimaryContainer.withOpacity(0.8),
+                              letterSpacing: 0.1,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                ...reasons.map(
+                  (reason) => Container(
+                    margin: const EdgeInsets.symmetric(vertical: 6),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: cs.surfaceVariant.withOpacity(0.55),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: reason.iconColor.withOpacity(0.12),
+                          ),
+                          child: Icon(
+                            reason.icon,
+                            color: reason.iconColor,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            reason.text,
+                            style: tt.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: cs.onSurface,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              )
-              .toList(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).maybePop(),
-            child: const Text('Đóng'),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: FilledButton.tonal(
+                    onPressed: () => Navigator.of(context).maybePop(),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text('Đóng'),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -1117,6 +1265,19 @@ class _SocialPageState extends State<SocialPage> {
       ),
     );
   }
+
+}
+
+class _ReasonDetail {
+  const _ReasonDetail({
+    required this.icon,
+    required this.iconColor,
+    required this.text,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final String text;
 }
 
 class _InviteCard extends StatelessWidget {
@@ -1691,4 +1852,16 @@ class _FilterPill extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ReasonDetail {
+  const _ReasonDetail({
+    required this.icon,
+    required this.iconColor,
+    required this.text,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final String text;
 }

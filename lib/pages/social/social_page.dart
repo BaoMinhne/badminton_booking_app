@@ -1268,18 +1268,6 @@ class _SocialPageState extends State<SocialPage> {
 
 }
 
-class _ReasonDetail {
-  const _ReasonDetail({
-    required this.icon,
-    required this.iconColor,
-    required this.text,
-  });
-
-  final IconData icon;
-  final Color iconColor;
-  final String text;
-}
-
 class _InviteCard extends StatelessWidget {
   const _InviteCard({
     required this.invite,

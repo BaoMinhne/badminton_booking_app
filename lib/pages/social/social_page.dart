@@ -24,7 +24,9 @@ import 'package:badminton_booking_app/pages/social/chat/friend_list_manager.dart
 import 'package:badminton_booking_app/pages/social/chat/friend_request_manager.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/partner_recommendation.dart';
 import '../../models/friend_search_result.dart';
+import '../../models/user_details.dart';
 
 class SocialPage extends StatefulWidget {
   const SocialPage({super.key});
@@ -101,6 +103,94 @@ class _SocialPageState extends State<SocialPage> {
       builder: (_) => PostCommentsSheet(
         postId: post.id,
         manager: manager,
+      ),
+    );
+  }
+
+  void _showRecommendationReason(
+    BuildContext context,
+    PartnerRecommendation suggestion,
+    UserDetails? myDetails,
+  ) {
+    final cs = Theme.of(context).colorScheme;
+    final friendDetails = suggestion.friend.details;
+
+    final myStyles = myDetails?.playStyleTags ?? const <String>[];
+    final friendStyles = friendDetails?.playStyleTags ?? const <String>[];
+    final sharedStyles =
+        friendStyles.where((style) => myStyles.contains(style)).toList();
+
+    final myMatchTypes = myDetails?.matchTypes ?? const <String>[];
+    final friendMatchTypes = friendDetails?.matchTypes ?? const <String>[];
+    final sharedMatchTypes =
+        friendMatchTypes.where((type) => myMatchTypes.contains(type)).toList();
+
+    final reasons = <String>[];
+
+    if (sharedStyles.isNotEmpty) {
+      reasons.add('Cùng phong cách ${sharedStyles.join(' / ')}');
+    } else if (friendStyles.isNotEmpty) {
+      reasons
+          .add('Phong cách bổ trợ: ${friendStyles.take(2).join(' / ')}');
+    }
+
+    final intensity = friendDetails?.intensity;
+    if (intensity != null) {
+      final intensityLabel = _humanize(intensity) ?? intensity;
+      if (intensity == myDetails?.intensity) {
+        reasons.add('Cùng cường độ thi đấu $intensityLabel');
+      } else {
+        reasons.add('Cường độ thi đấu phù hợp: $intensityLabel');
+      }
+    }
+
+    if (sharedMatchTypes.isNotEmpty) {
+      reasons.add('Ưu tiên kiểu trận: ${sharedMatchTypes.join(' / ')}');
+    }
+
+    reasons.add('Mức độ phù hợp dự đoán: ${suggestion.matchScore.round()}%');
+
+    showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text('Vì sao gợi ý ${suggestion.friend.displayName}?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: reasons
+              .map(
+                (reason) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.check_circle_rounded,
+                        color: cs.primary,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          reason,
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+              .toList(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).maybePop(),
+            child: const Text('Đóng'),
+          ),
+        ],
       ),
     );
   }
@@ -468,6 +558,11 @@ class _SocialPageState extends State<SocialPage> {
                           playTags: details?.playStyleTags ?? const <String>[],
                           intensityLabel: intensityLabel,
                           avatarInitial: suggestion.friend.initials,
+                          onTap: () => _showRecommendationReason(
+                            context,
+                            suggestion,
+                            userManager.myDetails,
+                          ),
                           onProfileTap: () =>
                               _openProfile(context, suggestion.friend),
                           onInviteTap: () => _openInviteSheet(

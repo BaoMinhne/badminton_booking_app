@@ -1,10 +1,14 @@
 import pandas as pd
 import ast
+from pathlib import Path
 
-INPUT_CSV = "recommendation_logs.csv"
-OUTPUT_CSV = "training_dataset.csv"
+BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = BASE_DIR / "data"
+INPUT_CSV = DATA_DIR / "recommendation_logs.csv"
+OUTPUT_CSV = DATA_DIR / "training_dataset.csv"
 
 def main():
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
     df = pd.read_csv(INPUT_CSV)
 
     # 1. Parse cột features (JSON string) thành dict

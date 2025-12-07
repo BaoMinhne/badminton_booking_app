@@ -37,3 +37,15 @@ recommender_system/__pycache__/
 recommender_system/*.pyc
 recommender_system/.env
 
+
+recommender_system/app/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+
+app/**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb

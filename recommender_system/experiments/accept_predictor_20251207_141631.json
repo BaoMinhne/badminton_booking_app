@@ -1,0 +1,51 @@
+{
+  "seed": 42,
+  "feature_order": [
+    "rule_score",
+    "rank_in_list",
+    "level",
+    "style",
+    "role",
+    "intensity",
+    "home_court",
+    "habit",
+    "court",
+    "sim_p_accepted",
+    "sim_p_invited",
+    "is_top3"
+  ],
+  "class_distribution": {
+    "0": 14187,
+    "1": 1695
+  },
+  "accuracy": 0.8942398489140698,
+  "cv_accuracy_mean": 0.8854679097004684,
+  "cv_accuracy_std": 0.006000167112254899,
+  "classification_report": {
+    "0": {
+      "precision": 1.0,
+      "recall": 0.8816067653276956,
+      "f1-score": 0.9370786516853933,
+      "support": 2838.0
+    },
+    "1": {
+      "precision": 0.5022222222222222,
+      "recall": 1.0,
+      "f1-score": 0.6686390532544378,
+      "support": 339.0
+    },
+    "accuracy": 0.8942398489140698,
+    "macro avg": {
+      "precision": 0.7511111111111111,
+      "recall": 0.9408033826638478,
+      "f1-score": 0.8028588524699156,
+      "support": 3177.0
+    },
+    "weighted avg": {
+      "precision": 0.9468849018990662,
+      "recall": 0.8942398489140698,
+      "f1-score": 0.9084349551578221,
+      "support": 3177.0
+    }
+  }
+}

@@ -1265,7 +1265,6 @@ class _SocialPageState extends State<SocialPage> {
       ),
     );
   }
-
 }
 
 class _InviteCard extends StatelessWidget {

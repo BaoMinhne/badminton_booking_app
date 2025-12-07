@@ -33,7 +33,8 @@ FEATURE_COLS = [
 ]
 
 
-def load_data(path: str) -> pd.DataFrame:
+def load_data(path: Path | str) -> pd.DataFrame:
+    path = Path(path)
     df = pd.read_csv(path)
 
     expected_cols = FEATURE_COLS + ["accepted"]

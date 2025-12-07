@@ -10,8 +10,11 @@ from sklearn.model_selection import StratifiedKFold, cross_val_score, train_test
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
-DATA_PATH = "training_dataset.csv"
-EXPERIMENTS_DIR = Path("recommender_system/experiments")
+BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = BASE_DIR / "data"
+ARTIFACTS_DIR = BASE_DIR / "artifacts"
+DATA_PATH = DATA_DIR / "training_dataset.csv"
+EXPERIMENTS_DIR = BASE_DIR / "experiments"
 SEED = 42
 
 FEATURE_COLS = [
@@ -122,10 +125,20 @@ def train():
     # Giữ nguyên model & scaler như runtime đang dùng
     model: LogisticRegression = pipeline.named_steps["model"]
     scaler: StandardScaler = pipeline.named_steps["scaler"]
-    joblib.dump(model, "model_accept_predictor.pkl")
-    joblib.dump(scaler, "scaler_accept_predictor.pkl")
-    joblib.dump(pipeline, "pipeline_accept_predictor.pkl")
-    print("✅ Đã lưu model_accept_predictor.pkl, scaler_accept_predictor.pkl và pipeline_accept_predictor.pkl")
+    ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
+    model_path = ARTIFACTS_DIR / "model_accept_predictor.pkl"
+    scaler_path = ARTIFACTS_DIR / "scaler_accept_predictor.pkl"
+    pipeline_path = ARTIFACTS_DIR / "pipeline_accept_predictor.pkl"
+
+    joblib.dump(model, model_path)
+    joblib.dump(scaler, scaler_path)
+    joblib.dump(pipeline, pipeline_path)
+    print(
+        "✅ Đã lưu artifact tại",
+        model_path,
+        scaler_path,
+        pipeline_path,
+    )
 
     metrics = {
         "seed": SEED,

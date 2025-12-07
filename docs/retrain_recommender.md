@@ -14,7 +14,7 @@ pip install -r requirements.txt
 ```
 
 ## Dữ liệu và đặc trưng
-- File dữ liệu: `recommender_system/training_dataset.csv`.
+- File dữ liệu: `recommender_system/data/training_dataset.csv` (được tạo từ log ở cùng thư mục).
 - Bắt buộc phải có các cột: `rule_score, rank_in_list, level, style, role, intensity, home_court, habit, court, sim_p_accepted, sim_p_invited, is_top3, accepted`.
 - Nếu không dùng các đặc trưng synthetic `sim_p_*`, hãy điền 0 hoặc loại khỏi pipeline và cập nhật `FEATURE_COLS` trong `train_model.py` + `FEATURE_ORDER` trong `app/services/logistic_regression.py` cho khớp.
 
@@ -30,7 +30,7 @@ Script sẽ:
 - Chia train/test với `random_state=42` để tái lập.
 - Huấn luyện `StandardScaler` + `LogisticRegression(class_weight="balanced", max_iter=1000)` trong một `Pipeline`.
 - Chạy cross-validation StratifiedKFold(5) để ước lượng độ ổn định accuracy.
-- Lưu artifact: `model_accept_predictor.pkl`, `scaler_accept_predictor.pkl`, `pipeline_accept_predictor.pkl` và log metric tại `recommender_system/experiments/accept_predictor_<timestamp>.json`.
+- Lưu artifact trong `recommender_system/artifacts/`: `model_accept_predictor.pkl`, `scaler_accept_predictor.pkl`, `pipeline_accept_predictor.pkl` và log metric tại `recommender_system/experiments/accept_predictor_<timestamp>.json`.
 
 ## Kiểm tra artifact và deploy
 - Đảm bảo cả **model** và **scaler** tồn tại; runtime sẽ fallback về rule-only nếu thiếu và log cảnh báo `[ml_fallback_rule_only]`.

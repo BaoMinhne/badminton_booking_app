@@ -11,9 +11,10 @@ from sklearn.preprocessing import StandardScaler
 logger = logging.getLogger("recommender.ml")
 
 BASE_DIR = Path(__file__).resolve().parents[2]
+ARTIFACTS_DIR = BASE_DIR / "artifacts"
 
-MODEL_PATH = BASE_DIR / "model_accept_predictor.pkl"
-SCALER_PATH = BASE_DIR / "scaler_accept_predictor.pkl"
+MODEL_PATH = ARTIFACTS_DIR / "model_accept_predictor.pkl"
+SCALER_PATH = ARTIFACTS_DIR / "scaler_accept_predictor.pkl"
 
 FEATURE_ORDER: List[str] = [
     "rule_score",

@@ -80,13 +80,17 @@ class _CourtPageState extends State<CourtPage> {
           child: Builder(
             builder: (context) {
               if (courtManager.isLoading) {
-                return const Center(child: CircularProgressIndicator());
+                return _wrapScrollable(
+                  const Center(child: CircularProgressIndicator()),
+                );
               }
               if (courtManager.errorMessage != null) {
-                return _buildErrorState(context, courtManager.errorMessage!);
+                return _wrapScrollable(
+                  _buildErrorState(context, courtManager.errorMessage!),
+                );
               }
               if (courtManager.courts.isEmpty) {
-                return _buildEmptyState(context);
+                return _wrapScrollable(_buildEmptyState(context));
               }
 
               return _buildContent(
@@ -107,17 +111,19 @@ class _CourtPageState extends State<CourtPage> {
     FavoriteCourtManager favoriteManager,
   ) {
     if (_selectedFilter == CourtFilter.favorites && favoriteManager.isLoading) {
-      return Column(
-        children: [
-          _buildHeroHeader(
-            context,
-            favoriteManager.favoriteCourtIds.length,
-            favoriteManager,
-          ),
-          _buildFilterChips(context, favoriteManager),
-          const SizedBox(height: 32),
-          const Center(child: CircularProgressIndicator()),
-        ],
+      return _wrapScrollable(
+        Column(
+          children: [
+            _buildHeroHeader(
+              context,
+              favoriteManager.favoriteCourtIds.length,
+              favoriteManager,
+            ),
+            _buildFilterChips(context, favoriteManager),
+            const SizedBox(height: 32),
+            const Center(child: CircularProgressIndicator()),
+          ],
+        ),
       );
     }
 
@@ -167,6 +173,20 @@ class _CourtPageState extends State<CourtPage> {
           children: sections,
         ),
       ),
+    );
+  }
+
+  Widget _wrapScrollable(Widget child) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: child,
+          ),
+        );
+      },
     );
   }
 

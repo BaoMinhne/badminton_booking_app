@@ -129,4 +129,18 @@ class UserDetails {
       homeCourtId: homeCourtId ?? this.homeCourtId,
     );
   }
+
+  bool get isComplete {
+    return (fullname?.trim().isNotEmpty ?? false) &&
+        (level?.trim().isNotEmpty ?? false) &&
+        levelNumeric > 0 &&
+        matchTypes.isNotEmpty &&
+        playStyleTags.isNotEmpty &&
+        (preferredRoleDoubles?.trim().isNotEmpty ?? false) &&
+        (intensity?.trim().isNotEmpty ?? false) &&
+        experienceYears != null &&
+        playsPerWeek != null &&
+        (gender?.trim().isNotEmpty ?? false) &&
+        birthday != null;
+  }
 }

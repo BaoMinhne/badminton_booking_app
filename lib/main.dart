@@ -2,6 +2,7 @@ import 'package:badminton_booking_app/pages/court/court_manager.dart';
 import 'package:badminton_booking_app/pages/court/favorite_court_manager.dart';
 import 'package:badminton_booking_app/pages/nav_bar_page.dart';
 import 'package:badminton_booking_app/pages/social/social_manager.dart';
+import 'package:badminton_booking_app/pages/user/onboarding_page.dart';
 import 'package:badminton_booking_app/pages/user/user_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -45,22 +46,60 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class AppRoot extends StatelessWidget {
+class AppRoot extends StatefulWidget {
   const AppRoot({super.key});
 
   @override
+  State<AppRoot> createState() => _AppRootState();
+}
+
+class _AppRootState extends State<AppRoot> {
+  Future<void>? _loadUserFuture;
+
+  Future<void> _ensureUserLoaded(UserManager userManager) {
+    _loadUserFuture ??= userManager.loadMe();
+    return _loadUserFuture!;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Consumer<AuthManager>(
-      builder: (_, authManager, __) {
+    return Consumer2<AuthManager, UserManager>(
+      builder: (_, authManager, userManager, __) {
         if (authManager.isChecking) {
           return const SplashScreen();
         }
 
-        if (authManager.isAuth) {
-          return const NavBarPage();
+        if (!authManager.isAuth) {
+          _loadUserFuture = null; // reset when logging out
+          return const LoginPage();
         }
 
-        return const LoginPage();
+        final loadFuture = _ensureUserLoaded(userManager);
+
+        return FutureBuilder<void>(
+          future: loadFuture,
+          builder: (_, snapshot) {
+            final isLoading = userManager.isLoading ||
+                snapshot.connectionState == ConnectionState.waiting;
+
+            if (isLoading) {
+              return const SplashScreen();
+            }
+
+            final details = userManager.myDetails;
+            if (details == null || !details.isComplete) {
+              return OnboardingPage(
+                onCompleted: () {
+                  setState(() {
+                    _loadUserFuture = userManager.reloadMe();
+                  });
+                },
+              );
+            }
+
+            return const NavBarPage();
+          },
+        );
       },
     );
   }

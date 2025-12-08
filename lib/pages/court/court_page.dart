@@ -181,11 +181,17 @@ class _CourtPageState extends State<CourtPage> {
         final minHeight = constraints.hasBoundedHeight
             ? constraints.maxHeight
             : MediaQuery.of(context).size.height;
+        final minWidth = constraints.hasBoundedWidth
+            ? constraints.maxWidth
+            : MediaQuery.of(context).size.width;
         return SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: minHeight),
-            child: child,
+            constraints: BoxConstraints(minHeight: minHeight, minWidth: minWidth),
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: child,
+            ),
           ),
         );
       },

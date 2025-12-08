@@ -1,3 +1,4 @@
+import 'package:badminton_booking_app/models/booking.dart';
 import 'package:badminton_booking_app/models/court.dart';
 import 'package:badminton_booking_app/models/court_detail.dart';
 import 'package:badminton_booking_app/pages/court/booking_page.dart';
@@ -6,6 +7,7 @@ import 'package:badminton_booking_app/pages/court/tabs/image_tab.dart';
 import 'package:badminton_booking_app/pages/court/tabs/review_tab.dart';
 import 'package:badminton_booking_app/pages/court/tabs/rule_tab.dart';
 import 'package:badminton_booking_app/pages/court/tabs/service_tab.dart';
+import 'package:badminton_booking_app/services/booking_service.dart';
 import 'package:badminton_booking_app/services/court_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -31,12 +33,18 @@ class _CourtDetailState extends State<CourtDetail>
   bool _isLoading = false;
   String? _errorMessage;
   late final CourtService _courtService;
+  late final BookingService _bookingService;
+  bool _isAvailabilityLoading = false;
+  String? _availabilityError;
+  int? _availableCourtsNow;
+  DateTime? _availabilitySnapshotAt;
 
   @override
   void initState() {
     super.initState();
     _detailData = CourtDetailData(court: widget.court);
     _courtService = widget.courtService ?? _resolveCourtService();
+    _bookingService = BookingService();
     _loadDetail();
   }
 
@@ -69,6 +77,7 @@ class _CourtDetailState extends State<CourtDetail>
         _detailData = data;
         _isLoading = false;
       });
+      _refreshAvailability();
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -215,9 +224,8 @@ class _CourtDetailState extends State<CourtDetail>
     final code = court.code.isNotEmpty ? court.code : 'Đang cập nhật';
     final description = court.description?.trim();
     final openingText = _buildOpeningHoursText(_detailData.openingHours);
-    final unitLabels = _detailData.units
+    final activeUnits = _detailData.units
         .where((unit) => unit.label.trim().isNotEmpty && unit.isActive)
-        .map((unit) => unit.label.trim())
         .toList(growable: false);
 
     final avatarImage = court.coverImageUrl != null &&
@@ -295,23 +303,12 @@ class _CourtDetailState extends State<CourtDetail>
                   Text(_formatCourtQuantity(court.courtQuantity)),
                 ],
               ),
-              if (unitLabels.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: unitLabels
-                      .map(
-                        (label) => Chip(
-                          label: Text(label),
-                          backgroundColor: cs.primary.withOpacity(0.1),
-                          side: BorderSide(color: cs.primary.withOpacity(0.4)),
-                          labelStyle: TextStyle(color: cs.primary),
-                        ),
-                      )
-                      .toList(growable: false),
-                ),
-              ],
+              const SizedBox(height: 12),
+              _buildAvailabilityStatus(
+                context,
+                cs,
+                activeUnits.length,
+              ),
               if (_isLoading) ...[
                 const SizedBox(height: 16),
                 const LinearProgressIndicator(minHeight: 3),
@@ -321,6 +318,70 @@ class _CourtDetailState extends State<CourtDetail>
         ),
       ),
     );
+  }
+
+  Future<void> _refreshAvailability() async {
+    final activeUnits = _detailData.units.where((unit) => unit.isActive).toList();
+
+    setState(() {
+      _isAvailabilityLoading = true;
+      _availabilityError = null;
+    });
+
+    if (activeUnits.isEmpty) {
+      setState(() {
+        _isAvailabilityLoading = false;
+        _availabilityError = 'Chưa có dữ liệu về số sân đang hoạt động.';
+      });
+      return;
+    }
+
+    try {
+      final now = DateTime.now();
+      final bookings = await _bookingService.listBookings(
+        courtId: widget.court.id,
+        date: now,
+      );
+
+      final nowUtc = now.toUtc();
+      final blockingUnits = <String>{};
+      for (final booking in bookings) {
+        final overlapsNow =
+            booking.startTime.isBefore(nowUtc) && booking.endTime.isAfter(nowUtc);
+        final isBlockingStatus = booking.status == BookingStatus.confirmed ||
+            booking.status == BookingStatus.awaitingPayment ||
+            booking.isActiveLock;
+
+        if (overlapsNow && isBlockingStatus) {
+          blockingUnits.add(booking.courtUnitId);
+        }
+      }
+
+      final totalActive = activeUnits.length;
+      final available = (totalActive - blockingUnits.length).clamp(0, totalActive);
+
+      if (!mounted) return;
+      setState(() {
+        _availableCourtsNow = available;
+        _availabilitySnapshotAt = DateTime.now();
+        _isAvailabilityLoading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _availabilityError = _describeAvailabilityError(error);
+        _isAvailabilityLoading = false;
+      });
+    }
+  }
+
+  String _describeAvailabilityError(Object error) {
+    if (error is BookingServiceException) {
+      return error.message;
+    }
+    final message = error.toString();
+    if (message.isNotEmpty) return message;
+    return 'Không thể kiểm tra tình trạng sân. Vui lòng thử lại.';
   }
 
   Widget _buildErrorBanner(BuildContext context, ColorScheme cs) {
@@ -361,6 +422,144 @@ class _CourtDetailState extends State<CourtDetail>
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildAvailabilityStatus(
+    BuildContext context,
+    ColorScheme cs,
+    int totalActive,
+  ) {
+    final textTheme = Theme.of(context).textTheme;
+
+    if (_isAvailabilityLoading) {
+      return _buildAvailabilityTile(
+        cs: cs,
+        icon: Icons.hourglass_top,
+        iconColor: cs.primary,
+        content: Text(
+          'Đang kiểm tra số sân trống...',
+          style: textTheme.bodyMedium,
+        ),
+        trailing: const SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+
+    if (_availabilityError != null) {
+      return _buildAvailabilityTile(
+        cs: cs,
+        icon: Icons.error_outline,
+        iconColor: cs.error,
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Không thể kiểm tra tình trạng sân',
+              style: textTheme.bodyMedium
+                  ?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              _availabilityError!,
+              style: textTheme.bodySmall,
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton(
+                onPressed: _refreshAvailability,
+                child: const Text('Thử lại'),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (totalActive == 0) {
+      return _buildAvailabilityTile(
+        cs: cs,
+        icon: Icons.help_outline,
+        iconColor: cs.secondary,
+        content: Text(
+          'Chưa có dữ liệu số sân hoạt động để hiển thị tình trạng trống.',
+          style: textTheme.bodyMedium,
+        ),
+      );
+    }
+
+    final available = (_availableCourtsNow ?? totalActive).clamp(0, totalActive);
+    final snapshot = _availabilitySnapshotAt?.toLocal();
+    final timeLabel = snapshot != null
+        ? 'Cập nhật lúc ${TimeOfDay.fromDateTime(snapshot).format(context)}'
+        : 'Chưa có thời gian cập nhật';
+    final hasOpenSlots = available > 0;
+
+    final headline = hasOpenSlots
+        ? 'Còn $available/$totalActive sân trống ngay bây giờ'
+        : 'Hiện không còn sân trống ở thời điểm này';
+
+    return _buildAvailabilityTile(
+      cs: cs,
+      icon: hasOpenSlots ? Icons.event_available : Icons.event_busy,
+      iconColor: hasOpenSlots ? cs.primary : cs.error,
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            headline,
+            style:
+                textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            hasOpenSlots
+                ? 'Bạn có thể chọn ngay một sân trống để đặt lịch.'
+                : 'Vui lòng thử chọn thời gian khác hoặc quay lại sau.',
+            style: textTheme.bodySmall,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            timeLabel,
+            style:
+                textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAvailabilityTile({
+    required ColorScheme cs,
+    required IconData icon,
+    required Color iconColor,
+    required Widget content,
+    Widget? trailing,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: cs.surfaceVariant.withOpacity(0.4),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: cs.outlineVariant),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: iconColor),
+          const SizedBox(width: 10),
+          Expanded(child: content),
+          if (trailing != null) ...[
+            const SizedBox(width: 12),
+            trailing,
+          ],
+        ],
       ),
     );
   }

@@ -5,6 +5,8 @@ import 'package:badminton_booking_app/pages/court/favorite_court_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+enum CourtFilter { newest, nearby, favorites }
+
 class CourtPage extends StatefulWidget {
   CourtPage({super.key});
 
@@ -13,6 +15,8 @@ class CourtPage extends StatefulWidget {
 }
 
 class _CourtPageState extends State<CourtPage> {
+  var _selectedFilter = CourtFilter.newest;
+
   @override
   void initState() {
     super.initState();
@@ -64,14 +68,31 @@ class _CourtPageState extends State<CourtPage> {
     List<Court> courts,
     FavoriteCourtManager favoriteManager,
   ) {
-    final recommended = courts.take(5).toList();
-    final remainingAfterRecommended = courts.skip(recommended.length).toList();
+    if (_selectedFilter == CourtFilter.favorites && favoriteManager.isLoading) {
+      return Column(
+        children: [
+          _buildHeroHeader(
+            context,
+            favoriteManager.favoriteCourtIds.length,
+            favoriteManager,
+          ),
+          _buildFilterChips(context, favoriteManager),
+          const SizedBox(height: 32),
+          const Center(child: CircularProgressIndicator()),
+        ],
+      );
+    }
+
+    final filteredCourts = _applyFilter(courts, favoriteManager);
+    final recommended = filteredCourts.take(5).toList();
+    final remainingAfterRecommended =
+        filteredCourts.skip(recommended.length).toList();
     final nearby = remainingAfterRecommended.take(5).toList();
     final popular = remainingAfterRecommended.skip(nearby.length).toList();
 
     final sections = <Widget>[
-      _buildHeroHeader(context, courts.length, favoriteManager),
-      _buildFilterChips(context),
+      _buildHeroHeader(context, filteredCourts.length, favoriteManager),
+      _buildFilterChips(context, favoriteManager),
       const SizedBox(height: 16),
       _buildCourtSection(context, 'Có Thể Bạn Sẽ Thích', recommended),
     ];
@@ -82,6 +103,16 @@ class _CourtPageState extends State<CourtPage> {
 
     if (popular.isNotEmpty) {
       sections.add(_buildCourtSection(context, 'Sân Phổ Biến', popular));
+    }
+
+    if (_selectedFilter == CourtFilter.favorites && filteredCourts.isEmpty) {
+      sections
+        ..clear()
+        ..addAll([
+          _buildHeroHeader(context, filteredCourts.length, favoriteManager),
+          _buildFilterChips(context, favoriteManager),
+          _buildEmptyFavoriteState(context),
+        ]);
     }
 
     sections.add(const SizedBox(height: 100));
@@ -218,10 +249,14 @@ class _CourtPageState extends State<CourtPage> {
     );
   }
 
-  Widget _buildFilterChips(BuildContext context) {
+  Widget _buildFilterChips(
+    BuildContext context,
+    FavoriteCourtManager favoriteManager,
+  ) {
     final filters = [
-      ('Mới nhất', Icons.auto_awesome),
-      ('Gần tôi', Icons.location_on_outlined),
+      (CourtFilter.newest, 'Mới nhất', Icons.auto_awesome),
+      (CourtFilter.nearby, 'Gần tôi', Icons.location_on_outlined),
+      (CourtFilter.favorites, 'Yêu thích', Icons.favorite),
     ];
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -231,11 +266,13 @@ class _CourtPageState extends State<CourtPage> {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         itemBuilder: (_, index) {
-          final (label, icon) = filters[index];
+          final (filter, label, icon) = filters[index];
+          final isSelected = _selectedFilter == filter;
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: colorScheme.surface,
+              color:
+                  isSelected ? colorScheme.primaryContainer : colorScheme.surface,
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
@@ -245,18 +282,42 @@ class _CourtPageState extends State<CourtPage> {
                 ),
               ],
             ),
-            child: Row(
-              children: [
-                Icon(icon, size: 18, color: colorScheme.primary),
-                const SizedBox(width: 8),
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
+            child: InkWell(
+              onTap: () {
+                setState(() {
+                  _selectedFilter = filter;
+                });
+              },
+              borderRadius: BorderRadius.circular(24),
+              child: Row(
+                children: [
+                  Icon(
+                    icon,
+                    size: 18,
+                    color: isSelected
+                        ? colorScheme.onPrimaryContainer
+                        : colorScheme.primary,
                   ),
-                )
-              ],
+                  const SizedBox(width: 8),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: isSelected
+                          ? colorScheme.onPrimaryContainer
+                          : null,
+                    ),
+                  ),
+                  if (filter == CourtFilter.favorites) ...[
+                    const SizedBox(width: 6),
+                    _buildFavoriteBadge(
+                      colorScheme,
+                      favoriteManager.favoriteCourtIds.length,
+                    ),
+                  ]
+                ],
+              ),
             ),
           );
         },
@@ -369,5 +430,75 @@ class _CourtPageState extends State<CourtPage> {
         ),
       ),
     );
+  }
+
+  Widget _buildEmptyFavoriteState(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.favorite_border,
+              size: 48,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Chưa có sân yêu thích',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Hãy thêm sân bạn thích để xem nhanh tại đây!',
+              style: Theme.of(context).textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFavoriteBadge(ColorScheme colorScheme, int count) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: colorScheme.primary,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        '$count',
+        style: TextStyle(
+          color: colorScheme.onPrimary,
+          fontWeight: FontWeight.w800,
+          fontSize: 12,
+        ),
+      ),
+    );
+  }
+
+  List<Court> _applyFilter(
+    List<Court> courts,
+    FavoriteCourtManager favoriteManager,
+  ) {
+    switch (_selectedFilter) {
+      case CourtFilter.favorites:
+        final favoriteIds = favoriteManager.favoriteCourtIds;
+        return courts
+            .where((court) => favoriteIds.contains(court.id))
+            .toList(growable: false);
+      case CourtFilter.newest:
+        final sorted = [...courts];
+        sorted.sort((a, b) {
+          final aDate = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+          final bDate = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+          return bDate.compareTo(aDate);
+        });
+        return sorted;
+      case CourtFilter.nearby:
+        return courts;
+    }
   }
 }

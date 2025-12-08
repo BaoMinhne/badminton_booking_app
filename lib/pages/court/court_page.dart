@@ -712,7 +712,8 @@ class _CourtPageState extends State<CourtPage> {
               booking.endTime.isAfter(startUtc);
         }).toList();
 
-        final utilization = units == 0 ? 0 : overlapping.length / units;
+        final double utilization =
+            units == 0 ? 0.0 : overlapping.length / units;
         nextSnapshots[court.id] = _CourtAvailabilitySnapshot(
           activeUnits: units,
           overlappingBookings: overlapping.length,

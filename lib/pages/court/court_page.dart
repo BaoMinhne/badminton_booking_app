@@ -5,7 +5,7 @@ import 'package:badminton_booking_app/pages/court/favorite_court_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-enum CourtFilter { newest, nearby, favorites }
+enum CourtFilter { newest, favorites }
 
 class CourtPage extends StatefulWidget {
   CourtPage({super.key});
@@ -255,7 +255,6 @@ class _CourtPageState extends State<CourtPage> {
   ) {
     final filters = [
       (CourtFilter.newest, 'Mới nhất', Icons.auto_awesome),
-      (CourtFilter.nearby, 'Gần tôi', Icons.location_on_outlined),
       (CourtFilter.favorites, 'Yêu thích', Icons.favorite),
     ];
     final colorScheme = Theme.of(context).colorScheme;
@@ -497,8 +496,6 @@ class _CourtPageState extends State<CourtPage> {
           return bDate.compareTo(aDate);
         });
         return sorted;
-      case CourtFilter.nearby:
-        return courts;
     }
   }
 }

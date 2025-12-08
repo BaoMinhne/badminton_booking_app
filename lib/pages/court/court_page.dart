@@ -178,10 +178,13 @@ class _CourtPageState extends State<CourtPage> {
   Widget _wrapScrollable(Widget child) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        final minHeight = constraints.hasBoundedHeight
+            ? constraints.maxHeight
+            : MediaQuery.of(context).size.height;
         return SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            constraints: BoxConstraints(minHeight: minHeight),
             child: child,
           ),
         );

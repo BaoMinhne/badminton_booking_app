@@ -97,8 +97,6 @@ class _RecruitmentApplicantsPageState extends State<RecruitmentApplicantsPage> {
   }
 
   Future<void> _handleCloseRecruitment() async {
-    if (!_post.isActive) return;
-
     DateTime? expiresAt;
 
     if (!_post.hasCourt) {
@@ -162,21 +160,25 @@ class _RecruitmentApplicantsPageState extends State<RecruitmentApplicantsPage> {
   @override
   Widget build(BuildContext context) {
     final canManage = _post.isOwner;
+    final canClose = canManage;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Yêu cầu tham gia'),
         actions: [
-          if (canManage && _post.isActive)
-            TextButton.icon(
-              onPressed: _isClosing ? null : _handleCloseRecruitment,
-              icon: _isClosing
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.lock_outline),
-              label: const Text('Đóng bài'),
+          if (canManage)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: TextButton.icon(
+                onPressed: canClose && !_isClosing ? _handleCloseRecruitment : null,
+                icon: _isClosing
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(canClose ? Icons.lock_outline : Icons.lock),
+                label: Text(canClose ? 'Đóng bài' : 'Đã đóng'),
+              ),
             ),
         ],
       ),

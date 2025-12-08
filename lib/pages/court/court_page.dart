@@ -164,9 +164,8 @@ class _CourtPageState extends State<CourtPage> {
 
     sections.add(const SizedBox(height: 100));
 
-    return SingleChildScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      child: Padding(
+    return _wrapScrollable(
+      Padding(
         padding: const EdgeInsets.only(bottom: 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

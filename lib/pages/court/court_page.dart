@@ -14,6 +14,16 @@ enum _AvailabilityFilter { openSlot, nearlyFull }
 
 enum _OpeningDayPart { morning, afternoon, evening }
 
+class TimeOfDayRange {
+  final TimeOfDay start;
+  final TimeOfDay end;
+
+  const TimeOfDayRange({
+    required this.start,
+    required this.end,
+  });
+}
+
 class CourtPage extends StatefulWidget {
   CourtPage({super.key});
 

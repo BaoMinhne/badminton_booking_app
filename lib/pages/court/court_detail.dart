@@ -526,7 +526,8 @@ class _CourtDetailState extends State<CourtDetail>
           const SizedBox(height: 6),
           Text(
             timeLabel,
-            style: textTheme.bodySmall?.copyWith(color: cs.outline),
+            style:
+                textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
           ),
         ],
       ),

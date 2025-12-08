@@ -97,8 +97,6 @@ class _RecruitmentApplicantsPageState extends State<RecruitmentApplicantsPage> {
   }
 
   Future<void> _handleCloseRecruitment() async {
-    if (!_post.isActive) return;
-
     DateTime? expiresAt;
 
     if (!_post.hasCourt) {
@@ -162,7 +160,7 @@ class _RecruitmentApplicantsPageState extends State<RecruitmentApplicantsPage> {
   @override
   Widget build(BuildContext context) {
     final canManage = _post.isOwner;
-    final canClose = canManage && _post.isActive;
+    final canClose = canManage;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Yêu cầu tham gia'),

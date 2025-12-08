@@ -27,44 +27,32 @@ class _CourtPageState extends State<CourtPage> {
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Theme.of(context).colorScheme.primary.withOpacity(0.05),
-              Theme.of(context).colorScheme.surface,
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: SafeArea(
-          child: RefreshIndicator(
-            onRefresh: () async {
-              await Future.wait([
-                context.read<CourtManager>().refresh(),
-                context.read<FavoriteCourtManager>().refresh(),
-              ]);
-            },
-            child: Builder(
-              builder: (context) {
-                if (courtManager.isLoading) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (courtManager.errorMessage != null) {
-                  return _buildErrorState(context, courtManager.errorMessage!);
-                }
-                if (courtManager.courts.isEmpty) {
-                  return _buildEmptyState(context);
-                }
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: () async {
+            await Future.wait([
+              context.read<CourtManager>().refresh(),
+              context.read<FavoriteCourtManager>().refresh(),
+            ]);
+          },
+          child: Builder(
+            builder: (context) {
+              if (courtManager.isLoading) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (courtManager.errorMessage != null) {
+                return _buildErrorState(context, courtManager.errorMessage!);
+              }
+              if (courtManager.courts.isEmpty) {
+                return _buildEmptyState(context);
+              }
 
-                return _buildContent(
-                  context,
-                  courtManager.courts,
-                  context.watch<FavoriteCourtManager>(),
-                );
-              },
-            ),
+              return _buildContent(
+                context,
+                courtManager.courts,
+                context.watch<FavoriteCourtManager>(),
+              );
+            },
           ),
         ),
       ),
@@ -234,8 +222,6 @@ class _CourtPageState extends State<CourtPage> {
     final filters = [
       ('Mới nhất', Icons.auto_awesome),
       ('Gần tôi', Icons.location_on_outlined),
-      ('Giá tốt', Icons.local_offer_outlined),
-      ('Phù hợp', Icons.emoji_events_outlined),
     ];
     final colorScheme = Theme.of(context).colorScheme;
 

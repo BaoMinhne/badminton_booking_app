@@ -137,7 +137,7 @@ class _CourtPageState extends State<CourtPage> {
     final sections = <Widget>[
       _buildHeroHeader(context, filteredCourts.length, favoriteManager),
       _buildFilterChips(context, favoriteManager),
-      _buildAdvancedFilters(context),
+      _buildAdvancedFilterLauncher(context),
       if (_needsOpeningHoursData || _needsAvailabilityData)
         _buildFilterStatus(context),
       const SizedBox(height: 16),
@@ -440,7 +440,81 @@ class _CourtPageState extends State<CourtPage> {
     );
   }
 
-  Widget _buildAdvancedFilters(BuildContext context) {
+  Widget _buildAdvancedFilterLauncher(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Bộ lọc nâng cao',
+            style: Theme.of(context)
+                .textTheme
+                .titleMedium
+                ?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            icon: Icon(Icons.tune, color: colorScheme.primary),
+            style: OutlinedButton.styleFrom(
+              alignment: Alignment.centerLeft,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              backgroundColor: colorScheme.surfaceVariant,
+              side: BorderSide(color: colorScheme.outlineVariant),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            label: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text(
+                  'Mở bộ lọc',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Số sân, giờ mở cửa, slot trống',
+                  style: TextStyle(fontSize: 12),
+                )
+              ],
+            ),
+            onPressed: () => _openAdvancedFiltersBottomSheet(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openAdvancedFiltersBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: DraggableScrollableSheet(
+            expand: false,
+            initialChildSize: 0.85,
+            minChildSize: 0.45,
+            maxChildSize: 0.95,
+            builder: (context, scrollController) {
+              return SingleChildScrollView(
+                controller: scrollController,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: _buildAdvancedFiltersContent(context),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildAdvancedFiltersContent(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Padding(

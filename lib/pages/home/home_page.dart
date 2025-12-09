@@ -1,6 +1,7 @@
 import 'package:badminton_booking_app/components/my_carousel.dart';
 import 'package:badminton_booking_app/components/my_text_field.dart';
 import 'package:badminton_booking_app/pages/home/search_page.dart';
+import 'package:badminton_booking_app/pages/home/widgets/hero_section.dart';
 import 'package:badminton_booking_app/utils/currency.dart';
 import 'package:flutter/material.dart';
 
@@ -70,6 +71,14 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ],
               ),
+            ),
+          ),
+
+          // ===== Hero section =====
+          SliverToBoxAdapter(
+            child: HeroSection(
+              onCtaPressed:
+                  () => _toast(context, 'Hãy chọn sân và giờ thi đấu của bạn!'),
             ),
           ),
 

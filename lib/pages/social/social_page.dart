@@ -29,7 +29,12 @@ import '../../models/friend_search_result.dart';
 import '../../models/user_details.dart';
 
 class SocialPage extends StatefulWidget {
-  const SocialPage({super.key});
+  final int initialTab;
+
+  const SocialPage({
+    super.key,
+    this.initialTab = 0,
+  });
 
   @override
   State<SocialPage> createState() => _SocialPageState();
@@ -347,6 +352,7 @@ class _SocialPageState extends State<SocialPage> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
+    final int initialTab = widget.initialTab.clamp(0, 3).toInt();
 
     final manager = context.watch<SocialManager>();
 
@@ -355,6 +361,7 @@ class _SocialPageState extends State<SocialPage> {
 
     return DefaultTabController(
       length: 4,
+      initialIndex: initialTab,
       child: Scaffold(
         backgroundColor: cs.surfaceVariant.withOpacity(0.1),
         appBar: AppBar(

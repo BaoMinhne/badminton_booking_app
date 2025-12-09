@@ -37,13 +37,14 @@ class SocialPage extends StatefulWidget {
   });
 
   @override
-  State<SocialPage> createState() => _SocialPageState();
+  State<SocialPage> createState() => SocialPageState();
 }
 
-class _SocialPageState extends State<SocialPage> {
+class SocialPageState extends State<SocialPage> {
   late final PartnerSuggestionManager _partnerManager;
   late final InvitationManager _invitationManager;
   final Set<String> _pendingRequests = <String>{};
+  TabController? _tabController;
 
   @override
   void initState() {
@@ -348,6 +349,13 @@ class _SocialPageState extends State<SocialPage> {
     );
   }
 
+  void jumpToTab(int index) {
+    final controller = _tabController;
+    if (controller == null) return;
+    if (index < 0 || index >= controller.length) return;
+    controller.animateTo(index);
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -362,151 +370,158 @@ class _SocialPageState extends State<SocialPage> {
     return DefaultTabController(
       length: 4,
       initialIndex: initialTab,
-      child: Scaffold(
-        backgroundColor: cs.surfaceVariant.withOpacity(0.1),
-        appBar: AppBar(
-          title: const Text(
-            'Cộng đồng cầu lông',
-            style: TextStyle(
-                fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: -0.5),
-          ),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.add_circle_outline_rounded, size: 26),
-              tooltip: 'Đăng bài',
-              onPressed: () => _openCreatePost(context),
-              style: IconButton.styleFrom(
-                foregroundColor: cs.onPrimary,
-                backgroundColor: cs.primary.withOpacity(0.15),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+      child: Builder(
+        builder: (context) {
+          _tabController = DefaultTabController.of(context);
+
+          return Scaffold(
+            backgroundColor: cs.surfaceVariant.withOpacity(0.1),
+            appBar: AppBar(
+              title: const Text(
+                'Cộng đồng cầu lông',
+                style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.5),
               ),
-            ),
-            const SizedBox(width: 8),
-            IconButton(
-              icon: const Icon(Icons.group_rounded, size: 28),
-              tooltip: 'Tin nhắn',
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => MultiProvider(
-                      providers: [
-                        ChangeNotifierProvider(
-                          create: (_) => FriendRequestManager()..initialize(),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.add_circle_outline_rounded, size: 26),
+                  tooltip: 'Đăng bài',
+                  onPressed: () => _openCreatePost(context),
+                  style: IconButton.styleFrom(
+                    foregroundColor: cs.onPrimary,
+                    backgroundColor: cs.primary.withOpacity(0.15),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.group_rounded, size: 28),
+                  tooltip: 'Tin nhắn',
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => MultiProvider(
+                          providers: [
+                            ChangeNotifierProvider(
+                              create: (_) => FriendRequestManager()..initialize(),
+                            ),
+                            ChangeNotifierProvider(
+                              create: (_) => FriendListManager()..initialize(),
+                            ),
+                            ChangeNotifierProvider(
+                              create: (_) => ChatListManager()..initialize(),
+                            ),
+                          ],
+                          child: const ChatHomePage(),
                         ),
-                        ChangeNotifierProvider(
-                          create: (_) => FriendListManager()..initialize(),
-                        ),
-                        ChangeNotifierProvider(
-                          create: (_) => ChatListManager()..initialize(),
-                        ),
+                      ),
+                    );
+                  },
+                  style: IconButton.styleFrom(
+                    foregroundColor: cs.onPrimary,
+                    backgroundColor: cs.primary.withOpacity(0.15),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(width: 12),
+              ],
+              bottom: TabBar(
+                isScrollable: true,
+                padding: const EdgeInsets.only(left: 8),
+                labelPadding: const EdgeInsets.only(right: 24),
+                tabs: [
+                  Tab(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.people_alt_rounded, size: 20),
+                        SizedBox(width: 8),
+                        Text('Community'),
                       ],
-                      child: const ChatHomePage(),
                     ),
                   ),
-                );
-              },
-              style: IconButton.styleFrom(
-                foregroundColor: cs.onPrimary,
-                backgroundColor: cs.primary.withOpacity(0.15),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                  Tab(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.person_search_rounded, size: 20),
+                        SizedBox(width: 8),
+                        Text('Recruitment'),
+                      ],
+                    ),
+                  ),
+                  Tab(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.handshake_rounded, size: 20),
+                        SizedBox(width: 8),
+                        Text('Partner'),
+                      ],
+                    ),
+                  ),
+                  Tab(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.mail_outline_rounded, size: 20),
+                        SizedBox(width: 8),
+                        Text('Invitations'),
+                      ],
+                    ),
+                  ),
+                ],
+                // các phần còn lại giữ nguyên
+                labelStyle: tt.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                ),
+                unselectedLabelStyle: tt.titleMedium?.copyWith(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+                labelColor: cs.onPrimary,
+                unselectedLabelColor: cs.onPrimary.withOpacity(0.75),
+                indicator: BoxDecoration(
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(12)),
+                  color: cs.primary.withOpacity(0.3),
+                ),
+                indicatorSize: TabBarIndicatorSize.tab,
+                indicatorColor: Colors.transparent,
+                dividerColor: cs.onPrimary.withOpacity(0.15),
+                overlayColor:
+                    WidgetStateProperty.all(cs.primary.withOpacity(0.1)),
               ),
-            ),
-            const SizedBox(width: 12),
-          ],
-          bottom: TabBar(
-            isScrollable: true,
-            padding: const EdgeInsets.only(
-                left: 8), // hơi cách mép trái 1 chút cho đẹp
-            labelPadding: const EdgeInsets.only(
-                right: 24), // chỉ chừa khoảng cách bên phải mỗi tab
-            tabs: [
-              Tab(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(Icons.people_alt_rounded, size: 20),
-                    SizedBox(width: 8),
-                    Text('Community'),
-                  ],
+              flexibleSpace: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [cs.primary, cs.primary.withOpacity(0.85)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                 ),
               ),
-              Tab(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(Icons.person_search_rounded, size: 20),
-                    SizedBox(width: 8),
-                    Text('Recruitment'),
-                  ],
-                ),
-              ),
-              Tab(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(Icons.handshake_rounded, size: 20),
-                    SizedBox(width: 8),
-                    Text('Partner'),
-                  ],
-                ),
-              ),
-              Tab(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(Icons.mail_outline_rounded, size: 20),
-                    SizedBox(width: 8),
-                    Text('Invitations'),
-                  ],
-                ),
-              ),
-            ],
-            // các phần còn lại giữ nguyên
-            labelStyle: tt.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              fontSize: 16,
+              elevation: 0,
+              scrolledUnderElevation: 0,
+              shadowColor: Colors.transparent,
             ),
-            unselectedLabelStyle: tt.titleMedium?.copyWith(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-            labelColor: cs.onPrimary,
-            unselectedLabelColor: cs.onPrimary.withOpacity(0.75),
-            indicator: BoxDecoration(
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(12)),
-              color: cs.primary.withOpacity(0.3),
-            ),
-            indicatorSize: TabBarIndicatorSize.tab,
-            indicatorColor: Colors.transparent,
-            dividerColor: cs.onPrimary.withOpacity(0.15),
-            overlayColor: WidgetStateProperty.all(cs.primary.withOpacity(0.1)),
-          ),
-          flexibleSpace: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [cs.primary, cs.primary.withOpacity(0.85)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+            body: SafeArea(
+              child: TabBarView(
+                children: [
+                  _buildPostsTab(context, manager, avatarUrl),
+                  _buildRecruitmentTab(context, manager),
+                  _buildPartnerSuggestionTab(context, _partnerManager),
+                  _buildCourtInvitesTab(context, _invitationManager),
+                ],
               ),
             ),
-          ),
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          shadowColor: Colors.transparent,
-        ),
-        body: SafeArea(
-          child: TabBarView(
-            children: [
-              _buildPostsTab(context, manager, avatarUrl),
-              _buildRecruitmentTab(context, manager),
-              _buildPartnerSuggestionTab(context, _partnerManager),
-              _buildCourtInvitesTab(context, _invitationManager),
-            ],
-          ),
-        ),
+          );
+        },
       ),
     );
   }

@@ -6,6 +6,7 @@ import 'package:badminton_booking_app/pages/court/booking_page.dart';
 import 'package:badminton_booking_app/pages/court/court_page.dart';
 import 'package:badminton_booking_app/pages/court/court_detail.dart';
 import 'package:badminton_booking_app/pages/home/search_page.dart';
+import 'package:badminton_booking_app/pages/nav_bar_page.dart';
 import 'package:badminton_booking_app/pages/social/social_page.dart';
 import 'package:badminton_booking_app/pages/user/user_booking_history_page.dart';
 import 'package:badminton_booking_app/pages/user/user_manager.dart';
@@ -215,6 +216,14 @@ class _HomePageState extends State<HomePage> {
 
   void _openSocialTab(int tabIndex) {
     final int safeIndex = tabIndex.clamp(0, 3).toInt();
+
+    // Nếu đang ở trong NavBarPage thì chuyển tab thay vì push để tránh chồng UI
+    final navState = context.findAncestorStateOfType<NavBarPageState>();
+    if (navState != null) {
+      navState.openSocialTab(safeIndex);
+      return;
+    }
+
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => SocialPage(initialTab: safeIndex)),
     );

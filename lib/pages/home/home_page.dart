@@ -656,13 +656,25 @@ class _CourtCard extends StatelessWidget {
                       children: [
                         const Icon(Icons.star, size: 16, color: Colors.amber),
                         const SizedBox(width: 4),
-                        Text(
-                          primaryMeta.isNotEmpty ? primaryMeta : 'Chưa có đánh giá',
+                        Expanded(
+                          child: Text(
+                            primaryMeta.isNotEmpty
+                                ? primaryMeta
+                                : 'Chưa có đánh giá',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        const Spacer(),
-                        Text(price,
-                            style: TextStyle(
-                                color: cs.primary, fontWeight: FontWeight.w800)),
+                        const SizedBox(width: 8),
+                        Text(
+                          price,
+                          style: TextStyle(
+                            color: cs.primary,
+                            fontWeight: FontWeight.w800,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                         const Text('/giờ', style: TextStyle(fontSize: 12)),
                       ],
                     ),

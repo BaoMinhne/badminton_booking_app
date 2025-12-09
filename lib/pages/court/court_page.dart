@@ -68,6 +68,10 @@ class _CourtPageState extends State<CourtPage> {
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
+      appBar: AppBar(
+        title: const Text('Danh sách sân'),
+        centerTitle: true,
+      ),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {

@@ -25,14 +25,16 @@ class TimeOfDayRange {
 }
 
 class CourtPage extends StatefulWidget {
-  CourtPage({super.key});
+  const CourtPage({super.key, this.initialFilter = CourtFilter.newest});
+
+  final CourtFilter initialFilter;
 
   @override
   State<CourtPage> createState() => _CourtPageState();
 }
 
 class _CourtPageState extends State<CourtPage> {
-  var _selectedFilter = CourtFilter.newest;
+  late CourtFilter _selectedFilter;
   var _minCourtQuantity = 0.0;
   int? _quantityQuickUpperBound;
   bool _openNowOnly = false;
@@ -54,6 +56,7 @@ class _CourtPageState extends State<CourtPage> {
   @override
   void initState() {
     super.initState();
+    _selectedFilter = widget.initialFilter;
     Future.microtask(() {
       context.read<FavoriteCourtManager>().initialize();
     });

@@ -32,7 +32,7 @@ class _NavBarPageState extends State<NavBarPage> {
       _loadAndCheckOnboarding();
     });
 
-    _pages = [
+    _pages = const [
       HomePage(),
       SocialPage(),
       CourtPage(),

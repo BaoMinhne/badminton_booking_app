@@ -66,8 +66,37 @@ class AppRoot extends StatelessWidget {
   }
 }
 
-class SplashScreen extends StatelessWidget {
+class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
+
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  bool _logoReady = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _precacheLogo();
+  }
+
+  Future<void> _precacheLogo() async {
+    try {
+      await precacheImage(
+        const AssetImage("assets/images/logo_splash.png"),
+        context,
+      );
+      if (mounted) {
+        setState(() => _logoReady = true);
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _logoReady = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -103,12 +132,23 @@ class SplashScreen extends StatelessWidget {
                   ],
                 ),
                 child: ClipOval(
-                  child: Image.asset(
-                    "assets/images/logo_splash.png",
-                    width: logoSize,
-                    height: logoSize,
-                    fit: BoxFit.cover,
-                  ),
+                  child: _logoReady
+                      ? Image.asset(
+                          "assets/images/logo_splash.png",
+                          width: logoSize,
+                          height: logoSize,
+                          fit: BoxFit.cover,
+                        )
+                      : Container(
+                          width: logoSize,
+                          height: logoSize,
+                          color: Colors.white.withOpacity(0.1),
+                          child: Icon(
+                            Icons.sports_tennis,
+                            color: Colors.white.withOpacity(0.8),
+                            size: logoSize * 0.45,
+                          ),
+                        ),
                 ),
               ),
               const SizedBox(height: 24),

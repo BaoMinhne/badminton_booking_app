@@ -155,9 +155,8 @@ class _MyCarouselState extends State<MyCarousel> {
                                         horizontal: 14,
                                         vertical: 10,
                                       ),
-                                      backgroundColor:
-                                          Colors.white.withOpacity(0.95),
-                                      foregroundColor: Colors.black87,
+                                      backgroundColor: cs.primary,
+                                      foregroundColor: Colors.white,
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(12),
                                       ),

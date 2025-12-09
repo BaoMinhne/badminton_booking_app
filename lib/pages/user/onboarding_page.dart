@@ -83,13 +83,20 @@ class _OnboardingPageState extends State<OnboardingPage> {
         details.experienceYears != null ? '${details.experienceYears}' : '';
     _playPerWeekController.text =
         details.playsPerWeek != null ? '${details.playsPerWeek}' : '';
-    _selectedLevel = details.level ?? _levelFromNumeric(details.levelNumeric);
-    _selectedGender = details.gender;
-    _selectedPreferredRole = details.preferredRoleDoubles;
-    _selectedIntensity = details.intensity;
+    _selectedLevel = _validDropdownValue(details.level, _levelOptions) ??
+        _levelFromNumeric(details.levelNumeric);
+    _selectedGender = _validDropdownValue(details.gender, _genderOptions);
+    _selectedPreferredRole =
+        _validDropdownValue(details.preferredRoleDoubles, _preferredRoleOptions);
+    _selectedIntensity =
+        _validDropdownValue(details.intensity, _intensityOptions);
     _selectedBirthday = details.birthday;
-    _selectedMatchTypes = List<String>.from(details.matchTypes);
-    _selectedPlayStyleTags = List<String>.from(details.playStyleTags);
+    _selectedMatchTypes = details.matchTypes
+        .where((opt) => _matchTypeOptions.contains(opt))
+        .toList();
+    _selectedPlayStyleTags = details.playStyleTags
+        .where((opt) => _playStyleTagOptions.contains(opt))
+        .toList();
   }
 
   @override
@@ -402,6 +409,12 @@ class _OnboardingPageState extends State<OnboardingPage> {
   String _levelFromNumeric(int numeric) {
     if (numeric <= 0 || numeric > _levelOptions.length) return 'Intermediate';
     return _levelOptions[numeric - 1];
+  }
+
+  String? _validDropdownValue(String? value, List<String> options) {
+    final normalized = value?.trim();
+    if (normalized == null || normalized.isEmpty) return null;
+    return options.contains(normalized) ? normalized : null;
   }
 
   Future<void> _submit() async {

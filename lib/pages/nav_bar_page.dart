@@ -15,12 +15,13 @@ class NavBarPage extends StatefulWidget {
   const NavBarPage({super.key});
 
   @override
-  State<NavBarPage> createState() => _NavBarPageState();
+  State<NavBarPage> createState() => NavBarPageState();
 }
 
-class _NavBarPageState extends State<NavBarPage> {
+class NavBarPageState extends State<NavBarPage> {
   int _index = 0;
   bool _checkingOnboarding = false;
+  final GlobalKey<SocialPageState> _socialPageKey = GlobalKey<SocialPageState>();
 
   late final List<Widget> _pages;
 
@@ -32,11 +33,11 @@ class _NavBarPageState extends State<NavBarPage> {
       _loadAndCheckOnboarding();
     });
 
-    _pages = const [
-      HomePage(),
-      SocialPage(),
-      CourtPage(),
-      ProfilePage(),
+    _pages = [
+      const HomePage(),
+      SocialPage(key: _socialPageKey),
+      const CourtPage(),
+      const ProfilePage(),
     ];
   }
 
@@ -64,6 +65,17 @@ class _NavBarPageState extends State<NavBarPage> {
         ],
       ),
     );
+  }
+
+  void setIndex(int newIndex) {
+    if (newIndex == _index) return;
+    setState(() => _index = newIndex.clamp(0, _pages.length - 1));
+  }
+
+  void openSocialTab(int tabIndex) {
+    final int safeIndex = tabIndex.clamp(0, 3).toInt();
+    _socialPageKey.currentState?.jumpToTab(safeIndex);
+    setState(() => _index = 1);
   }
 
   Future<void> _loadAndCheckOnboarding() async {

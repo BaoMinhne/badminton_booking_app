@@ -6,6 +6,8 @@ import 'package:badminton_booking_app/pages/court/booking_page.dart';
 import 'package:badminton_booking_app/pages/court/court_page.dart';
 import 'package:badminton_booking_app/pages/court/court_detail.dart';
 import 'package:badminton_booking_app/pages/home/search_page.dart';
+import 'package:badminton_booking_app/pages/nav_bar_page.dart';
+import 'package:badminton_booking_app/pages/social/social_page.dart';
 import 'package:badminton_booking_app/pages/user/user_booking_history_page.dart';
 import 'package:badminton_booking_app/pages/user/user_manager.dart';
 import 'package:badminton_booking_app/services/booking_service.dart';
@@ -25,14 +27,7 @@ class _HomePageState extends State<HomePage> {
   final TextEditingController searchController = TextEditingController();
   final CourtService _courtService = CourtService();
   final BookingService _bookingService = BookingService();
-  final _banner = [
-    'assets/images/court_cover.jpg',
-    'https://picsum.photos/seed/promo1/1200/600',
-    'https://picsum.photos/seed/promo2/1200/600',
-    'https://picsum.photos/seed/promo3/1200/600',
-    'https://picsum.photos/seed/promo4/1200/600',
-    'https://picsum.photos/seed/promo5/1200/600',
-  ];
+  late final List<CarouselSlide> _bannerSlides;
   int _bannerIndex = 0;
   bool _isCourtsLoading = false;
   String? _courtError;
@@ -45,6 +40,29 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    _bannerSlides = [
+      CarouselSlide(
+        image: 'assets/images/court_cover_2.jpg',
+        title: 'Ưu đãi giờ vàng / gói thành viên',
+        description: 'Chọn nhanh sân trống giờ đẹp hoặc săn giá tốt cho hội nhóm.',
+        ctaLabel: 'Đặt sân ngay',
+        onTap: _openSearchPage,
+      ),
+      CarouselSlide(
+        image: 'assets/images/court_cover_5.jpg',
+        title: 'Sự kiện • giải nội bộ',
+        description: 'Tham gia giải giao lưu, tuyển thành viên hay lập kèo trong CLB.',
+        ctaLabel: 'Xem sự kiện',
+        onTap: () => _openSocialTab(1),
+      ),
+      CarouselSlide(
+        image: 'assets/images/court_cover_3.jpg',
+        title: 'Tìm bạn đánh đôi',
+        description: 'Kết nối partner hợp lối chơi, set kèo đôi ngay trong cộng đồng.',
+        ctaLabel: 'Mở tab Social',
+        onTap: () => _openSocialTab(2),
+      ),
+    ];
     Future.microtask(() {
       if (!mounted) return;
       _reloadCourts();
@@ -147,7 +165,7 @@ class _HomePageState extends State<HomePage> {
             // ===== Promo carousel =====
             SliverToBoxAdapter(
               child: MyCarousel(
-                images: _banner,
+                slides: _bannerSlides,
                 onIndexChanged: (i) => setState(() => _bannerIndex = i),
               ),
             ),
@@ -187,6 +205,27 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       ),
+    );
+  }
+
+  void _openSearchPage() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const SearchPage()),
+    );
+  }
+
+  void _openSocialTab(int tabIndex) {
+    final int safeIndex = tabIndex.clamp(0, 3).toInt();
+
+    // Nếu đang ở trong NavBarPage thì chuyển tab thay vì push để tránh chồng UI
+    final navState = context.findAncestorStateOfType<NavBarPageState>();
+    if (navState != null) {
+      navState.openSocialTab(safeIndex);
+      return;
+    }
+
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => SocialPage(initialTab: safeIndex)),
     );
   }
 

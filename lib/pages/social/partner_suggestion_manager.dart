@@ -13,6 +13,7 @@ class PartnerSuggestionManager extends ChangeNotifier {
 
   final RecommenderService _service;
   final FriendRequestService _friendRequestService;
+  bool _isDisposed = false;
 
   List<PartnerRecommendation> _suggestions = const <PartnerRecommendation>[];
   List<PartnerRecommendation> _filteredSuggestions =
@@ -47,7 +48,7 @@ class PartnerSuggestionManager extends ChangeNotifier {
       _suggestions = const <PartnerRecommendation>[];
       _filteredSuggestions = const <PartnerRecommendation>[];
     }
-    notifyListeners();
+    _notifyListeners();
 
     try {
       _suggestions = await _service.fetchRecommendations();
@@ -58,7 +59,7 @@ class PartnerSuggestionManager extends ChangeNotifier {
       _filteredSuggestions = const <PartnerRecommendation>[];
     } finally {
       _isLoading = false;
-      notifyListeners();
+      _notifyListeners();
     }
   }
 
@@ -159,6 +160,17 @@ class PartnerSuggestionManager extends ChangeNotifier {
       return true;
     }).toList(growable: false);
 
+    _notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    super.dispose();
+  }
+
+  void _notifyListeners() {
+    if (_isDisposed) return;
     notifyListeners();
   }
 }

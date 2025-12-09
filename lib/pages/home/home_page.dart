@@ -1,10 +1,10 @@
 import 'package:badminton_booking_app/components/my_carousel.dart';
-import 'package:badminton_booking_app/components/my_court.dart';
 import 'package:badminton_booking_app/components/my_text_field.dart';
 import 'package:badminton_booking_app/models/court.dart';
 import 'package:badminton_booking_app/models/user_booking_view.dart';
 import 'package:badminton_booking_app/pages/court/booking_page.dart';
 import 'package:badminton_booking_app/pages/court/court_page.dart';
+import 'package:badminton_booking_app/pages/court/court_detail.dart';
 import 'package:badminton_booking_app/pages/home/search_page.dart';
 import 'package:badminton_booking_app/pages/user/user_booking_history_page.dart';
 import 'package:badminton_booking_app/pages/user/user_manager.dart';
@@ -13,6 +13,7 @@ import 'package:badminton_booking_app/services/court_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:badminton_booking_app/utils/currency.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -172,7 +173,12 @@ class _HomePageState extends State<HomePage> {
 
             // ===== Section: Gần bạn =====
             _SectionHeaderSliver(
-                title: 'Gần bạn', actionText: 'Xem tất cả', onTap: _reloadCourts),
+              title: 'Gần bạn',
+              actionText: 'Xem tất cả',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CourtPage()),
+              ),
+            ),
             ..._buildCourtsSliver(),
 
             SliverToBoxAdapter(
@@ -198,10 +204,13 @@ class _HomePageState extends State<HomePage> {
     });
 
     try {
-      final courts = await _courtService.listCourts(perPage: 8);
+      final courts = await _courtService.listCourts(perPage: 24);
+      final sorted = List<Court>.of(courts)
+        ..sort((a, b) => b.bookingCount.compareTo(a.bookingCount));
+      final topCourts = sorted.take(3).toList(growable: false);
       if (!mounted) return;
       setState(() {
-        _courts = courts;
+        _courts = topCourts;
       });
     } catch (error) {
       if (!mounted) return;
@@ -337,7 +346,7 @@ class _HomePageState extends State<HomePage> {
         itemCount: _courts.length,
         itemBuilder: (_, i) => Padding(
           padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
-          child: MyCourt(court: _courts[i]),
+          child: _CourtCard(court: _courts[i]),
         ),
       ),
     ];
@@ -567,6 +576,133 @@ class _SectionHeaderSliver extends StatelessWidget {
                   ],
                 ),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CourtCard extends StatelessWidget {
+  final Court court;
+  const _CourtCard({required this.court});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final hasCoverImage =
+        court.coverImageUrl != null && court.coverImageUrl!.isNotEmpty;
+    final imageProvider = hasCoverImage
+        ? NetworkImage(court.coverImageUrl!) as ImageProvider
+        : const AssetImage('assets/images/badminton_logo.jpg');
+
+    final ratingLabel =
+        court.rating != null && court.rating! > 0 ? court.rating!.toStringAsFixed(1) : null;
+    final distanceLabel = court.distanceKm != null && court.distanceKm! > 0
+        ? '${court.distanceKm!.toStringAsFixed(1)}km'
+        : null;
+    final primaryMeta = [ratingLabel, distanceLabel]
+        .whereType<String>()
+        .where((value) => value.isNotEmpty)
+        .join(' • ');
+    final nextSlot = court.nextSlotLabel?.trim();
+    final nextSlotLabel =
+        nextSlot != null && nextSlot.isNotEmpty ? nextSlot : 'Khung giờ đang cập nhật';
+    final price = court.pricePerHour != null && court.pricePerHour! > 0
+        ? formatVND(court.pricePerHour!)
+        : 'Giá đang cập nhật';
+
+    return Material(
+      color: cs.surface,
+      borderRadius: BorderRadius.circular(12),
+      elevation: 1,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => CourtDetail(court: court),
+            ),
+          );
+        },
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(12), bottomLeft: Radius.circular(12)),
+              child: SizedBox(
+                width: 110,
+                height: 88,
+                child: Image(
+                  image: imageProvider,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(right: 12, top: 10, bottom: 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(court.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        const Icon(Icons.star, size: 16, color: Colors.amber),
+                        const SizedBox(width: 4),
+                        Text(
+                          primaryMeta.isNotEmpty ? primaryMeta : 'Chưa có đánh giá',
+                        ),
+                        const Spacer(),
+                        Text(price,
+                            style: TextStyle(
+                                color: cs.primary, fontWeight: FontWeight.w800)),
+                        const Text('/giờ', style: TextStyle(fontSize: 12)),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(Icons.schedule,
+                            size: 16, color: cs.onSurface.withOpacity(0.7)),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            nextSlotLabel,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: cs.onSurface.withOpacity(0.7)),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (court.bookingCount > 0) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(Icons.trending_up,
+                              size: 16, color: cs.primary.withOpacity(0.85)),
+                          const SizedBox(width: 6),
+                          Text(
+                            '${court.bookingCount} lượt đặt',
+                            style: TextStyle(
+                              color: cs.onSurface.withOpacity(0.75),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      )
+                    ],
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),

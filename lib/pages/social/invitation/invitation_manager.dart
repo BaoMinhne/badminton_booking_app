@@ -11,6 +11,7 @@ class InvitationManager extends ChangeNotifier {
       : _service = service ?? InvitationService();
 
   final InvitationService _service;
+  bool _isDisposed = false;
 
   List<Invitation> _invitations = const <Invitation>[];
   bool _isLoading = false;
@@ -24,7 +25,7 @@ class InvitationManager extends ChangeNotifier {
     if (_isLoading) return;
     _isLoading = true;
     _error = null;
-    notifyListeners();
+    _notifyListeners();
 
     try {
       _invitations = await _service.fetchIncoming();
@@ -32,7 +33,7 @@ class InvitationManager extends ChangeNotifier {
       _error = err.toString();
     } finally {
       _isLoading = false;
-      notifyListeners();
+      _notifyListeners();
     }
   }
 
@@ -45,7 +46,7 @@ class InvitationManager extends ChangeNotifier {
     } catch (err) {
       _error = err.toString();
     } finally {
-      notifyListeners();
+      _notifyListeners();
     }
   }
 
@@ -102,4 +103,15 @@ class InvitationManager extends ChangeNotifier {
   List<Court> mapCourts(List<Court> courts) => courts;
   List<RecruitmentPost> mapRecruitments(List<RecruitmentPost> posts) => posts;
   List<UserBookingView> mapBookings(List<UserBookingView> bookings) => bookings;
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    super.dispose();
+  }
+
+  void _notifyListeners() {
+    if (_isDisposed) return;
+    notifyListeners();
+  }
 }

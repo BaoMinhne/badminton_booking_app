@@ -66,8 +66,38 @@ class AppRoot extends StatelessWidget {
   }
 }
 
-class SplashScreen extends StatelessWidget {
+class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
+
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  bool _logoReady = false;
+  bool _logoFailed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _precacheLogo();
+  }
+
+  Future<void> _precacheLogo() async {
+    try {
+      await precacheImage(
+        const AssetImage("assets/images/logo_splash.png"),
+        context,
+      );
+      if (mounted) {
+        setState(() => _logoReady = true);
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _logoFailed = true);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -103,11 +133,42 @@ class SplashScreen extends StatelessWidget {
                   ],
                 ),
                 child: ClipOval(
-                  child: Image.asset(
-                    "assets/images/logo_splash.png",
-                    width: logoSize,
-                    height: logoSize,
-                    fit: BoxFit.cover,
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 250),
+                    child: _logoFailed
+                        ? _LogoFallback(logoSize: logoSize)
+                        : Image.asset(
+                            "assets/images/logo_splash.png",
+                            key: const ValueKey("splash-logo"),
+                            width: logoSize,
+                            height: logoSize,
+                            fit: BoxFit.cover,
+                            frameBuilder: (
+                              context,
+                              child,
+                              frame,
+                              wasSynchronouslyLoaded,
+                            ) {
+                              if (frame != null && !_logoReady && mounted) {
+                                WidgetsBinding.instance.addPostFrameCallback((_) {
+                                  if (mounted) setState(() => _logoReady = true);
+                                });
+                              }
+                              if (frame == null && !_logoReady) {
+                                return _LogoFallback(logoSize: logoSize);
+                              }
+                              return child;
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              if (!_logoFailed && mounted) {
+                                WidgetsBinding.instance
+                                    .addPostFrameCallback((_) {
+                                  if (mounted) setState(() => _logoFailed = true);
+                                });
+                              }
+                              return _LogoFallback(logoSize: logoSize);
+                            },
+                          ),
                   ),
                 ),
               ),
@@ -133,6 +194,27 @@ class SplashScreen extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _LogoFallback extends StatelessWidget {
+  const _LogoFallback({required this.logoSize});
+
+  final double logoSize;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const ValueKey("splash-fallback"),
+      width: logoSize,
+      height: logoSize,
+      color: Colors.white.withOpacity(0.1),
+      child: Icon(
+        Icons.sports_tennis,
+        color: Colors.white.withOpacity(0.8),
+        size: logoSize * 0.45,
       ),
     );
   }

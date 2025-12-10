@@ -3,6 +3,7 @@ import 'package:badminton_booking_app/pages/court/favorite_court_manager.dart';
 import 'package:badminton_booking_app/pages/nav_bar_page.dart';
 import 'package:badminton_booking_app/pages/social/social_manager.dart';
 import 'package:badminton_booking_app/pages/user/user_manager.dart';
+import 'package:badminton_booking_app/pages/manager/manager_nav_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
@@ -57,6 +58,9 @@ class AppRoot extends StatelessWidget {
         }
 
         if (authManager.isAuth) {
+          if (authManager.user?.role == 'manager') {
+            return const ManagerNavPage();
+          }
           return const NavBarPage();
         }
 

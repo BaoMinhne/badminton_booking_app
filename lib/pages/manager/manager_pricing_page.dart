@@ -63,7 +63,7 @@ class ManagerPricingPage extends StatelessWidget {
                   child: ConstrainedBox(
                     constraints: BoxConstraints(minWidth: constraints.maxWidth),
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
                       child: DataTable(
                         columns: const [
                           DataColumn(label: Text('Loại sân')),

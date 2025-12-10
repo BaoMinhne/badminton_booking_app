@@ -60,7 +60,7 @@ class ManagerDashboardService {
     final authRecord = pb.authStore.record;
 
     if (authRecord == null) {
-      throw ClientException('Bạn cần đăng nhập để xem dữ liệu.');
+      throw ClientException(message: 'Bạn cần đăng nhập để xem dữ liệu.');
     }
 
     final ownerId = authRecord.id;
@@ -164,20 +164,20 @@ class ManagerDashboardService {
         .where((b) => b.status == BookingStatus.confirmed ||
             b.status == BookingStatus.awaitingPayment)
         .fold<double>(
-          0,
+          0.0,
           (sum, booking) =>
               sum + booking.endTime.difference(booking.startTime).inMinutes,
         );
 
-    final capacityMinutes = courtIds.fold<double>(0, (sum, id) {
-      final durationMinutes = openingDuration[id] ?? 0;
+    final capacityMinutes = courtIds.fold<double>(0.0, (sum, id) {
+      final durationMinutes = openingDuration[id] ?? 0.0;
       final unitCount = unitCourtMap.values.where((cid) => cid == id).length;
       return sum + durationMinutes * max(1, unitCount);
     });
 
     final occupancyRate = capacityMinutes == 0
-        ? 0
-        : (bookedMinutes / capacityMinutes).clamp(0, 1);
+        ? 0.0
+        : (bookedMinutes / capacityMinutes).clamp(0, 1).toDouble();
 
     final blockedSlots = bookings.where((b) => b.status == BookingStatus.held).length;
     final confirmedCount = bookings.where((b) => b.status == BookingStatus.confirmed).length;
@@ -262,7 +262,10 @@ class ManagerDashboardService {
     final open = Duration(hours: openHour!, minutes: openMinute!);
     final close = Duration(hours: closeHour!, minutes: closeMinute!);
     final diff = close - open;
-    return diff.inMinutes.toDouble().clamp(0, double.infinity);
+    return diff.inMinutes
+        .toDouble()
+        .clamp(0, double.infinity)
+        .toDouble();
   }
 
   String _buildOrFilter(String field, List<String> values) {

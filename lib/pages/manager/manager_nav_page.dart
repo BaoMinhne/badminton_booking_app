@@ -80,9 +80,38 @@ class _ManagerNavPageState extends State<ManagerNavPage> {
           ),
         ],
       ),
+      drawer: isWide
+          ? null
+          : Drawer(
+              child: SafeArea(
+                child: _DrawerList(
+                  tabs: _tabs,
+                  selectedIndex: _selectedIndex,
+                  onSelect: (index) {
+                    setState(() => _selectedIndex = index);
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ),
+            ),
       body: Row(
         children: [
-          if (isWide) _buildSideRail(context),
+          if (isWide)
+            NavigationDrawer(
+              selectedIndex: _selectedIndex,
+              onDestinationSelected: (index) =>
+                  setState(() => _selectedIndex = index),
+              children: _tabs
+                  .map(
+                    (tab) => NavigationDrawerDestination(
+                      icon: Icon(tab.icon),
+                      selectedIcon:
+                          Icon(tab.icon, color: Theme.of(context).primaryColor),
+                      label: Text(tab.label),
+                    ),
+                  )
+                  .toList(),
+            ),
           Expanded(
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 250),
@@ -100,39 +129,50 @@ class _ManagerNavPageState extends State<ManagerNavPage> {
           ),
         ],
       ),
-      bottomNavigationBar: isWide ? null : _buildBottomBar(context),
     );
   }
+}
 
-  Widget _buildSideRail(BuildContext context) {
-    return NavigationRail(
-      selectedIndex: _selectedIndex,
-      onDestinationSelected: (index) => setState(() => _selectedIndex = index),
-      labelType: NavigationRailLabelType.all,
-      destinations: _tabs
-          .map(
-            (tab) => NavigationRailDestination(
-              icon: Icon(tab.icon),
-              selectedIcon: Icon(tab.icon, color: Theme.of(context).primaryColor),
-              label: Text(tab.label),
-            ),
-          )
-          .toList(),
-    );
-  }
+class _DrawerList extends StatelessWidget {
+  const _DrawerList({
+    required this.tabs,
+    required this.selectedIndex,
+    required this.onSelect,
+  });
 
-  Widget _buildBottomBar(BuildContext context) {
-    return NavigationBar(
-      selectedIndex: _selectedIndex,
-      onDestinationSelected: (index) => setState(() => _selectedIndex = index),
-      destinations: _tabs
-          .map(
-            (tab) => NavigationDestination(
-              icon: Icon(tab.icon),
-              label: tab.label,
-            ),
-          )
-          .toList(),
+  final List<_ManagerTab> tabs;
+  final int selectedIndex;
+  final ValueChanged<int> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Text(
+            'Chủ sân',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+        ),
+        ...tabs.indexed.map(
+          (entry) {
+            final index = entry.$1;
+            final tab = entry.$2;
+            final isSelected = index == selectedIndex;
+            return ListTile(
+              leading: Icon(tab.icon,
+                  color: isSelected
+                      ? Theme.of(context).colorScheme.primary
+                      : null),
+              title: Text(tab.label),
+              selected: isSelected,
+              onTap: () => onSelect(index),
+            );
+          },
+        ),
+      ],
     );
   }
 }

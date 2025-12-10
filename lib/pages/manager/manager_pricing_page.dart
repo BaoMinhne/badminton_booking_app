@@ -58,42 +58,62 @@ class ManagerPricingPage extends StatelessWidget {
             Expanded(
               child: Card(
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemBuilder: (context, index) {
-                    final row = pricing[index];
-                    return ListTile(
-                      leading: const Icon(Icons.price_change_outlined),
-                      title: Text(row.label, style: const TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: Text('${row.day} • ${row.time}'),
-                      trailing: Wrap(
-                        spacing: 8,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          Chip(
-                            label: Text(row.tag),
-                            avatar: const Icon(Icons.bolt, size: 16),
-                          ),
-                          Chip(
-                            label: Text(row.price),
-                            backgroundColor: Colors.green.shade50,
-                          ),
-                          IconButton(
-                            onPressed: () {},
-                            icon: const Icon(Icons.copy_outlined),
-                            tooltip: 'Nhân bản',
-                          ),
-                          IconButton(
-                            onPressed: () {},
-                            icon: const Icon(Icons.edit_outlined),
-                            tooltip: 'Chỉnh sửa',
-                          ),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(16),
+                      child: DataTable(
+                        columns: const [
+                          DataColumn(label: Text('Loại sân')),
+                          DataColumn(label: Text('Ngày áp dụng')),
+                          DataColumn(label: Text('Khung giờ')),
+                          DataColumn(label: Text('Loại giá')),
+                          DataColumn(label: Text('Giá')), 
+                          DataColumn(label: Text('Thao tác')),
                         ],
+                        rows: pricing.map((row) {
+                          return DataRow(
+                            cells: [
+                              DataCell(Text(row.label, style: const TextStyle(fontWeight: FontWeight.bold))),
+                              DataCell(Text(row.day)),
+                              DataCell(Text(row.time)),
+                              DataCell(
+                                Chip(
+                                  label: Text(row.tag),
+                                  avatar: const Icon(Icons.bolt, size: 16),
+                                ),
+                              ),
+                              DataCell(
+                                Chip(
+                                  label: Text(row.price),
+                                  backgroundColor: Colors.green.shade50,
+                                ),
+                              ),
+                              DataCell(
+                                Wrap(
+                                  spacing: 8,
+                                  children: [
+                                    IconButton(
+                                      onPressed: () {},
+                                      icon: const Icon(Icons.copy_outlined),
+                                      tooltip: 'Nhân bản',
+                                    ),
+                                    IconButton(
+                                      onPressed: () {},
+                                      icon: const Icon(Icons.edit_outlined),
+                                      tooltip: 'Chỉnh sửa',
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          );
+                        }).toList(),
                       ),
-                    );
-                  },
-                  separatorBuilder: (_, __) => const Divider(),
-                  itemCount: pricing.length,
+                    ),
+                  ),
                 ),
               ),
             ),

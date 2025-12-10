@@ -63,15 +63,15 @@ class _ManagerOfflineBookingPageState extends State<ManagerOfflineBookingPage> {
                       value: '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
                       onTap: _pickDate,
                     ),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
                       children: [
                         _buildPickerField(
                           label: 'Giờ bắt đầu',
                           value: _start.format(context),
                           onTap: () => _pickTime(isStart: true),
                         ),
-                        const SizedBox(width: 12),
                         _buildPickerField(
                           label: 'Giờ kết thúc',
                           value: _end.format(context),

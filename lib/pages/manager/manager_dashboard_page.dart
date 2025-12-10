@@ -126,9 +126,12 @@ class _ManagerDashboardPageState extends State<ManagerDashboardPage> {
             ),
           ),
           _KpiCard(
-            title: 'Slot bị block',
-            value: '${today.blockedSlotCount}',
-            trend: _buildTrend(today.blockedSlotCount, previous?.blockedSlotCount),
+            title: 'Booking chờ thanh toán',
+            value: '${today.awaitingPaymentCount}',
+            trend: _buildTrend(
+              today.awaitingPaymentCount,
+              previous?.awaitingPaymentCount,
+            ),
           ),
         ];
 

@@ -21,6 +21,7 @@ class ManagerDailyStats {
   final int revenueMinor;
   final double occupancyRate;
   final int confirmedBookingCount;
+  final int awaitingPaymentCount;
   final int blockedSlotCount;
   final List<ManagerScheduleItem> schedule;
 
@@ -29,6 +30,7 @@ class ManagerDailyStats {
     required this.revenueMinor,
     required this.occupancyRate,
     required this.confirmedBookingCount,
+    required this.awaitingPaymentCount,
     required this.blockedSlotCount,
     this.schedule = const [],
   });
@@ -78,6 +80,7 @@ class ManagerDashboardService {
         revenueMinor: 0,
         occupancyRate: 0,
         confirmedBookingCount: 0,
+        awaitingPaymentCount: 0,
         blockedSlotCount: 0,
         schedule: [],
       );
@@ -183,6 +186,8 @@ class ManagerDashboardService {
         : (bookedMinutes / capacityMinutes).clamp(0, 1).toDouble();
 
     final blockedSlots = bookings.where((b) => b.status == BookingStatus.held).length;
+    final awaitingPayments =
+        bookings.where((b) => b.status == BookingStatus.awaitingPayment).length;
     final confirmedCount = bookings.where((b) => b.status == BookingStatus.confirmed).length;
 
     final revenueMinor = await _sumRevenue(
@@ -197,6 +202,7 @@ class ManagerDashboardService {
       revenueMinor: revenueMinor,
       occupancyRate: occupancyRate,
       confirmedBookingCount: confirmedCount,
+      awaitingPaymentCount: awaitingPayments,
       blockedSlotCount: blockedSlots,
       schedule: scheduleItems,
     );

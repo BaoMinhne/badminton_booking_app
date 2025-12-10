@@ -67,10 +67,17 @@ class _ManagerSchedulePageState extends State<ManagerSchedulePage> {
               selected: !_tableView,
               onSelected: (_) => setState(() => _tableView = false),
             ),
-            ElevatedButton.icon(
+            FilledButton.tonalIcon(
               onPressed: _pickDate,
               icon: const Icon(Icons.calendar_today_outlined),
               label: Text(_formattedDate(_selectedDate)),
+              style: FilledButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
             ),
             DropdownButton<String>(
               value: _selectedCourt,
@@ -128,35 +135,42 @@ class _ScheduleTable extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: SingleChildScrollView(
-          child: DataTable(
-            columns: const [
-              DataColumn(label: Text('Sân')),
-              DataColumn(label: Text('Giờ')),
-              DataColumn(label: Text('Khách')),
-              DataColumn(label: Text('SĐT')),
-              DataColumn(label: Text('Trạng thái')),
-            ],
-            rows: items
-                .map(
-                  (item) => DataRow(cells: [
-                    DataCell(Text(item.court)),
-                    DataCell(Text('${item.start} - ${item.end}')),
-                    DataCell(Text(item.customer)),
-                    DataCell(Text(item.phone)),
-                    DataCell(Chip(
-                      label: Text(item.status),
-                      backgroundColor: item.color.withOpacity(0.1),
-                      side: BorderSide(color: item.color.withOpacity(0.6)),
-                      labelStyle: TextStyle(color: item.color),
-                    )),
-                  ]),
-                )
-                .toList(),
-          ),
-        ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minWidth: constraints.maxWidth),
+              child: SingleChildScrollView(
+                child: DataTable(
+                  columns: const [
+                    DataColumn(label: Text('Sân')),
+                    DataColumn(label: Text('Giờ')),
+                    DataColumn(label: Text('Khách')),
+                    DataColumn(label: Text('SĐT')),
+                    DataColumn(label: Text('Trạng thái')),
+                  ],
+                  rows: items
+                      .map(
+                        (item) => DataRow(cells: [
+                          DataCell(Text(item.court)),
+                          DataCell(Text('${item.start} - ${item.end}')),
+                          DataCell(Text(item.customer)),
+                          DataCell(Text(item.phone)),
+                          DataCell(Chip(
+                            label: Text(item.status),
+                            backgroundColor: item.color.withOpacity(0.1),
+                            side: BorderSide(color: item.color.withOpacity(0.6)),
+                            labelStyle: TextStyle(color: item.color),
+                          )),
+                        ]),
+                      )
+                      .toList(),
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }

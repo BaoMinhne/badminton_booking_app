@@ -60,7 +60,7 @@ class ManagerDashboardService {
     final authRecord = pb.authStore.record;
 
     if (authRecord == null) {
-      throw ClientException(message: 'Bạn cần đăng nhập để xem dữ liệu.');
+      throw ClientException(401, {'message': 'Bạn cần đăng nhập để xem dữ liệu.'});
     }
 
     final ownerId = authRecord.id;

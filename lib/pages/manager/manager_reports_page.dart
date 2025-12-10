@@ -113,10 +113,17 @@ class _ReportCard extends StatelessWidget {
             Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Icon(Icons.trending_up, color: colorScheme.primary, size: 18),
                 const SizedBox(width: 6),
-                Text(note, style: TextStyle(color: colorScheme.primary)),
+                Flexible(
+                  child: Text(
+                    note,
+                    style: TextStyle(color: colorScheme.primary),
+                    softWrap: true,
+                  ),
+                ),
               ],
             ),
           ],

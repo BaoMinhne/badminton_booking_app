@@ -227,10 +227,20 @@ class ManagerDashboardService {
     final filter =
         "status='succeeded' && created >= '${dayStart.toIso8601String()}' && created < '${dayEnd.toIso8601String()}' && ($bookingFilter)";
 
-    final payments = await pb.collection('payment').getList(
-          perPage: 200,
-          filter: filter,
-        );
+    ResultList<RecordModel> payments;
+    try {
+      payments = await pb.collection('payment').getList(
+            perPage: 200,
+            filter: filter,
+          );
+    } on ClientException catch (err) {
+      if (err.statusCode == 401 || err.statusCode == 403) {
+        // Một số tài khoản không có quyền truy cập bảng thanh toán. Trả về 0
+        // để tránh chặn toàn bộ dashboard.
+        return 0;
+      }
+      rethrow;
+    }
 
     return payments.items.fold<int>(0, (sum, record) {
       final rawAmount = record.data['amount_minor'];

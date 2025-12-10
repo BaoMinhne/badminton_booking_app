@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../auth/auth_manager.dart';
+import '../../utils/dialog_utils.dart';
 import 'manager_dashboard_page.dart';
 import 'manager_schedule_page.dart';
 import 'manager_offline_booking_page.dart';
@@ -19,6 +22,25 @@ class _ManagerNavPageState extends State<ManagerNavPage> {
   int _selectedIndex = 0;
 
   late final List<_ManagerTab> _tabs;
+
+  Future<void> _handleLogout(BuildContext context) async {
+    final confirm = await showConfirmDialog(
+      context,
+      'Bạn có chắc chắn muốn đăng xuất?',
+      title: 'Đăng xuất',
+    );
+
+    if (!confirm) return;
+
+    try {
+      await context.read<AuthManager>().logout();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Đăng xuất thất bại: $error')),
+      );
+    }
+  }
 
   @override
   void initState() {
@@ -91,6 +113,10 @@ class _ManagerNavPageState extends State<ManagerNavPage> {
                     setState(() => _selectedIndex = index);
                     Navigator.of(context).pop();
                   },
+                  onLogout: () {
+                    Navigator.of(context).pop();
+                    _handleLogout(context);
+                  },
                 ),
               ),
             ),
@@ -99,18 +125,27 @@ class _ManagerNavPageState extends State<ManagerNavPage> {
           if (isWide)
             NavigationDrawer(
               selectedIndex: _selectedIndex,
-              onDestinationSelected: (index) =>
-                  setState(() => _selectedIndex = index),
-              children: _tabs
-                  .map(
-                    (tab) => NavigationDrawerDestination(
-                      icon: Icon(tab.icon),
-                      selectedIcon:
-                          Icon(tab.icon, color: Theme.of(context).primaryColor),
-                      label: Text(tab.label),
-                    ),
-                  )
-                  .toList(),
+              onDestinationSelected: (index) {
+                if (index >= _tabs.length) {
+                  _handleLogout(context);
+                  return;
+                }
+                setState(() => _selectedIndex = index);
+              },
+              children: [
+                ..._tabs.map(
+                  (tab) => NavigationDrawerDestination(
+                    icon: Icon(tab.icon),
+                    selectedIcon:
+                        Icon(tab.icon, color: Theme.of(context).primaryColor),
+                    label: Text(tab.label),
+                  ),
+                ),
+                const NavigationDrawerDestination(
+                  icon: Icon(Icons.logout),
+                  label: Text('Đăng xuất'),
+                ),
+              ],
             ),
           Expanded(
             child: AnimatedSwitcher(
@@ -138,11 +173,13 @@ class _DrawerList extends StatelessWidget {
     required this.tabs,
     required this.selectedIndex,
     required this.onSelect,
+    required this.onLogout,
   });
 
   final List<_ManagerTab> tabs;
   final int selectedIndex;
   final ValueChanged<int> onSelect;
+  final VoidCallback onLogout;
 
   @override
   Widget build(BuildContext context) {
@@ -171,6 +208,12 @@ class _DrawerList extends StatelessWidget {
               onTap: () => onSelect(index),
             );
           },
+        ),
+        const Divider(),
+        ListTile(
+          leading: const Icon(Icons.logout),
+          title: const Text('Đăng xuất'),
+          onTap: onLogout,
         ),
       ],
     );

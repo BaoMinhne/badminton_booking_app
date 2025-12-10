@@ -10,15 +10,18 @@ import 'package:badminton_booking_app/models/court_detail.dart';
 import 'package:badminton_booking_app/services/booking_realtime_service.dart';
 import 'package:badminton_booking_app/services/booking_service.dart';
 import 'package:badminton_booking_app/utils/booking_helpers.dart';
+import 'package:badminton_booking_app/services/payment_service.dart';
 
 class BookingManager extends ChangeNotifier {
   BookingManager({
     required this.detailData,
     BookingService? bookingService,
+    PaymentService? paymentService,
     this.slotDuration = const Duration(hours: 1),
     this.unitGroupSize = 5,
   })  : assert(unitGroupSize > 0, 'unitGroupSize must be positive'),
-        _bookingService = bookingService ?? BookingService() {
+        _bookingService = bookingService ?? BookingService(),
+        _paymentService = paymentService ?? PaymentService() {
     _selectedDate = _normalizeDate(DateTime.now());
 
     Future.microtask(() => loadBookings());
@@ -28,6 +31,7 @@ class BookingManager extends ChangeNotifier {
   final Duration slotDuration;
   final int unitGroupSize;
   final BookingService _bookingService;
+  final PaymentService _paymentService;
   final BookingRealtimeService _realtimeService = BookingRealtimeService();
 
   DateTime _selectedDate = DateTime.now();
@@ -394,10 +398,24 @@ class BookingManager extends ChangeNotifier {
 
     try {
       for (final booking in bookingsToConfirm) {
+        String? paymentId;
         try {
+          final amountMinor = _calculateBookingAmount(booking);
+          final payment = await _paymentService.createPayment(
+            bookingId: booking.id,
+            amountMinor: amountMinor,
+            currency: 'VND',
+            provider: 'manual',
+            status: 'succeeded',
+          );
+          paymentId = payment.id;
+
           final updated = await _bookingService.markAsConfirmed(booking.id);
           confirmedBookings.add(updated);
         } catch (_) {
+          if (paymentId != null) {
+            unawaited(_paymentService.deletePayment(paymentId!).catchError((_) {}));
+          }
           failedBookings.add(booking);
         }
       }
@@ -425,6 +443,15 @@ class BookingManager extends ChangeNotifier {
       _isConfirmingPayment = false;
       notifyListeners();
     }
+  }
+
+  int _calculateBookingAmount(CourtBooking booking) {
+    final slots = booking.splitToSlots(slotDuration);
+    var total = 0.0;
+    for (final slot in slots) {
+      total += calculateSlotPrice(detailData, slot, slotDuration);
+    }
+    return total.round();
   }
 
   Future<void> cancelHeldBookings() async {

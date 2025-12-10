@@ -1,109 +1,333 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
-class ManagerDashboardPage extends StatelessWidget {
+import '../../models/booking.dart';
+import '../../services/manager_dashboard_service.dart';
+
+class ManagerDashboardPage extends StatefulWidget {
   const ManagerDashboardPage({super.key});
 
   @override
+  State<ManagerDashboardPage> createState() => _ManagerDashboardPageState();
+}
+
+class _ManagerDashboardPageState extends State<ManagerDashboardPage> {
+  final _service = ManagerDashboardService();
+  late Future<ManagerDashboardData> _future;
+  DateTime _selectedDate = DateTime.now();
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _load();
+  }
+
+  Future<ManagerDashboardData> _load() {
+    final date = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+    return _service.fetchDashboardData(date);
+  }
+
+  Future<void> _refresh() async {
+    setState(() => _future = _load());
+    await _future;
+  }
+
+  void _changeDay(int delta) {
+    setState(() {
+      _selectedDate = _selectedDate.add(Duration(days: delta));
+      _future = _load();
+    });
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      locale: const Locale('vi'),
+    );
+
+    if (picked != null) {
+      setState(() {
+        _selectedDate = DateTime(picked.year, picked.month, picked.day);
+        _future = _load();
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final cards = [
-      _KpiCard(title: 'Doanh thu hôm nay', value: '12.450.000₫', trend: '+8%'),
-      _KpiCard(title: 'Tỷ lệ lấp đầy', value: '82%', trend: '+5%'),
-      _KpiCard(title: 'Booking đã thanh toán', value: '46', trend: '+3%'),
-      _KpiCard(title: 'Slot bị block', value: '2', trend: 'Sự kiện giải đấu'),
-    ];
+    return FutureBuilder<ManagerDashboardData>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isWide = constraints.maxWidth > 900;
-        final crossAxisCount = isWide ? 4 : 2;
-        final horizontalSpacing = 12.0;
-        final availableWidth = constraints.maxWidth -
-            (crossAxisCount - 1) * horizontalSpacing;
-        final cardWidth = availableWidth / crossAxisCount;
-        final targetHeight = isWide ? 140.0 : 170.0;
-        final childAspectRatio = cardWidth / targetHeight;
+        if (snapshot.hasError) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error_outline, color: Colors.red),
+                const SizedBox(height: 8),
+                Text(
+                  snapshot.error.toString(),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                FilledButton.icon(
+                  onPressed: _refresh,
+                  icon: const Icon(Icons.refresh_outlined),
+                  label: const Text('Thử lại'),
+                ),
+              ],
+            ),
+          );
+        }
 
-        return ListView(
-          children: [
-            const Text(
-              'Tổng quan nhanh',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        final data = snapshot.data;
+        if (data == null || !data.hasCourts) {
+          return const Center(
+            child: Text('Bạn chưa có sân nào để hiển thị thống kê.'),
+          );
+        }
+
+        final today = data.today;
+        final previous = data.previous;
+
+        final currencyFormat = NumberFormat.currency(
+          locale: 'vi_VN',
+          symbol: '₫',
+          decimalDigits: 0,
+        );
+
+        final kpiCards = [
+          _KpiCard(
+            title: 'Doanh thu hôm nay',
+            value: currencyFormat.format(today.revenueMinor),
+            trend: _buildTrend(today.revenueMinor, previous?.revenueMinor),
+          ),
+          _KpiCard(
+            title: 'Tỷ lệ lấp đầy',
+            value: '${(today.occupancyRate * 100).toStringAsFixed(0)}%',
+            trend: _buildTrend(
+              (today.occupancyRate * 100).round(),
+              previous == null ? null : (previous.occupancyRate * 100).round(),
             ),
-            const SizedBox(height: 12),
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: crossAxisCount,
-              crossAxisSpacing: horizontalSpacing,
-              mainAxisSpacing: 12,
-              childAspectRatio: childAspectRatio,
-              children: cards,
+          ),
+          _KpiCard(
+            title: 'Booking đã thanh toán',
+            value: '${today.confirmedBookingCount}',
+            trend: _buildTrend(
+              today.confirmedBookingCount,
+              previous?.confirmedBookingCount,
             ),
-            const SizedBox(height: 16),
-            _SectionCard(
-              title: 'Lịch hôm nay',
-              actionText: 'Xem chi tiết',
-              onAction: () {},
-              child: Column(
-                children: const [
-                  _ScheduleRow(
-                    court: 'Sân 1',
-                    time: '06:00 - 07:30',
-                    customer: 'Nguyễn Minh',
-                    status: 'Confirmed',
-                    statusColor: Colors.green,
+          ),
+          _KpiCard(
+            title: 'Booking chờ thanh toán',
+            value: '${today.awaitingPaymentCount}',
+            trend: _buildTrend(
+              today.awaitingPaymentCount,
+              previous?.awaitingPaymentCount,
+            ),
+          ),
+        ];
+
+        return RefreshIndicator(
+          onRefresh: _refresh,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth > 900;
+              final crossAxisCount = isWide ? 4 : 2;
+              final horizontalSpacing = 12.0;
+              final availableWidth = constraints.maxWidth -
+                  (crossAxisCount - 1) * horizontalSpacing;
+              final cardWidth = availableWidth / crossAxisCount;
+              final targetHeight = isWide ? 140.0 : 170.0;
+              final childAspectRatio = cardWidth / targetHeight;
+
+              final scheduleItems = today.schedule.take(5).toList();
+              final blockedNotices = today.schedule
+                  .where((item) => item.status == BookingStatus.held)
+                  .toList();
+
+              return ListView(
+                children: [
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.chevron_left),
+                        onPressed: () => _changeDay(-1),
+                        tooltip: 'Ngày trước',
+                      ),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _pickDate,
+                          icon: const Icon(Icons.calendar_today_outlined),
+                          label: Text(DateFormat('dd/MM/yyyy').format(_selectedDate)),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.chevron_right),
+                        onPressed: () => _changeDay(1),
+                        tooltip: 'Ngày tiếp theo',
+                      ),
+                      const SizedBox(width: 4),
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _selectedDate = DateTime.now();
+                            _future = _load();
+                          });
+                        },
+                        child: const Text('Hôm nay'),
+                      ),
+                    ],
                   ),
-                  _ScheduleRow(
-                    court: 'Sân 2',
-                    time: '08:00 - 10:00',
-                    customer: 'Trần Thảo',
-                    status: 'Offline',
-                    statusColor: Colors.orange,
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Tổng quan nhanh',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                  _ScheduleRow(
-                    court: 'Sân 3',
-                    time: '10:00 - 12:00',
-                    customer: 'CLB Đồng Đội',
-                    status: 'Blocked',
-                    statusColor: Colors.red,
+                  const SizedBox(height: 12),
+                  GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: crossAxisCount,
+                    crossAxisSpacing: horizontalSpacing,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: childAspectRatio,
+                    children: kpiCards,
+                  ),
+                  const SizedBox(height: 16),
+                  _SectionCard(
+                    title: 'Lịch hôm nay',
+                    actionText: 'Xem chi tiết',
+                    onAction: _refresh,
+                    child: Column(
+                      children: scheduleItems.isEmpty
+                          ? const [
+                              Padding(
+                                padding: EdgeInsets.symmetric(vertical: 12),
+                                child: Text('Chưa có lịch nào cho hôm nay'),
+                              )
+                            ]
+                          : scheduleItems
+                              .map(
+                                (item) => _ScheduleRow(
+                                  court: item.courtLabel,
+                                  time:
+                                      '${DateFormat('HH:mm').format(item.startTime)} - ${DateFormat('HH:mm').format(item.endTime)}',
+                                  customer: item.customerName,
+                                  status: _statusLabel(item.status),
+                                  statusColor: _statusColor(item.status, context),
+                                ),
+                              )
+                              .toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _SectionCard(
+                    title: 'Thông báo vận hành',
+                    actionText: 'Quản lý slot',
+                    onAction: _refresh,
+                    child: Column(
+                      children: blockedNotices.isEmpty
+                          ? const [
+                              ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                leading: Icon(Icons.analytics_outlined),
+                                title: Text('Chưa có slot bị block hôm nay'),
+                                subtitle: Text('Các slot block sẽ hiển thị kèm lý do'),
+                              ),
+                            ]
+                          : blockedNotices
+                              .map(
+                                (item) => Column(
+                                  children: [
+                                    ListTile(
+                                      contentPadding: EdgeInsets.zero,
+                                      leading: const Icon(
+                                        Icons.warning_amber_outlined,
+                                        color: Colors.orange,
+                                      ),
+                                      title: Text(
+                                        '${item.courtLabel} block ${DateFormat('HH:mm').format(item.startTime)} - ${DateFormat('HH:mm').format(item.endTime)}',
+                                      ),
+                                      subtitle: Text(
+                                        item.note?.isNotEmpty == true
+                                            ? item.note!
+                                            : 'Ẩn với người dùng, chỉ hiển thị ở manager view',
+                                      ),
+                                    ),
+                                    const Divider(height: 1),
+                                  ],
+                                ),
+                              )
+                              .toList(),
+                    ),
                   ),
                 ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            _SectionCard(
-              title: 'Thông báo vận hành',
-              actionText: 'Quản lý slot',
-              onAction: () {},
-              child: Column(
-                children: const [
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Icon(Icons.warning_amber_outlined, color: Colors.orange),
-                    title: Text('Sân 3 block 10:00 - 12:00 (Giải phong trào)'),
-                    subtitle: Text('Ẩn với người dùng, chỉ hiển thị ở manager view'),
-                  ),
-                  Divider(height: 1),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Icon(Icons.analytics_outlined),
-                    title: Text('Tỷ lệ lấp đầy tuần này đạt 82%'),
-                    subtitle: Text('Giảm 3% so với tuần trước'),
-                  ),
-                ],
-              ),
-            ),
-          ],
+              );
+            },
+          ),
         );
       },
     );
+  }
+
+  _Trend _buildTrend(num current, num? previous) {
+    if (previous == null) return const _Trend(label: '—', color: Colors.grey);
+    if (previous == 0) {
+      return _Trend(
+        label: current == 0 ? '0%' : '+∞%',
+        color: Colors.green,
+      );
+    }
+    final deltaPercent = ((current - previous) / previous) * 100;
+    final icon = deltaPercent >= 0 ? Icons.trending_up : Icons.trending_down;
+    final color = deltaPercent >= 0 ? Colors.green : Colors.red;
+    final label = '${deltaPercent >= 0 ? '+' : ''}${deltaPercent.toStringAsFixed(1)}%';
+    return _Trend(label: label, color: color, icon: icon);
+  }
+
+  String _statusLabel(BookingStatus status) {
+    switch (status) {
+      case BookingStatus.confirmed:
+        return 'Online';
+      case BookingStatus.awaitingPayment:
+        return 'Chờ thanh toán';
+      case BookingStatus.held:
+        return 'Blocked';
+      case BookingStatus.cancelled:
+        return 'Đã hủy';
+      case BookingStatus.expired:
+        return 'Hết hạn';
+    }
+  }
+
+  Color _statusColor(BookingStatus status, BuildContext context) {
+    switch (status) {
+      case BookingStatus.confirmed:
+        return Colors.green;
+      case BookingStatus.awaitingPayment:
+        return Colors.orange;
+      case BookingStatus.held:
+        return Colors.red;
+      case BookingStatus.cancelled:
+        return Colors.grey;
+      case BookingStatus.expired:
+        return Theme.of(context).colorScheme.outline;
+    }
   }
 }
 
 class _KpiCard extends StatelessWidget {
   final String title;
   final String value;
-  final String trend;
+  final _Trend trend;
 
   const _KpiCard({
     required this.title,
@@ -114,6 +338,7 @@ class _KpiCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final trendColor = trend.color ?? colorScheme.primary;
     return Card(
       elevation: 0,
       color: colorScheme.primaryContainer.withOpacity(0.35),
@@ -136,9 +361,10 @@ class _KpiCard extends StatelessWidget {
             const SizedBox(height: 8),
             Row(
               children: [
-                Icon(Icons.trending_up, color: colorScheme.primary, size: 18),
+                Icon(trend.icon ?? Icons.trending_up,
+                    color: trendColor, size: 18),
                 const SizedBox(width: 6),
-                Text(trend, style: TextStyle(color: colorScheme.primary)),
+                Text(trend.label, style: TextStyle(color: trendColor)),
               ],
             ),
           ],
@@ -229,4 +455,12 @@ class _ScheduleRow extends StatelessWidget {
       ),
     );
   }
+}
+
+class _Trend {
+  final String label;
+  final Color? color;
+  final IconData? icon;
+
+  const _Trend({required this.label, this.color, this.icon});
 }

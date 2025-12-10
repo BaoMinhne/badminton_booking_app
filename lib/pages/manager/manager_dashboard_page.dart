@@ -14,6 +14,7 @@ class ManagerDashboardPage extends StatefulWidget {
 class _ManagerDashboardPageState extends State<ManagerDashboardPage> {
   final _service = ManagerDashboardService();
   late Future<ManagerDashboardData> _future;
+  DateTime _selectedDate = DateTime.now();
 
   @override
   void initState() {
@@ -22,12 +23,37 @@ class _ManagerDashboardPageState extends State<ManagerDashboardPage> {
   }
 
   Future<ManagerDashboardData> _load() {
-    return _service.fetchDashboardData(DateTime.now());
+    final date = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+    return _service.fetchDashboardData(date);
   }
 
   Future<void> _refresh() async {
     setState(() => _future = _load());
     await _future;
+  }
+
+  void _changeDay(int delta) {
+    setState(() {
+      _selectedDate = _selectedDate.add(Duration(days: delta));
+      _future = _load();
+    });
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      locale: const Locale('vi'),
+    );
+
+    if (picked != null) {
+      setState(() {
+        _selectedDate = DateTime(picked.year, picked.month, picked.day);
+        _future = _load();
+      });
+    }
   }
 
   @override
@@ -126,6 +152,38 @@ class _ManagerDashboardPageState extends State<ManagerDashboardPage> {
 
               return ListView(
                 children: [
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.chevron_left),
+                        onPressed: () => _changeDay(-1),
+                        tooltip: 'Ngày trước',
+                      ),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _pickDate,
+                          icon: const Icon(Icons.calendar_today_outlined),
+                          label: Text(DateFormat('dd/MM/yyyy').format(_selectedDate)),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.chevron_right),
+                        onPressed: () => _changeDay(1),
+                        tooltip: 'Ngày tiếp theo',
+                      ),
+                      const SizedBox(width: 4),
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _selectedDate = DateTime.now();
+                            _future = _load();
+                          });
+                        },
+                        child: const Text('Hôm nay'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
                   const Text(
                     'Tổng quan nhanh',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),

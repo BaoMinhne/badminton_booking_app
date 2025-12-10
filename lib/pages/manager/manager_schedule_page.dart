@@ -129,30 +129,33 @@ class _ScheduleTable extends StatelessWidget {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: SingleChildScrollView(
-        child: DataTable(
-          columns: const [
-            DataColumn(label: Text('Sân')),
-            DataColumn(label: Text('Giờ')),
-            DataColumn(label: Text('Khách')),
-            DataColumn(label: Text('SĐT')),
-            DataColumn(label: Text('Trạng thái')),
-          ],
-          rows: items
-              .map(
-                (item) => DataRow(cells: [
-                  DataCell(Text(item.court)),
-                  DataCell(Text('${item.start} - ${item.end}')),
-                  DataCell(Text(item.customer)),
-                  DataCell(Text(item.phone)),
-                  DataCell(Chip(
-                    label: Text(item.status),
-                    backgroundColor: item.color.withOpacity(0.1),
-                    side: BorderSide(color: item.color.withOpacity(0.6)),
-                    labelStyle: TextStyle(color: item.color),
-                  )),
-                ]),
-              )
-              .toList(),
+        scrollDirection: Axis.horizontal,
+        child: SingleChildScrollView(
+          child: DataTable(
+            columns: const [
+              DataColumn(label: Text('Sân')),
+              DataColumn(label: Text('Giờ')),
+              DataColumn(label: Text('Khách')),
+              DataColumn(label: Text('SĐT')),
+              DataColumn(label: Text('Trạng thái')),
+            ],
+            rows: items
+                .map(
+                  (item) => DataRow(cells: [
+                    DataCell(Text(item.court)),
+                    DataCell(Text('${item.start} - ${item.end}')),
+                    DataCell(Text(item.customer)),
+                    DataCell(Text(item.phone)),
+                    DataCell(Chip(
+                      label: Text(item.status),
+                      backgroundColor: item.color.withOpacity(0.1),
+                      side: BorderSide(color: item.color.withOpacity(0.6)),
+                      labelStyle: TextStyle(color: item.color),
+                    )),
+                  ]),
+                )
+                .toList(),
+          ),
         ),
       ),
     );

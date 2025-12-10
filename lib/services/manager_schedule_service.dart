@@ -1,0 +1,167 @@
+import 'package:pocketbase/pocketbase.dart';
+
+import '../models/booking.dart';
+import '../models/court_detail.dart';
+import 'booking_service.dart';
+import 'pocketbase_client.dart';
+
+class ManagerScheduleData {
+  const ManagerScheduleData({
+    required this.courts,
+    required this.items,
+  });
+
+  final List<ScheduleCourt> courts;
+  final List<ScheduleItem> items;
+
+  bool get hasCourts => courts.isNotEmpty;
+}
+
+class ScheduleCourt {
+  const ScheduleCourt({required this.id, required this.label});
+
+  final String id;
+  final String label;
+}
+
+class ScheduleItem {
+  const ScheduleItem({
+    required this.id,
+    required this.courtId,
+    required this.courtLabel,
+    required this.startTime,
+    required this.endTime,
+    required this.customerName,
+    required this.status,
+    this.customerPhone,
+    this.note,
+  });
+
+  final String id;
+  final String courtId;
+  final String courtLabel;
+  final DateTime startTime;
+  final DateTime endTime;
+  final String customerName;
+  final String? customerPhone;
+  final BookingStatus status;
+  final String? note;
+}
+
+class ManagerScheduleService {
+  Future<ManagerScheduleData> fetchSchedule(DateTime date) async {
+    final pocketBase = await getPocketbaseInstance();
+    final authRecord = pocketBase.authStore.record;
+
+    if (authRecord == null) {
+      throw ClientException(
+        statusCode: 401,
+        response: {'message': 'Bạn cần đăng nhập để xem lịch.'},
+      );
+    }
+
+    final ownerId = _escape(authRecord.id);
+    final courtsResult = await pocketBase.collection('courts').getList(
+          perPage: 200,
+          filter: "owner='$ownerId'",
+        );
+
+    if (courtsResult.items.isEmpty) {
+      return const ManagerScheduleData(courts: [], items: []);
+    }
+
+    final courtIds = courtsResult.items.map((record) => record.id).toList();
+    final courtFilter = _buildOrFilter('court_id', courtIds);
+
+    final unitsFuture = pocketBase.collection('court_units').getList(
+          perPage: 200,
+          filter: courtFilter,
+        );
+
+    final dayStart = DateTime.utc(date.year, date.month, date.day);
+    final dayEnd = dayStart.add(const Duration(days: 1));
+
+    final bookingsFuture = pocketBase.collection(BookingService.collection).getList(
+          perPage: 200,
+          filter:
+              "$courtFilter && status != 'cancelled' && status != 'expired' && start_time < '${dayEnd.toIso8601String()}' && end_time > '${dayStart.toIso8601String()}'",
+          sort: 'start_time',
+          expand: 'user_id,court_unit_id',
+        );
+
+    final results = await Future.wait([unitsFuture, bookingsFuture]);
+
+    final unitResult = results[0] as ResultList<RecordModel>;
+    final bookingResult = results[1] as ResultList<RecordModel>;
+
+    final courts = unitResult.items.map(_mapCourtOption).toList();
+
+    final unitLabelMap = <String, String>{
+      for (final unit in unitResult.items)
+        unit.id: CourtUnit.fromRecord(unit).label.isEmpty
+            ? 'Sân'
+            : CourtUnit.fromRecord(unit).label,
+    };
+
+    final bookings = bookingResult.items.map((record) {
+      final booking = CourtBooking.fromRecord(record);
+      final courtLabel = unitLabelMap[booking.courtUnitId] ?? 'Sân';
+
+      final expandedUser = _resolveExpandedRecord(record.expand?['user_id']);
+      final customerName = _extractUserName(expandedUser) ?? 'Khách lẻ';
+      final customerPhone = _extractUserPhone(expandedUser);
+
+      return ScheduleItem(
+        id: booking.id,
+        courtId: booking.courtUnitId,
+        courtLabel: courtLabel,
+        startTime: booking.startTime.toLocal(),
+        endTime: booking.endTime.toLocal(),
+        customerName: customerName,
+        customerPhone: customerPhone,
+        status: booking.status,
+        note: booking.note,
+      );
+    }).toList(growable: false);
+
+    return ManagerScheduleData(courts: courts, items: bookings);
+  }
+
+  ScheduleCourt _mapCourtOption(RecordModel record) {
+    final unit = CourtUnit.fromRecord(record);
+    final label = unit.label.isEmpty ? 'Sân' : unit.label;
+    return ScheduleCourt(id: record.id, label: label);
+  }
+
+  String _escape(String value) => value.replaceAll("'", "\\'");
+
+  String _buildOrFilter(String field, List<String> values) {
+    final escaped = values.map(_escape).map((v) => "${field}='${v}'");
+    return escaped.join(' || ');
+  }
+
+  RecordModel? _resolveExpandedRecord(dynamic expanded) {
+    if (expanded is RecordModel) return expanded;
+    if (expanded is List) {
+      for (final item in expanded) {
+        if (item is RecordModel) return item;
+      }
+    }
+    return null;
+  }
+
+  String? _extractUserName(RecordModel? expandedUser) {
+    if (expandedUser == null) return null;
+    final data = expandedUser.data;
+    return (data['username'] as String?)?.trim().isNotEmpty == true
+        ? (data['username'] as String?)?.trim()
+        : (data['name'] as String?)?.trim();
+  }
+
+  String? _extractUserPhone(RecordModel? expandedUser) {
+    if (expandedUser == null) return null;
+    final rawPhone = (expandedUser.data['phone'] as String?)?.trim();
+    if (rawPhone == null || rawPhone.isEmpty) return null;
+    return rawPhone;
+  }
+}

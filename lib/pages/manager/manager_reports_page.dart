@@ -23,14 +23,23 @@ class ManagerReportsPage extends StatelessWidget {
       children: [
         const Text('Báo cáo & thống kê', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
-        GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: MediaQuery.of(context).size.width > 900 ? 4 : 2,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          childAspectRatio: 1.5,
-          children: stats,
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final isWide = constraints.maxWidth > 900;
+            final crossAxisCount = isWide ? 4 : 2;
+            // Give cards more height on narrow screens to avoid vertical overflow.
+            final aspectRatio = isWide ? 1.35 : 1.1;
+
+            return GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: crossAxisCount,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: aspectRatio,
+              children: stats,
+            );
+          },
         ),
         const SizedBox(height: 16),
         Card(
@@ -96,12 +105,13 @@ class _ReportCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-            const Spacer(),
+            const SizedBox(height: 10),
             Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Row(
               children: [
                 Icon(Icons.trending_up, color: colorScheme.primary, size: 18),

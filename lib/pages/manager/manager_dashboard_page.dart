@@ -16,6 +16,12 @@ class ManagerDashboardPage extends StatelessWidget {
       builder: (context, constraints) {
         final isWide = constraints.maxWidth > 900;
         final crossAxisCount = isWide ? 4 : 2;
+        final horizontalSpacing = 12.0;
+        final availableWidth = constraints.maxWidth -
+            (crossAxisCount - 1) * horizontalSpacing;
+        final cardWidth = availableWidth / crossAxisCount;
+        final targetHeight = isWide ? 140.0 : 170.0;
+        final childAspectRatio = cardWidth / targetHeight;
 
         return ListView(
           children: [
@@ -28,9 +34,9 @@ class ManagerDashboardPage extends StatelessWidget {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               crossAxisCount: crossAxisCount,
-              crossAxisSpacing: 12,
+              crossAxisSpacing: horizontalSpacing,
               mainAxisSpacing: 12,
-              childAspectRatio: 1.4,
+              childAspectRatio: childAspectRatio,
               children: cards,
             ),
             const SizedBox(height: 16),

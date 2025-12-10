@@ -14,12 +14,10 @@ class ManagerPricingPage extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isWide = constraints.maxWidth >= 600;
-
         final actionButtons = Wrap(
           spacing: 8,
           runSpacing: 8,
-          alignment: isWide ? WrapAlignment.end : WrapAlignment.start,
+          alignment: WrapAlignment.end,
           children: [
             OutlinedButton.icon(
               onPressed: () {},
@@ -34,28 +32,22 @@ class ManagerPricingPage extends StatelessWidget {
           ],
         );
 
-        final header = isWide
-            ? Row(
-                children: [
-                  const Text(
-                    'Bảng giá sân',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const Spacer(),
-                  actionButtons,
-                ],
-              )
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Bảng giá sân',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 12),
-                  actionButtons,
-                ],
-              );
+        final header = SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minWidth: constraints.maxWidth),
+            child: Row(
+              children: [
+                const Text(
+                  'Bảng giá sân',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const Spacer(),
+                actionButtons,
+              ],
+            ),
+          ),
+        );
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,

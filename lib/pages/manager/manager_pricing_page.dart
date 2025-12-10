@@ -12,70 +12,101 @@ class ManagerPricingPage extends StatelessWidget {
       _PriceRow(label: 'Giải đấu 12/10', day: '12/10', time: 'Cả ngày', price: 'Block', tag: 'Sự kiện'),
     ];
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth >= 600;
+
+        final actionButtons = Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          alignment: isWide ? WrapAlignment.end : WrapAlignment.start,
           children: [
-            const Text('Bảng giá sân', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const Spacer(),
             OutlinedButton.icon(
               onPressed: () {},
               icon: const Icon(Icons.upload_file_outlined),
               label: const Text('Import/Export JSON'),
             ),
-            const SizedBox(width: 8),
             FilledButton.icon(
               onPressed: () {},
               icon: const Icon(Icons.add),
               label: const Text('Thêm dòng giá'),
             ),
           ],
-        ),
-        const SizedBox(height: 12),
-        Expanded(
-          child: Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemBuilder: (context, index) {
-                final row = pricing[index];
-                return ListTile(
-                  leading: const Icon(Icons.price_change_outlined),
-                  title: Text(row.label, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text('${row.day} • ${row.time}'),
-                  trailing: Wrap(
-                    spacing: 8,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      Chip(
-                        label: Text(row.tag),
-                        avatar: const Icon(Icons.bolt, size: 16),
-                      ),
-                      Chip(
-                        label: Text(row.price),
-                        backgroundColor: Colors.green.shade50,
-                      ),
-                      IconButton(
-                        onPressed: () {},
-                        icon: const Icon(Icons.copy_outlined),
-                        tooltip: 'Nhân bản',
-                      ),
-                      IconButton(
-                        onPressed: () {},
-                        icon: const Icon(Icons.edit_outlined),
-                        tooltip: 'Chỉnh sửa',
-                      ),
-                    ],
+        );
+
+        final header = isWide
+            ? Row(
+                children: [
+                  const Text(
+                    'Bảng giá sân',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                );
-              },
-              separatorBuilder: (_, __) => const Divider(),
-              itemCount: pricing.length,
+                  const Spacer(),
+                  actionButtons,
+                ],
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Bảng giá sân',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  actionButtons,
+                ],
+              );
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            header,
+            const SizedBox(height: 12),
+            Expanded(
+              child: Card(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: ListView.separated(
+                  padding: const EdgeInsets.all(16),
+                  itemBuilder: (context, index) {
+                    final row = pricing[index];
+                    return ListTile(
+                      leading: const Icon(Icons.price_change_outlined),
+                      title: Text(row.label, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Text('${row.day} • ${row.time}'),
+                      trailing: Wrap(
+                        spacing: 8,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Chip(
+                            label: Text(row.tag),
+                            avatar: const Icon(Icons.bolt, size: 16),
+                          ),
+                          Chip(
+                            label: Text(row.price),
+                            backgroundColor: Colors.green.shade50,
+                          ),
+                          IconButton(
+                            onPressed: () {},
+                            icon: const Icon(Icons.copy_outlined),
+                            tooltip: 'Nhân bản',
+                          ),
+                          IconButton(
+                            onPressed: () {},
+                            icon: const Icon(Icons.edit_outlined),
+                            tooltip: 'Chỉnh sửa',
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  separatorBuilder: (_, __) => const Divider(),
+                  itemCount: pricing.length,
+                ),
+              ),
             ),
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 }

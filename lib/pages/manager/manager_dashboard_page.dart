@@ -116,12 +116,13 @@ class _KpiCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               title,
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
-            const Spacer(),
+            const SizedBox(height: 12),
             Text(
               value,
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),

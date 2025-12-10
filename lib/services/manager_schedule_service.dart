@@ -46,6 +46,30 @@ class ScheduleItem {
   final String? customerPhone;
   final BookingStatus status;
   final String? note;
+
+  ScheduleItem copyWith({
+    String? id,
+    String? courtId,
+    String? courtLabel,
+    DateTime? startTime,
+    DateTime? endTime,
+    String? customerName,
+    String? customerPhone,
+    BookingStatus? status,
+    String? note,
+  }) {
+    return ScheduleItem(
+      id: id ?? this.id,
+      courtId: courtId ?? this.courtId,
+      courtLabel: courtLabel ?? this.courtLabel,
+      startTime: startTime ?? this.startTime,
+      endTime: endTime ?? this.endTime,
+      customerName: customerName ?? this.customerName,
+      customerPhone: customerPhone ?? this.customerPhone,
+      status: status ?? this.status,
+      note: note ?? this.note,
+    );
+  }
 }
 
 class ManagerScheduleService {
@@ -84,7 +108,7 @@ class ManagerScheduleService {
     final bookingsFuture = pocketBase.collection(BookingService.collection).getList(
           perPage: 200,
           filter:
-              "$courtFilter && status != 'cancelled' && status != 'expired' && start_time < '${dayEnd.toIso8601String()}' && end_time > '${dayStart.toIso8601String()}'",
+              "$courtFilter && status != 'expired' && start_time < '${dayEnd.toIso8601String()}' && end_time > '${dayStart.toIso8601String()}'",
           sort: 'start_time',
           expand: 'user_id,court_unit_id',
         );

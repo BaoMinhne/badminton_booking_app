@@ -16,6 +16,7 @@ class _ManagerSchedulePageState extends State<ManagerSchedulePage> {
   final _service = ManagerScheduleService();
 
   late Future<ManagerScheduleData> _future;
+  ManagerScheduleData? _latestData;
   bool _tableView = true;
   DateTime _selectedDate = DateTime.now();
   String _selectedCourt = 'all';
@@ -23,21 +24,24 @@ class _ManagerSchedulePageState extends State<ManagerSchedulePage> {
     BookingStatus.held,
     BookingStatus.awaitingPayment,
     BookingStatus.confirmed,
+    BookingStatus.cancelled,
   };
 
   @override
   void initState() {
     super.initState();
-    _future = _loadSchedule();
+    _future = _loadAndCacheSchedule();
   }
 
-  Future<ManagerScheduleData> _loadSchedule() {
+  Future<ManagerScheduleData> _loadAndCacheSchedule() async {
     final normalized = DateTime(
       _selectedDate.year,
       _selectedDate.month,
       _selectedDate.day,
     );
-    return _service.fetchSchedule(normalized);
+    final data = await _service.fetchSchedule(normalized);
+    _latestData = data;
+    return data;
   }
 
   Future<void> _pickDate() async {
@@ -52,7 +56,7 @@ class _ManagerSchedulePageState extends State<ManagerSchedulePage> {
     if (picked != null) {
       setState(() {
         _selectedDate = picked;
-        _future = _loadSchedule();
+        _future = _loadAndCacheSchedule();
       });
     }
   }
@@ -155,7 +159,8 @@ class _ManagerSchedulePageState extends State<ManagerSchedulePage> {
                 ),
                 const SizedBox(height: 12),
                 FilledButton.icon(
-                  onPressed: () => setState(() => _future = _loadSchedule()),
+                  onPressed: () =>
+                      setState(() => _future = _loadAndCacheSchedule()),
                   icon: const Icon(Icons.refresh_outlined),
                   label: const Text('Thử lại'),
                 )
@@ -170,6 +175,8 @@ class _ManagerSchedulePageState extends State<ManagerSchedulePage> {
             child: Text('Bạn chưa có sân nào để hiển thị lịch.'),
           );
         }
+
+        _latestData ??= data;
 
         final availableCourtIds = data.courts.map((c) => c.id).toSet();
         if (_selectedCourt != 'all' && !availableCourtIds.contains(_selectedCourt)) {
@@ -346,13 +353,47 @@ class _ManagerSchedulePageState extends State<ManagerSchedulePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Đã huỷ booking thành công.')),
       );
-      setState(() => _future = _loadSchedule());
+      _applyLocalCancellation(item.id);
+      _refreshScheduleSilently();
     } on BookingServiceException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(error.message)),
       );
     }
+  }
+
+  void _applyLocalCancellation(String bookingId) {
+    final cached = _latestData;
+    if (cached == null) return;
+
+    final updatedItems = cached.items
+        .map(
+          (scheduleItem) => scheduleItem.id == bookingId
+              ? scheduleItem.copyWith(status: BookingStatus.cancelled)
+              : scheduleItem,
+        )
+        .toList();
+
+    final updatedData = ManagerScheduleData(
+      courts: cached.courts,
+      items: updatedItems,
+    );
+
+    setState(() {
+      _latestData = updatedData;
+      _future = Future.value(updatedData);
+    });
+  }
+
+  void _refreshScheduleSilently() {
+    _loadAndCacheSchedule().then((freshData) {
+      if (!mounted) return;
+      setState(() {
+        _latestData = freshData;
+        _future = Future.value(freshData);
+      });
+    }).catchError((_) {});
   }
 }
 
@@ -520,7 +561,9 @@ class _TimelineView extends StatelessWidget {
                         _ActionChip(
                           icon: Icons.cancel_outlined,
                           label: 'Hủy booking',
-                          onPressed: () => onCancelBooking(item),
+                          onPressed: item.status == BookingStatus.cancelled
+                              ? null
+                              : () => onCancelBooking(item),
                         ),
                         _ActionChip(
                           icon: Icons.phone_forwarded_outlined,
@@ -549,7 +592,7 @@ class _ActionChip extends StatelessWidget {
 
   final IconData icon;
   final String label;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {

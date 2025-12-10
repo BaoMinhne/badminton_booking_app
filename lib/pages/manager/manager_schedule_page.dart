@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../models/booking.dart';
+import '../../services/booking_service.dart';
 import '../../services/manager_schedule_service.dart';
 
 class ManagerSchedulePage extends StatefulWidget {
@@ -263,6 +264,7 @@ class _ManagerSchedulePageState extends State<ManagerSchedulePage> {
                           statusColor: _statusColor,
                           statusText: _statusText,
                           onAction: _showComingSoon,
+                          onCancelBooking: _confirmCancelBooking,
                         ),
             ),
           ],
@@ -310,6 +312,47 @@ class _ManagerSchedulePageState extends State<ManagerSchedulePage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('$action đang được phát triển.')),
     );
+  }
+
+  Future<void> _confirmCancelBooking(ScheduleItem item) async {
+    final shouldCancel = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Huỷ booking'),
+          content: Text(
+            'Bạn có chắc muốn huỷ booking của ${item.customerName}?\n'
+            'Thời gian: ${_formatRange(item.startTime, item.endTime)}',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Đóng'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Huỷ booking'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldCancel != true) return;
+
+    try {
+      await _service.cancelBooking(item.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã huỷ booking thành công.')),
+      );
+      setState(() => _future = _loadSchedule());
+    } on BookingServiceException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    }
   }
 }
 
@@ -384,6 +427,7 @@ class _TimelineView extends StatelessWidget {
     required this.statusColor,
     required this.statusText,
     required this.onAction,
+    required this.onCancelBooking,
   });
 
   final List<ScheduleItem> items;
@@ -391,6 +435,7 @@ class _TimelineView extends StatelessWidget {
   final Color Function(BookingStatus status) statusColor;
   final String Function(BookingStatus status) statusText;
   final void Function(String action) onAction;
+  final Future<void> Function(ScheduleItem item) onCancelBooking;
 
   @override
   Widget build(BuildContext context) {
@@ -475,7 +520,7 @@ class _TimelineView extends StatelessWidget {
                         _ActionChip(
                           icon: Icons.cancel_outlined,
                           label: 'Hủy booking',
-                          onPressed: () => onAction('Hủy booking'),
+                          onPressed: () => onCancelBooking(item),
                         ),
                         _ActionChip(
                           icon: Icons.phone_forwarded_outlined,

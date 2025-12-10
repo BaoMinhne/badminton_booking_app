@@ -133,11 +133,44 @@ class ManagerScheduleService {
     return ScheduleCourt(id: record.id, label: label);
   }
 
+  Future<void> cancelBooking(String bookingId) async {
+    final pocketBase = await getPocketbaseInstance();
+
+    try {
+      await pocketBase.collection(BookingService.collection).update(
+        bookingId,
+        body: {'status': 'cancelled'},
+      );
+    } on ClientException catch (error) {
+      throw BookingServiceException(_mapClientException(error));
+    } catch (_) {
+      throw BookingServiceException(
+        'Không thể huỷ booking. Vui lòng thử lại.',
+      );
+    }
+  }
+
   String _escape(String value) => value.replaceAll("'", "\\'");
 
   String _buildOrFilter(String field, List<String> values) {
     final escaped = values.map(_escape).map((v) => "${field}='${v}'");
     return escaped.join(' || ');
+  }
+
+  String _mapClientException(ClientException error) {
+    if (error.response != null) {
+      final data = error.response!['data'];
+      if (data is Map && data.isNotEmpty) {
+        final first = data.values.first;
+        if (first is Map && first['message'] is String) {
+          return first['message'] as String;
+        }
+      }
+      if (error.response!['message'] is String) {
+        return error.response!['message'] as String;
+      }
+    }
+    return 'Đã xảy ra lỗi. Vui lòng thử lại.';
   }
 
   RecordModel? _resolveExpandedRecord(dynamic expanded) {

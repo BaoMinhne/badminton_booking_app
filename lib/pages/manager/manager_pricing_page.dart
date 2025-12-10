@@ -37,12 +37,13 @@ class ManagerPricingPage extends StatelessWidget {
           child: ConstrainedBox(
             constraints: BoxConstraints(minWidth: constraints.maxWidth),
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 const Text(
                   'Bảng giá sân',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                const Spacer(),
+                const SizedBox(width: 24),
                 actionButtons,
               ],
             ),

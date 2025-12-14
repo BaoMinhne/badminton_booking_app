@@ -98,6 +98,7 @@ def recommend_partners(
     me: UserDetails,
     others: List[UserDetails],
     limit: int = 10,
+    offset: int = 0,
 ) -> List[MatchCandidate]:
 
     # 1) Tính rule-based score như cũ
@@ -158,7 +159,13 @@ def recommend_partners(
 
     # 3) Sort lần 2 theo combined_score
     final_candidates.sort(key=lambda c: c.score, reverse=True)
-    return final_candidates[:limit]
+    if offset < 0:
+        offset = 0
+
+    if limit <= 0:
+        return []
+
+    return final_candidates[offset : offset + limit]
 
 
 # --------- RECOMMEND FRIENDS (TẠM THỜI GIỮ NGUYÊN RULE-BASED) --------- #
@@ -168,6 +175,7 @@ def recommend_friends(
     me: UserDetails,
     others: List[UserDetails],
     limit: int = 10,
+    offset: int = 0,
 ) -> List[MatchCandidate]:
 
     candidates: List[MatchCandidate] = []
@@ -186,4 +194,10 @@ def recommend_friends(
         )
 
     candidates.sort(key=lambda c: c.score, reverse=True)
-    return candidates[:limit]
+    if offset < 0:
+        offset = 0
+
+    if limit <= 0:
+        return []
+
+    return candidates[offset : offset + limit]

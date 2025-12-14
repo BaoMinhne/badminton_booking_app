@@ -16,10 +16,15 @@ router = APIRouter(prefix="/recommend", tags=["recommend"])
 
 
 @router.get("/players", response_model=List[MatchCandidate])
-async def recommend_players_endpoint(user_id: str, limit: int = 20):
+async def recommend_players_endpoint(user_id: str, limit: int = 10, offset: int = 0):
     """
     Gợi ý người chơi (partner) cho user_id.
     """
+
+    if limit <= 0:
+        raise HTTPException(status_code=400, detail="limit must be positive")
+
+    offset = max(offset, 0)
 
     me_record = await get_user_details_by_user_id(user_id)
     if not me_record:
@@ -33,22 +38,28 @@ async def recommend_players_endpoint(user_id: str, limit: int = 20):
 
     others = [UserDetails.from_pb_record(r) for r in others_records]
 
-    candidates = recommend_partners(me, others, limit=limit)
+    candidates = recommend_partners(me, others, limit=limit, offset=offset)
 
     await log_recommendations(
         from_user_id=user_id,
         candidates=candidates,
         mode="partner",
+        start_rank=offset + 1,
     )
 
     return candidates
 
 
 @router.get("/friends", response_model=List[MatchCandidate])
-async def recommend_friends_endpoint(user_id: str, limit: int = 10):
+async def recommend_friends_endpoint(user_id: str, limit: int = 10, offset: int = 0):
     """
     Gợi ý KẾT BẠN.
     """
+
+    if limit <= 0:
+        raise HTTPException(status_code=400, detail="limit must be positive")
+
+    offset = max(offset, 0)
 
     me_record = await get_user_details_by_user_id(user_id)
     if not me_record:
@@ -62,12 +73,13 @@ async def recommend_friends_endpoint(user_id: str, limit: int = 10):
 
     others = [UserDetails.from_pb_record(r) for r in others_records]
 
-    candidates = recommend_friends(me, others, limit=limit)
+    candidates = recommend_friends(me, others, limit=limit, offset=offset)
 
     await log_recommendations(
         from_user_id=user_id,
         candidates=candidates,
         mode="friend",
+        start_rank=offset + 1,
     )
 
     return candidates

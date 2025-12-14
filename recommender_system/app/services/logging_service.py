@@ -12,11 +12,12 @@ async def log_recommendations(
     from_user_id: str,
     candidates: List[MatchCandidate],
     mode: str,  # "partner" | "friend"
+    start_rank: int = 1,
 ) -> None:
     """
     Ghi log cho mỗi candidate vào collection recommendation_logs.
     """
-    for index, c in enumerate(candidates, start=1):
+    for index, c in enumerate(candidates, start=start_rank):
         try:
             features: Dict[str, Any] = dict(c.debug_info or {})
             features["mode"] = mode

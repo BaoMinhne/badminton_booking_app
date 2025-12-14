@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:badminton_booking_app/components/create_post.dart';
 import 'package:badminton_booking_app/components/my_post.dart';
@@ -45,12 +46,15 @@ class SocialPageState extends State<SocialPage> {
   late final InvitationManager _invitationManager;
   final Set<String> _pendingRequests = <String>{};
   TabController? _tabController;
+  int _visibleSuggestionCount = 10;
+  String _suggestionSignature = '';
 
   @override
   void initState() {
     super.initState();
     _partnerManager = PartnerSuggestionManager();
     _invitationManager = InvitationManager();
+    _partnerManager.addListener(_onSuggestionsUpdated);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<SocialManager>().loadInitial();
@@ -61,10 +65,29 @@ class SocialPageState extends State<SocialPage> {
 
   @override
   void dispose() {
+    _partnerManager.removeListener(_onSuggestionsUpdated);
     _partnerManager.dispose();
     _invitationManager.dispose();
     super.dispose();
   }
+
+  void _onSuggestionsUpdated() {
+    final suggestions = _partnerManager.suggestions;
+    final signature = _buildSuggestionSignature(suggestions);
+
+    if (signature == _suggestionSignature) return;
+
+    _suggestionSignature = signature;
+    final newVisibleCount = suggestions.isEmpty ? 0 : min(10, suggestions.length);
+    if (newVisibleCount != _visibleSuggestionCount) {
+      setState(() {
+        _visibleSuggestionCount = newVisibleCount;
+      });
+    }
+  }
+
+  String _buildSuggestionSignature(List<PartnerRecommendation> suggestions) =>
+      suggestions.map((s) => s.friend.user.id).join('|');
 
   Future<void> _openCreatePost(BuildContext context) async {
     final result = await Navigator.of(context).push<bool>(
@@ -607,6 +630,8 @@ class SocialPageState extends State<SocialPage> {
           final suggestions = partnerManager.suggestions;
           final userManager = context.watch<UserManager>();
           partnerManager.setHomeCourtId(userManager.myDetails?.homeCourtId);
+          final visibleSuggestions =
+              min(_visibleSuggestionCount, suggestions.length);
 
           return CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -743,7 +768,28 @@ class SocialPageState extends State<SocialPage> {
                               .dismissSuggestion(suggestion.friend.user.id),
                         );
                       },
-                      childCount: suggestions.length,
+                      childCount: visibleSuggestions,
+                    ),
+                  ),
+                ),
+              if (visibleSuggestions < suggestions.length)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: () {
+                          setState(() {
+                            _visibleSuggestionCount = min(
+                              suggestions.length,
+                              _visibleSuggestionCount + 3,
+                            );
+                          });
+                        },
+                        child: const Text('Xem thêm'),
+                      ),
                     ),
                   ),
                 ),

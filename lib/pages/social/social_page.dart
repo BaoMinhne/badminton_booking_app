@@ -739,6 +739,8 @@ class SocialPageState extends State<SocialPage> {
                             context: context,
                             friend: suggestion.friend,
                           ),
+                          onDismiss: () => partnerManager
+                              .dismissSuggestion(suggestion.friend.user.id),
                         );
                       },
                       childCount: suggestions.length,

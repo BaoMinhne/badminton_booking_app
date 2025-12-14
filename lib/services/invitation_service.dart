@@ -182,9 +182,23 @@ class InvitationService {
             mode:
                 invitation.type.name, // 'recruitment' | 'booking' | 'proposed'
           );
+          await recommender.logRecommendationAction(
+            action: 'accepted',
+            targetUserId: invitation.fromUserId,
+          );
         } catch (e) {
           // Không để lỗi log làm hỏng UX accept
           print('[INVITATION][ACCEPT][RECO_ERROR] $e');
+        }
+      } else {
+        try {
+          final recommender = RecommenderService();
+          await recommender.logRecommendationOutcome(
+            outcome: 'rejected',
+            targetUserId: invitation.fromUserId,
+          );
+        } catch (e) {
+          print('[INVITATION][REJECT][RECO_ERROR] $e');
         }
       }
       // ------------------------------------------------------------

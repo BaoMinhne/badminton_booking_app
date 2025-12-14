@@ -5,13 +5,19 @@ import '../models/friend_request.dart';
 import '../models/friend_search_result.dart';
 import '../models/user.dart';
 import '../services/pocketbase_client.dart';
+import '../services/recommender_service.dart';
 import '../services/user_service.dart';
 import '../utils/time_ago.dart';
 
 class FriendRequestService {
-  FriendRequestService() : _userDetailsService = UserDetailsService();
+  FriendRequestService({
+    UserDetailsService? userDetailsService,
+    RecommenderService? recommenderService,
+  })  : _userDetailsService = userDetailsService ?? UserDetailsService(),
+        _recommenderService = recommenderService ?? RecommenderService();
 
   final UserDetailsService _userDetailsService;
+  final RecommenderService _recommenderService;
 
   Future<List<FriendRequestItem>> fetchIncomingRequests() async {
     final pb = await getPocketbaseInstance();
@@ -177,6 +183,13 @@ class FriendRequestService {
         'to_user': toUserId,
         'status': 'pending',
       });
+
+      await _safeLog(
+        () => _recommenderService.logRecommendationAction(
+          action: 'invited',
+          targetUserId: toUserId,
+        ),
+      );
       return rec.id;
     } on ClientException catch (err) {
       final msg = err.response['message'] ?? 'Không thể gửi lời mời kết bạn.';
@@ -214,6 +227,13 @@ class FriendRequestService {
     );
 
     await _createFriendship(pb, request.from.user.id, currentUserId);
+
+    await _safeLog(
+      () => _recommenderService.logRecommendationOutcome(
+        outcome: 'accepted',
+        targetUserId: request.from.user.id,
+      ),
+    );
   }
 
   Future<void> acceptFriendRequestById(
@@ -232,6 +252,13 @@ class FriendRequestService {
     );
 
     await _createFriendship(pb, fromUserId, currentUserId);
+
+    await _safeLog(
+      () => _recommenderService.logRecommendationOutcome(
+        outcome: 'accepted',
+        targetUserId: fromUserId,
+      ),
+    );
   }
 
   Future<void> rejectFriendRequest(String requestId) async {
@@ -266,6 +293,14 @@ class FriendRequestService {
       final msg = err.response['message'] ?? '';
       if (msg.contains('idx_friendships_pair')) return;
       rethrow;
+    }
+  }
+
+  Future<void> _safeLog(Future<void> Function() runner) async {
+    try {
+      await runner();
+    } catch (_) {
+      // ignore logging errors to avoid blocking the main action
     }
   }
 }

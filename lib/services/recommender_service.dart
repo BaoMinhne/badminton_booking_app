@@ -78,6 +78,84 @@ class RecommenderService {
     return results;
   }
 
+  Future<void> logRecommendationsShown({
+    required String sessionId,
+    required List<RecommendationShownItem> items,
+  }) async {
+    if (items.isEmpty) return;
+
+    final userId = await _requireCurrentUserId();
+
+    await _postEvent(
+      path: '/events/recommendations/shown',
+      body: {
+        'from_user_id': userId,
+        'session_id': sessionId,
+        'items': items.map((item) => item.toJson()).toList(),
+      },
+    );
+  }
+
+  Future<void> logProfileClicked(String targetUserId) async {
+    final userId = await _requireCurrentUserId();
+
+    await _postEvent(
+      path: '/events/recommendations/clicked_profile',
+      body: {
+        'from_user_id': userId,
+        'to_user_id': targetUserId,
+      },
+    );
+  }
+
+  Future<void> logRecommendationAction({
+    required String action,
+    required String targetUserId,
+  }) async {
+    final userId = await _requireCurrentUserId();
+
+    await _postEvent(
+      path: '/events/recommendations/action',
+      body: {
+        'from_user_id': userId,
+        'to_user_id': targetUserId,
+        'action': action,
+      },
+    );
+  }
+
+  Future<void> logRecommendationOutcome({
+    required String outcome,
+    required String targetUserId,
+  }) async {
+    final userId = await _requireCurrentUserId();
+
+    await _postEvent(
+      path: '/events/recommendations/outcome',
+      body: {
+        'from_user_id': userId,
+        'to_user_id': targetUserId,
+        'outcome': outcome,
+      },
+    );
+  }
+
+  Future<void> logRecommendationDismissed(
+    String targetUserId, {
+    String? reason,
+  }) async {
+    final userId = await _requireCurrentUserId();
+
+    await _postEvent(
+      path: '/events/recommendations/dismiss',
+      body: {
+        'from_user_id': userId,
+        'to_user_id': targetUserId,
+        if (reason != null) 'reason': reason,
+      },
+    );
+  }
+
   Future<PartnerRecommendation> _mapCandidate(
     Map<String, dynamic> json,
     PocketBase pb,
@@ -170,4 +248,44 @@ class RecommenderService {
       );
     }
   }
+
+  Future<String> _requireCurrentUserId() async {
+    final pb = await getPocketbaseInstance();
+    final currentUserId = pb.authStore.record?.id;
+    if (currentUserId == null) {
+      throw Exception('Bạn chưa đăng nhập.');
+    }
+    return currentUserId;
+  }
+
+  Future<void> _postEvent({
+    required String path,
+    required Map<String, dynamic> body,
+  }) async {
+    final uri = Uri.parse('$_baseUrl$path');
+    final res = await _client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+
+    if (res.statusCode != 200) {
+      throw Exception('Event $path failed: ${res.statusCode} -> ${res.body}');
+    }
+  }
+}
+
+class RecommendationShownItem {
+  RecommendationShownItem({
+    required this.toUserId,
+    required this.rankShown,
+  });
+
+  final String toUserId;
+  final int rankShown;
+
+  Map<String, dynamic> toJson() => {
+        'to_user_id': toUserId,
+        'rank_shown': rankShown,
+      };
 }

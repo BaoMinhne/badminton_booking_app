@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional
 
 from   pocketbase_client import create_record, update_record, get_list, delete_record
 
+from datetime import datetime, timezone
 
 # ---------- USER_DETAILS ----------
 
@@ -138,3 +139,122 @@ async def create_match_feedback(
         payload["comment"] = comment
 
     return await create_record("match_feedback", payload)
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+async def mark_recommendation_shown(
+    *,
+    from_user_id: str,
+    to_user_id: str,
+    session_id: str,
+    rank_shown: int,
+) -> None:
+    """
+    UI gọi khi danh sách gợi ý đã được render.
+    Update record gần nhất: shown=true, shown_at, session_id, rank_shown
+    """
+    rec = await _get_latest_recommendation_log(from_user_id, to_user_id)
+    if not rec:
+        return
+
+    await update_record(
+        "recommendation_logs",
+        rec["id"],
+        {
+            "shown": True,
+            "shown_at": _now_iso(),
+            "session_id": session_id,
+            "rank_shown": rank_shown,
+        },
+    )
+
+
+async def mark_recommendation_clicked_profile(
+    *,
+    from_user_id: str,
+    to_user_id: str,
+) -> None:
+    """
+    UI gọi khi user click xem hồ sơ một gợi ý.
+    """
+    rec = await _get_latest_recommendation_log(from_user_id, to_user_id)
+    if not rec:
+        return
+
+    await update_record(
+        "recommendation_logs",
+        rec["id"],
+        {"clicked_profile": True},
+    )
+
+
+async def mark_recommendation_dismissed(
+    *,
+    from_user_id: str,
+    to_user_id: str,
+    reason: str | None = None,
+) -> None:
+    """
+    UI gọi khi user bấm 'Không quan tâm/Ẩn gợi ý'.
+    Theo schema mới: rejected=true, responded=true, responded_at, features.reason
+    """
+    rec = await _get_latest_recommendation_log(from_user_id, to_user_id)
+    if not rec:
+        return
+
+    # patch features để lưu reason (nếu có)
+    features = rec.get("features") or {}
+    if not isinstance(features, dict):
+        features = {}
+    if reason:
+        features["dismiss_reason"] = reason
+
+    await update_record(
+        "recommendation_logs",
+        rec["id"],
+        {
+            "rejected": True,
+            "responded": True,
+            "responded_at": _now_iso(),
+            "features": features,
+        },
+    )
+
+
+async def mark_recommendation_outcome(
+    *,
+    from_user_id: str,
+    to_user_id: str,
+    outcome: str,  # "accepted" | "rejected" | "ignored"
+) -> None:
+    """
+    Log trạng thái phản hồi cuối:
+    - accepted: accepted=true, responded=true
+    - rejected: rejected=true, responded=true
+    - ignored : responded=false (hoặc true tùy định nghĩa), ghi features.response
+    """
+    rec = await _get_latest_recommendation_log(from_user_id, to_user_id)
+    if not rec:
+        return
+
+    features = rec.get("features") or {}
+    if not isinstance(features, dict):
+        features = {}
+    features["response"] = outcome
+
+    patch: Dict[str, Any] = {
+        "features": features,
+        "responded_at": _now_iso(),
+    }
+
+    if outcome == "accepted":
+        patch.update({"accepted": True, "rejected": False, "responded": True})
+    elif outcome == "rejected":
+        patch.update({"accepted": False, "rejected": True, "responded": True})
+    else:  # ignored
+        patch.update({"accepted": False, "rejected": False, "responded": False})
+
+    await update_record("recommendation_logs", rec["id"], patch)

@@ -21,7 +21,7 @@ class RecommenderService {
       dotenv.env['RECOMMENDER_BASE_URL'] ?? 'http://10.0.2.2:8000';
 
   Future<List<PartnerRecommendation>> fetchRecommendations(
-      {int limit = 10}) async {
+      {int limit = 20}) async {
     final pb = await getPocketbaseInstance();
     final currentUserId = pb.authStore.record?.id;
     if (currentUserId == null) {

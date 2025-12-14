@@ -1,182 +1,66 @@
 """
 generate_advanced_interactions.py
 
-Phiên bản ADVANCED mô phỏng hành vi người dùng cho hệ thống gợi ý.
+Phiên bản ADVANCED (SESSION + FUNNEL) mô phỏng hành vi người dùng cho hệ thống gợi ý.
 
-Ý tưởng:
-1. Lấy danh sách user thực từ PocketBase (collection user_details).
-2. Với mỗi user, gọi API FastAPI:
-      - /recommend/players
-      - /recommend/friends
-   => app.py sẽ tự tạo recommendation_logs đúng chuẩn rule-based.
-3. Sau đó đọc recommendation_logs, với MỖI record:
-   - Tính xác suất invited/accepted dựa trên:
-       + rule_score
-       + rank_in_list
-       + "synergy" (style + intensity + role)
-   - Random invite/accept theo xác suất đó.
-   - Một phần accepted sẽ sinh thêm match_feedback good/ok/bad.
-   - Đánh dấu features['synthetic_version'] = 'v2_advanced'
-     để lần sau script không đụng lại record cũ.
+Mục tiêu dữ liệu giả:
+- Giống hành vi thật: Shown -> Click -> (Dismiss hoặc Invite) -> (Accept/Reject/Ignore) -> Feedback (một phần)
+- Có position bias (top được xem/click nhiều hơn)
+- Có cá tính người dùng (invite_bias/accept_bias khác nhau)
+- Có quota hành động mỗi session
+- Outcome phụ thuộc người nhận (receiver bias) để tránh "rule -> nhãn"
 
 Chạy:
-    (myenv) python generate_advanced_interactions.py \
-        --rounds 50 \
-        --max-logs 5000 \
-        --feedback-ratio 0.4
+    (myenv) python generate_advanced_interactions.py --rounds 50 --feedback-ratio 0.4
 
 YÊU CẦU:
-- .env đã cấu hình cho PocketBase (POCKETBASE_URL, PB_USER_EMAIL, PB_USER_PASSWORD)
+- .env cấu hình PocketBase (POCKETBASE_URL, PB_USER_EMAIL, PB_USER_PASSWORD)
 - FastAPI đang chạy (uvicorn app:app --reload)
-- ĐÃ cài aiohttp:  pip install aiohttp
+- aiohttp: pip install aiohttp
 """
 
 import argparse
 import asyncio
+import math
 import random
-from typing import Any, Dict, List, Tuple
-from typing import List  # nhớ import ở đầu file
-
+import uuid
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional, Tuple
 
 import aiohttp
 
 from pocketbase_client import ensure_user_login, get_list, update_record
 from pocketbase_service import create_match_feedback
 
-# ĐỔI URL NÀY THEO MÔI TRƯỜNG CỦA BẠN
-# - Nếu chạy cùng máy với FastAPI:  http://127.0.0.1:8000
-# - Nếu gọi từ container khác, chỉnh IP phù hợp.
 FASTAPI_BASE_URL = "http://127.0.0.1:8000"
 
 
 # ---------------------------------------------------------------------
-# UTILITIES: LẤY USER, LẤY LOG
+# UTILS
 # ---------------------------------------------------------------------
 
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
-async def fetch_all_user_details() -> List[Dict[str, Any]]:
-    """Lấy toàn bộ user_details để biết danh sách user_id."""
-    await ensure_user_login()
+def _sigmoid(x: float) -> float:
+    return 1.0 / (1.0 + math.exp(-x))
 
-    all_items: List[Dict[str, Any]] = []
-    page = 1
-    per_page = 200
+def _clamp(x: float, lo: float, hi: float) -> float:
+    return max(lo, min(hi, x))
 
-    while True:
-        data = await get_list(
-            "user_details",
-            page=page,
-            per_page=per_page,
-            filter_expr=None,
-        )
-        items = data.get("items", [])
-        if not items:
-            break
-        all_items.extend(items)
-
-        if len(items) < per_page:
-            break
-
-        page += 1
-
-    print(f"[INFO] fetched {len(all_items)} user_details")
-    return all_items
-
-
-async def fetch_recommendation_logs(max_logs: int | None = None) -> List[Dict[str, Any]]:
-    """Lấy recommendation_logs, có giới hạn max_logs nếu set."""
-    await ensure_user_login()
-
-    all_items: List[Dict[str, Any]] = []
-    page = 1
-    per_page = 200
-
-    while True:
-        remaining = None if max_logs is None else (max_logs - len(all_items))
-        if remaining is not None and remaining <= 0:
-            break
-
-        page_size = per_page if remaining is None else min(per_page, remaining)
-
-        data = await get_list(
-            "recommendation_logs",
-            page=page,
-            per_page=page_size,
-            filter_expr=None,
-        )
-
-        items = data.get("items", [])
-        if not items:
-            break
-
-        all_items.extend(items)
-
-        if len(items) < page_size:
-            break
-
-        page += 1
-
-    print(f"[INFO] fetched {len(all_items)} recommendation_logs for simulation")
-    return all_items
-
-
-# ---------------------------------------------------------------------
-# BƯỚC 1: GỌI API RECOMMEND ĐỂ TẠO LOG THẬT
-# ---------------------------------------------------------------------
-
-
-async def call_recommend_for_user(session: aiohttp.ClientSession, user_id: str) -> None:
-    """Gọi ngẫu nhiên /recommend/players hoặc /recommend/friends cho 1 user."""
-    mode = random.choice(["players", "friends"])
-    endpoint = "/recommend/players" if mode == "players" else "/recommend/friends"
-    url = f"{FASTAPI_BASE_URL}{endpoint}?user_id={user_id}&limit=20"
-
-    try:
-        async with session.get(url) as res:
-            if res.status != 200:
-                text = await res.text()
-                print(f"[WARN] recommend {mode} failed for {user_id}: {res.status} {text}")
-            else:
-                print(f"[OK] recommend {mode} called for user {user_id}")
-    except Exception as e:
-        print(f"[ERROR] calling recommend for {user_id}: {e}")
-
-
-
-async def generate_logs_by_calling_api(rounds: int) -> None:
-    users = await fetch_all_user_details()
-
-    # Ép kiểu rõ ràng cho Pylance
-    user_ids: List[str] = [
-        str(u["user_id"])
-        for u in users
-        if isinstance(u.get("user_id"), str) and u["user_id"]
-    ]
-
-    if len(user_ids) < 2:
-        print("[ERROR] not enough users in user_details (need >= 2).")
-        return
-
-    async with aiohttp.ClientSession() as session:
-        for i in range(rounds):
-            uid: str = random.choice(user_ids)   # uid chắc chắn là str
-            await call_recommend_for_user(session, uid)
-
-
-
-# ---------------------------------------------------------------------
-# BƯỚC 2: MÔ PHỎNG HÀNH VI NGƯỜI DÙNG TRÊN recommendation_logs
-# ---------------------------------------------------------------------
+def _exposure_probability(rank: int) -> float:
+    """
+    Position bias / exposure: rank càng cao càng được nhìn.
+    rank 1 ~ 0.95, rank 5 ~ ~0.70, rank 10 ~ ~0.35, rank 20 ~ ~0.10
+    """
+    r = max(1, int(rank))
+    p = 1.0 / (1.0 + (r / 5.0) ** 1.7)
+    return _clamp(p, 0.02, 0.98)
 
 
 def _extract_synergy(features: Dict[str, Any]) -> float:
     """
-    Ước tính "synergy" dựa trên điểm level/style/role/intensity trong features.
-    - Trong app.py, debug_info = dict(scores) với keys:
-        'level', 'style', 'role', 'intensity', 'court', 'habit'
-    - Tổng tối đa xấp xỉ 40 + 20 + 20 + 15 = 95 (bỏ court/habit).
-
-    Ta chuẩn hóa về 0..1.
+    Synergy dựa trên debug score: level/style/role/intensity (0..~95) -> normalize 0..1
     """
     level = float(features.get("level", 0.0) or 0.0)
     style = float(features.get("style", 0.0) or 0.0)
@@ -184,172 +68,399 @@ def _extract_synergy(features: Dict[str, Any]) -> float:
     intensity = float(features.get("intensity", 0.0) or 0.0)
 
     raw = level + style + role + intensity
-    # giả sử tổng max ~95
     synergy = raw / 95.0 if raw > 0 else 0.0
-    return max(0.0, min(1.0, synergy))
+    return _clamp(synergy, 0.0, 1.0)
 
 
-def _invited_probability(rule_score: float, rank_in_list: float, synergy: float) -> float:
+def _build_user_propensity(users: List[Dict[str, Any]]) -> Dict[str, Dict[str, float]]:
     """
-    Xác suất gửi lời mời:
-    - cao khi score cao, rank cao (top), synergy tốt.
+    Sinh cá tính mỗi user dựa trên user_details (nếu có).
+    - invite_bias: xu hướng gửi lời mời (0.6..1.4)
+    - accept_bias: xu hướng chấp nhận (0.6..1.4)
+    - quota: số invite tối đa mỗi session (1..5)
     """
-    score_norm = max(0.0, min(1.0, rule_score / 100.0))
-    rank_factor = max(0.2, 1.0 - (rank_in_list - 1) / 15.0)  # top 1~5 cao hơn
-    synergy_factor = 0.5 + 0.5 * synergy  # 0.5..1.0
+    prop: Dict[str, Dict[str, float]] = {}
+    for u in users:
+        uid = u.get("user_id")
+        if not isinstance(uid, str) or not uid:
+            continue
 
-    base = 0.1 + 0.6 * score_norm          # 0.1..0.7
-    invited_prob = base * rank_factor * synergy_factor  # 0..~0.7
+        # Các field có thể khác nhau tùy schema; fallback nếu thiếu
+        habit = float(u.get("plays_per_week") or u.get("habit_per_week") or 2.0)
+        level = float(u.get("level_numeric") or 2.0)
 
-    # giới hạn max 0.9 để vẫn còn random
-    return max(0.01, min(0.9, invited_prob))
+        invite_bias = 0.9 + min(0.5, habit / 10.0) + random.uniform(-0.12, 0.12)
+        # level cao có thể "kén" hơn nhẹ, nhưng không quá cực đoan
+        accept_bias = 1.05 - min(0.25, (level - 2.0) * 0.05) + random.uniform(-0.15, 0.15)
+
+        quota = int(_clamp(round(1 + habit / 3.0 + random.uniform(-0.6, 0.6)), 1, 5))
+
+        prop[uid] = {
+            "invite_bias": _clamp(invite_bias, 0.6, 1.4),
+            "accept_bias": _clamp(accept_bias, 0.6, 1.4),
+            "quota": float(quota),
+        }
+    return prop
 
 
-def _accepted_probability(
-    rule_score: float,
-    synergy: float,
-    already_invited: bool,
-) -> float:
+def _p_click(rule_score: float, rank: int, synergy: float) -> float:
     """
-    Xác suất accept (điều kiện đã nhận được lời mời).
-    - phụ thuộc nhiều vào score + synergy.
+    Click profile: phụ thuộc exposure(rank) + chất lượng match.
     """
-    score_norm = max(0.0, min(1.0, rule_score / 100.0))
+    exposure = _exposure_probability(rank)
+    s = _clamp(rule_score / 100.0, 0.0, 1.0)
+    logit = -1.8 + 1.6 * exposure + 1.0 * s + 0.8 * synergy
+    p = _sigmoid(logit)
+    return _clamp(p, 0.02, 0.70)
 
-    base = 0.05 + 0.7 * score_norm  # 0.05..0.75
-    synergy_factor = 0.4 + 0.6 * synergy  # 0.4..1.0
 
-    prob = base * synergy_factor           # ~ 0..0.75
-    if not already_invited:
-        # nếu chưa từng invite, xác suất chấp nhận rất thấp
-        prob *= 0.1
+def _p_dismiss(rule_score: float, rank: int, synergy: float) -> float:
+    """
+    Dismiss (không quan tâm) thường xảy ra khi:
+    - user đã click xem profile và thấy không phù hợp
+    - match quality thấp (synergy/score thấp)
+    """
+    exposure = _exposure_probability(rank)
+    s = _clamp(rule_score / 100.0, 0.0, 1.0)
+    badness = 1.0 - (0.6 * s + 0.4 * synergy)
+    logit = -2.2 + 2.0 * badness + 0.3 * exposure
+    return _clamp(_sigmoid(logit), 0.01, 0.25)
 
-    return max(0.01, min(0.95, prob))
+
+def _p_invite(rule_score: float, rank: int, synergy: float, invite_bias: float) -> float:
+    """
+    Invite: thường thấp hơn click; phụ thuộc exposure + score + synergy + cá tính user.
+    """
+    exposure = _exposure_probability(rank)
+    s = _clamp(rule_score / 100.0, 0.0, 1.0)
+    logit = -2.3 + 2.2 * s + 1.0 * synergy + 0.8 * exposure + math.log(invite_bias)
+    p = exposure * _sigmoid(logit)
+    return _clamp(p, 0.001, 0.35)
+
+
+def _p_accept(rule_score: float, synergy: float, accept_bias_receiver: float) -> float:
+    """
+    Accept|Invited: quyết định của người nhận.
+    """
+    s = _clamp(rule_score / 100.0, 0.0, 1.0)
+    logit = -2.0 + 2.0 * s + 1.1 * synergy + math.log(accept_bias_receiver)
+    return _clamp(_sigmoid(logit), 0.01, 0.70)
 
 
 def _sample_feedback(rule_score: float, synergy: float) -> str:
-    """
-    Sinh feedback 'good' / 'ok' / 'bad' theo score + synergy.
-    """
-    score_norm = max(0.0, min(1.0, rule_score / 100.0))
+    score_norm = _clamp(rule_score / 100.0, 0.0, 1.0)
     happiness = 0.5 * score_norm + 0.5 * synergy  # 0..1
-
     r = random.random()
 
     if happiness > 0.75:
-        # rất hợp nhau: chủ yếu good, chút ok
-        if r < 0.8:
-            return "good"
-        return "ok"
-
+        return "good" if r < 0.8 else "ok"
     if happiness > 0.4:
-        # tạm ổn: nhiều ok, chút good/bad
         if r < 0.15:
             return "good"
-        elif r < 0.75:
+        if r < 0.75:
             return "ok"
-        else:
-            return "bad"
-
-    # không hợp lắm: chủ yếu ok/bad
-    if r < 0.2:
-        return "ok"
-    return "bad"
+        return "bad"
+    return "ok" if r < 0.2 else "bad"
 
 
-async def simulate_user_behavior_on_logs(
-    max_logs: int | None = None,
-    feedback_ratio: float = 0.4,
-) -> None:
-    """
-    Đọc recommendation_logs và mô phỏng:
-    - invited: True/False
-    - accepted: True/False
-    - match_feedback: good/ok/bad cho 1 phần accepted
+# ---------------------------------------------------------------------
+# POCKETBASE FETCH
+# ---------------------------------------------------------------------
 
-    Chỉ áp dụng cho những record:
-    - chưa có 'synthetic_version' trong features
-    (để tránh ghi đè lần sau).
-    """
-    logs = await fetch_recommendation_logs(max_logs=max_logs)
-
-    if not logs:
-        print("[WARN] no recommendation_logs to simulate on.")
-        return
-
+async def fetch_all_user_details() -> List[Dict[str, Any]]:
     await ensure_user_login()
 
-    total = 0
-    updated_logs = 0
-    created_feedback = 0
+    all_items: List[Dict[str, Any]] = []
+    page = 1
+    per_page = 200
 
-    for log in logs:
-        total += 1
+    while True:
+        data = await get_list("user_details", page=page, per_page=per_page, filter_expr=None)
+        items = data.get("items", [])
+        if not items:
+            break
+        all_items.extend(items)
+        if len(items) < per_page:
+            break
+        page += 1
+
+    print(f"[INFO] fetched {len(all_items)} user_details")
+    return all_items
+
+
+async def fetch_latest_logs_for_user(from_user_id: str, limit: int = 20) -> List[Dict[str, Any]]:
+    """
+    Lấy log mới nhất cho 1 user sau khi gọi recommend.
+    Dùng filter from_user và sort -created để lấy đúng session gần nhất.
+    """
+    await ensure_user_login()
+    filter_expr = f'from_user="{from_user_id}"'
+    data = await get_list("recommendation_logs", page=1, per_page=limit, filter_expr=filter_expr)
+    items = data.get("items", [])
+    return items
+
+
+# ---------------------------------------------------------------------
+# FASTAPI CALLS
+# ---------------------------------------------------------------------
+
+async def call_recommend_for_user(session: aiohttp.ClientSession, user_id: str) -> None:
+    mode = random.choice(["players", "friends"])
+    endpoint = "/recommend/players" if mode == "players" else "/recommend/friends"
+    url = f"{FASTAPI_BASE_URL}{endpoint}?user_id={user_id}&limit=20"
+
+    async with session.get(url) as res:
+        if res.status != 200:
+            text = await res.text()
+            print(f"[WARN] recommend {mode} failed for {user_id}: {res.status} {text}")
+        else:
+            print(f"[OK] recommend {mode} called for user {user_id}")
+
+
+# ---------------------------------------------------------------------
+# CORE: SESSION-BASED FUNNEL SIMULATION
+# ---------------------------------------------------------------------
+
+async def simulate_one_session(
+    *,
+    from_user_id: str,
+    user_prop: Dict[str, Dict[str, float]],
+    feedback_ratio: float,
+    logs_limit: int = 20,
+) -> Tuple[int, int, int, int]:
+    """
+    Trả về thống kê: (shown_count, click_count, invite_count, accept_count)
+    """
+    session_id = str(uuid.uuid4())
+    shown_at = _now_iso()
+
+    # lấy 20 logs mới nhất của user
+    logs = await fetch_latest_logs_for_user(from_user_id, limit=logs_limit)
+    if not logs:
+        return (0, 0, 0, 0)
+
+    # sort theo rank_in_list tăng dần nếu có (để rank_shown đúng)
+    logs.sort(key=lambda x: float(x.get("rank_in_list") or 9999))
+
+    inviter = user_prop.get(from_user_id, {"invite_bias": 1.0, "accept_bias": 1.0, "quota": 2.0})
+    invite_quota = int(inviter["quota"])
+    invites_sent = 0
+
+    shown_count = 0
+    click_count = 0
+    invite_count = 0
+    accept_count = 0
+
+    for idx, log in enumerate(logs, start=1):
+        # bỏ qua log đã synthetic (tránh ghi đè)
         features = log.get("features") or {}
         if not isinstance(features, dict):
             features = {}
+        if features.get("synthetic_version") == "v3_funnel":
+            continue
 
-        # bỏ qua record synthetic cũ (đã xử lý)
-        if features.get("synthetic_version") == "v2_advanced":
+        to_user = log.get("to_user")
+        if not isinstance(to_user, str) or not to_user:
             continue
 
         rule_score = float(log.get("rule_score") or 0.0)
-        rank_in_list = float(log.get("rank_in_list") or 50.0)
+        rank_in_list = int(float(log.get("rank_in_list") or idx))
         synergy = _extract_synergy(features)
 
-        # xác suất invite & accept
-        p_invited = _invited_probability(rule_score, rank_in_list, synergy)
-        invited = random.random() < p_invited
+        rank_shown = idx  # rank trên UI theo session (1..20)
+        exposure_p = _exposure_probability(rank_shown)
 
-        p_accepted = _accepted_probability(rule_score, synergy, invited)
-        accepted = invited and (random.random() < p_accepted)
+        # --- 1) SHOWN ---
+        shown_count += 1
+        features["synthetic_version"] = "v3_funnel"
+        features["session_id"] = session_id
+        features["shown_at"] = shown_at
+        features["rank_shown"] = rank_shown
+        features["exposure_p"] = round(exposure_p, 3)
 
-        # cập nhật features để đánh dấu synthetic
-        features["synthetic_version"] = "v2_advanced"
-        features["sim_p_invited"] = round(p_invited, 3)
-        features["sim_p_accepted"] = round(p_accepted, 3)
+        # đảm bảo field top-level (schema mới) cũng được set
+        await update_record(
+            "recommendation_logs",
+            log["id"],
+            {
+                "shown": True,
+                "shown_at": shown_at,
+                "session_id": session_id,
+                "rank_shown": rank_shown,
+                "features": features,
+            },
+        )
 
-        update_body: Dict[str, Any] = {
-            "invited": invited,
-            "accepted": accepted,
-            "features": features,
-        }
+        # --- 2) CLICK PROFILE ---
+        pclick = _p_click(rule_score, rank_shown, synergy)
+        clicked = random.random() < pclick
+        features["sim_p_click"] = round(pclick, 3)
 
-        try:
-            await update_record("recommendation_logs", log["id"], update_body)
-            updated_logs += 1
-        except Exception as e:
-            print(f"[WARN] cannot update recommendation_log {log.get('id')}: {e}")
+        if clicked:
+            click_count += 1
+            features["clicked_profile"] = True
+            await update_record(
+                "recommendation_logs",
+                log["id"],
+                {"clicked_profile": True, "features": features},
+            )
+
+        # --- 3) DISMISS or INVITE (chỉ khi đã click) ---
+        if not clicked:
+            # không click => coi như ignore (không responded)
             continue
 
-        # Nếu accepted → có xác suất sinh thêm match_feedback
-        if accepted and random.random() < feedback_ratio:
-            from_user = log.get("from_user")
-            to_user = log.get("to_user")
-            if from_user and to_user:
+        pdismiss = _p_dismiss(rule_score, rank_shown, synergy)
+        dismissed = random.random() < pdismiss
+        features["sim_p_dismiss"] = round(pdismiss, 3)
+
+        if dismissed:
+            # rejected = user chủ động "không quan tâm"
+            features["dismiss_reason"] = random.choice(
+                ["not_matching_style", "too_far", "not_active", "other"]
+            )
+            await update_record(
+                "recommendation_logs",
+                log["id"],
+                {
+                    "rejected": True,
+                    "responded": True,
+                    "features": features,
+                },
+            )
+            continue
+
+        # nếu hết quota thì dừng invite, còn lại coi như ignore
+        if invites_sent >= invite_quota:
+            features["response"] = "ignored_quota"
+            await update_record("recommendation_logs", log["id"], {"features": features})
+            continue
+
+        pinv = _p_invite(rule_score, rank_shown, synergy, inviter["invite_bias"])
+        invited = random.random() < pinv
+        features["sim_p_invited"] = round(pinv, 3)
+
+        if not invited:
+            # clicked nhưng không invite: respond=false, coi như "lướt"
+            features["response"] = "no_invite"
+            await update_record("recommendation_logs", log["id"], {"features": features})
+            continue
+
+        # invited
+        invites_sent += 1
+        invite_count += 1
+        features["invited_at"] = _now_iso()
+
+        await update_record(
+            "recommendation_logs",
+            log["id"],
+            {
+                "invited": True,
+                "responded": True,
+                "features": features,
+            },
+        )
+
+        # --- 4) OUTCOME: ACCEPT / REJECT / IGNORE (decision of receiver) ---
+        receiver = user_prop.get(to_user, {"accept_bias": 1.0})
+        pacc = _p_accept(rule_score, synergy, receiver["accept_bias"])
+        features["sim_p_accepted"] = round(pacc, 3)
+
+        r = random.random()
+        if r < 0.15:
+            # ignored: không phản hồi lời mời
+            features["response"] = "ignored"
+            await update_record(
+                "recommendation_logs",
+                log["id"],
+                {"features": features},
+            )
+            continue
+
+        accepted = (random.random() < pacc)
+        if accepted:
+            accept_count += 1
+            features["response"] = "accepted"
+            await update_record(
+                "recommendation_logs",
+                log["id"],
+                {"accepted": True, "features": features},
+            )
+
+            # feedback (optional)
+            if random.random() < feedback_ratio:
                 fb = _sample_feedback(rule_score, synergy)
                 try:
                     await create_match_feedback(
-                        from_user_id=from_user,
+                        from_user_id=from_user_id,
                         to_user_id=to_user,
                         booking_id=None,
                         feedback=fb,
-                        comment=f"{fb}",
+                        comment=fb,
                     )
-                    created_feedback += 1
                 except Exception as e:
                     print(f"[WARN] cannot create match_feedback for log {log.get('id')}: {e}")
-
-        if total % 100 == 0:
-            print(
-                f"[PROGRESS] processed {total}/{len(logs)} logs "
-                f"(updated={updated_logs}, feedbacks={created_feedback})"
+        else:
+            features["response"] = "rejected"
+            await update_record(
+                "recommendation_logs",
+                log["id"],
+                {"rejected": True, "features": features},
             )
 
+    return (shown_count, click_count, invite_count, accept_count)
+
+
+async def run_simulation(rounds: int, feedback_ratio: float) -> None:
+    users = await fetch_all_user_details()
+
+    user_ids: List[str] = [
+        str(u["user_id"])
+        for u in users
+        if isinstance(u.get("user_id"), str) and u["user_id"]
+    ]
+    if len(user_ids) < 2:
+        print("[ERROR] not enough users in user_details (need >= 2).")
+        return
+
+    user_prop = _build_user_propensity(users)
+
+    shown_total = click_total = invite_total = accept_total = 0
+
+    async with aiohttp.ClientSession() as session:
+        for i in range(rounds):
+            uid = random.choice(user_ids)
+            # 1) call recommend to create fresh logs
+            try:
+                await call_recommend_for_user(session, uid)
+            except Exception as e:
+                print("[WARN] recommend call failed:", e)
+                continue
+
+            # 2) simulate session behavior on latest logs
+            try:
+                s, c, inv, acc = await simulate_one_session(
+                    from_user_id=uid,
+                    user_prop=user_prop,
+                    feedback_ratio=feedback_ratio,
+                    logs_limit=20,
+                )
+                shown_total += s
+                click_total += c
+                invite_total += inv
+                accept_total += acc
+            except Exception as e:
+                print("[WARN] simulate session failed:", e)
+
+            if (i + 1) % 10 == 0:
+                print(
+                    f"[PROGRESS] rounds={i+1}/{rounds} "
+                    f"shown={shown_total}, click={click_total}, invite={invite_total}, accept={accept_total}"
+                )
+
     print(
-        f"[DONE] simulate_user_behavior_on_logs: "
-        f"processed={total}, updated={updated_logs}, "
-        f"feedbacks={created_feedback}"
+        f"[DONE] rounds={rounds} "
+        f"shown={shown_total}, click={click_total}, invite={invite_total}, accept={accept_total}"
     )
 
 
@@ -357,45 +468,16 @@ async def simulate_user_behavior_on_logs(
 # ENTRYPOINT
 # ---------------------------------------------------------------------
 
-
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Generate advanced synthetic interactions based on real recommend API.",
-    )
-    parser.add_argument(
-        "--rounds",
-        type=int,
-        default=50,
-        help="Số lượt gọi recommend API (mỗi lượt cho 1 user).",
-    )
-    parser.add_argument(
-        "--max-logs",
-        type=int,
-        default=5000,
-        help="Tối đa bao nhiêu recommendation_logs sẽ được mô phỏng hành vi.",
-    )
-    parser.add_argument(
-        "--feedback-ratio",
-        type=float,
-        default=0.4,
-        help="Tỉ lệ record accepted sinh thêm match_feedback (0..1).",
-    )
+    parser = argparse.ArgumentParser(description="Generate advanced synthetic interactions (session funnel).")
+    parser.add_argument("--rounds", type=int, default=50, help="Số session mô phỏng (mỗi session gọi recommend 1 user).")
+    parser.add_argument("--feedback-ratio", type=float, default=0.4, help="Tỉ lệ accepted sinh match_feedback (0..1).")
     return parser.parse_args()
 
 
 async def main() -> None:
     args = parse_args()
-    print(f"[STEP 1] calling recommend APIs for {args.rounds} rounds ...")
-    await generate_logs_by_calling_api(args.rounds)
-
-    print(
-        f"[STEP 2] simulating user behavior on recommendation_logs "
-        f"(max_logs={args.max_logs}, feedback_ratio={args.feedback_ratio}) ..."
-    )
-    await simulate_user_behavior_on_logs(
-        max_logs=args.max_logs,
-        feedback_ratio=args.feedback_ratio,
-    )
+    await run_simulation(rounds=args.rounds, feedback_ratio=args.feedback_ratio)
 
 
 if __name__ == "__main__":

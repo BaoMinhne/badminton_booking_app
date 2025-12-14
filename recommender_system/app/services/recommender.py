@@ -20,13 +20,20 @@ def _build_logistic_regression_features_for_partner(
     rank_in_list: int,
     debug_details: Dict[str, Any],
 ) -> Dict[str, float]:
-    """
-    Build đúng bộ features đã dùng lúc train:
+    """Build feature cho ML.
 
-    ['rule_score', 'rank_in_list', 'level', 'style', 'role', 'intensity',
-     'home_court', 'habit', 'court', 'sim_p_accepted', 'sim_p_invited', 'is_top3']
+    Hiện tại bạn train với CLEAN_MODE=True và schema mới (prefix f_*), vì vậy
+    hàm này sẽ xuất ra *đồng thời* 2 bộ key:
 
-    Một số trường (sim_p_*) là synthetic chỉ dùng lúc train -> ở runtime ta set = 0.0.
+    - Schema mới (khuyến nghị):
+      ['rule_score','rank_in_list','f_level','f_style','f_role','f_intensity',
+       'f_home_court','f_habit','f_court','is_top3']
+
+    - Schema cũ (để tương thích nếu bạn retrain/rollback):
+      ['rule_score','rank_in_list','level','style','role','intensity',
+       'home_court','habit','court','is_top3']
+
+    Các biến sim_p_* chỉ tồn tại trong dữ liệu giả → runtime luôn set = 0.
     """
 
     # level: lấy level_numeric của đối thủ (other)
@@ -51,9 +58,21 @@ def _build_logistic_regression_features_for_partner(
     # is_top3: 1 nếu rule-based rank nằm trong top 3, ngược lại 0
     is_top3 = 1.0 if rank_in_list <= 3 else 0.0
 
+    # Xuất ra cả 2 schema để service ML tự chọn schema phù hợp với artifact.
     return {
         "rule_score": float(rule_score),
         "rank_in_list": float(rank_in_list),
+
+        # schema mới (f_*)
+        "f_level": level_val,
+        "f_style": style_val,
+        "f_role": role_val,
+        "f_intensity": intensity_val,
+        "f_home_court": home_court_same,
+        "f_habit": habit_val,
+        "f_court": court_val,
+
+        # schema cũ (không prefix)
         "level": level_val,
         "style": style_val,
         "role": role_val,
@@ -61,8 +80,13 @@ def _build_logistic_regression_features_for_partner(
         "home_court": home_court_same,
         "habit": habit_val,
         "court": court_val,
+
+        # synthetic placeholders
         "sim_p_accepted": sim_p_accepted,
         "sim_p_invited": sim_p_invited,
+        "f_sim_p_accepted": sim_p_accepted,
+        "f_sim_p_invited": sim_p_invited,
+
         "is_top3": is_top3,
     }
 

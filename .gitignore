@@ -49,3 +49,5 @@ app/**/__pycache__/
 *.pyo
 *.pyd
 *.pdb
+
+recommender_system/app_1

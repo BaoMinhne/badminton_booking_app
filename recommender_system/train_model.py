@@ -1,86 +1,211 @@
 import json
 from datetime import datetime
 from pathlib import Path
+from typing import Tuple, List, Optional, Dict
 
 import joblib
+import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import classification_report, accuracy_score
-from sklearn.model_selection import StratifiedKFold, cross_val_score, train_test_split
+from sklearn.metrics import (
+    classification_report,
+    confusion_matrix,
+    roc_auc_score,
+    average_precision_score,
+)
+from sklearn.model_selection import StratifiedKFold, train_test_split, cross_val_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
+# =========================
+# CONFIG
+# =========================
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 ARTIFACTS_DIR = BASE_DIR / "artifacts"
-DATA_PATH = DATA_DIR / "training_dataset.csv"
 EXPERIMENTS_DIR = BASE_DIR / "experiments"
+
+DATA_PATH = DATA_DIR / "training_dataset.csv"
 SEED = 42
 
-FEATURE_COLS = [
-    "rule_score",
-    "rank_in_list",
-    "level",
-    "style",
-    "role",
-    "intensity",
-    "home_court",
-    "habit",
-    "court",
-    "sim_p_accepted",
-    "sim_p_invited",
-    "is_top3",
-]
+# Nếu True: bỏ sim_p_* (khuyến nghị cho "ML đích thực")
+CLEAN_MODE = True
+
+# Top-K metrics (phù hợp recommender)
+TOPK_LIST = [5, 10, 20]
 
 
-def load_data(path: Path | str) -> pd.DataFrame:
-    path = Path(path)
-    df = pd.read_csv(path)
+# =========================
+# IO
+# =========================
+def load_data(path: Path | str) -> Tuple[pd.DataFrame, str]:
+    """
+    Load dataset và trả về (df, label_column_name).
+    low_memory=False để giảm DtypeWarning.
+    """
+    df = pd.read_csv(Path(path), low_memory=False)
 
-    expected_cols = FEATURE_COLS + ["accepted"]
-    missing = [c for c in expected_cols if c not in df.columns]
-    if missing:
-        raise ValueError(f"Thiếu cột trong dataset: {missing}")
+    if "label_accepted" in df.columns:
+        y_col = "label_accepted"
+    elif "accepted" in df.columns:
+        y_col = "accepted"
+    else:
+        raise ValueError("Dataset không có cột label_accepted hoặc accepted.")
 
-    return df
+    return df, y_col
 
 
-def _clean_features(df: pd.DataFrame) -> pd.DataFrame:
-    X = df[FEATURE_COLS].copy()
+# =========================
+# FEATURE RESOLUTION
+# =========================
+def resolve_feature_cols(df: pd.DataFrame, clean_mode: bool) -> List[str]:
+    """
+    Tự detect schema:
+    - Version mới: prefix f_
+    - Version cũ: không prefix
 
-    # 1) Ép kiểu bool -> int (đặc biệt là is_top3)
-    for col in X.select_dtypes(include=["bool"]).columns:
-        X[col] = X[col].astype(int)
+    clean_mode=True sẽ bỏ các cột sim_p_* để tránh leakage từ synthetic generator.
+    """
+    # v2 (prefix f_)
+    base_v2 = [
+        "rule_score",
+        "rank_in_list",
+        "f_level",
+        "f_style",
+        "f_role",
+        "f_intensity",
+        "f_home_court",
+        "f_habit",
+        "f_court",
+        "is_top3",
+    ]
+    sim_v2 = ["f_sim_p_accepted", "f_sim_p_invited"]
 
-    # 2) Xử lý giá trị thiếu (NaN)
-    numeric_cols = X.select_dtypes(include=["int64", "float64"]).columns
-    for col in numeric_cols:
-        median_val = X[col].median()
-        X[col] = X[col].fillna(median_val)
+    # v1 (no prefix)
+    base_v1 = [
+        "rule_score",
+        "rank_in_list",
+        "level",
+        "style",
+        "role",
+        "intensity",
+        "home_court",
+        "habit",
+        "court",
+        "is_top3",
+    ]
+    sim_v1 = ["sim_p_accepted", "sim_p_invited"]
 
-    # Phòng hờ vẫn còn NaN ở chỗ nào đó -> fillna(0)
-    X = X.fillna(0)
+    # detect v2
+    if all(c in df.columns for c in base_v2):
+        cols = base_v2.copy()
+        if (not clean_mode) and all(c in df.columns for c in sim_v2):
+            cols += sim_v2
+        return cols
+
+    # detect v1
+    if all(c in df.columns for c in base_v1):
+        cols = base_v1.copy()
+        if (not clean_mode) and all(c in df.columns for c in sim_v1):
+            cols += sim_v1
+        return cols
+
+    raise ValueError(
+        "Không detect được schema feature.\n"
+        "Hãy kiểm tra training_dataset.csv có các cột f_* hoặc cột không prefix."
+    )
+
+
+# =========================
+# CLEAN FEATURES
+# =========================
+def clean_features(df: pd.DataFrame, feature_cols: List[str]) -> pd.DataFrame:
+    """
+    - cast numeric an toàn (string -> NaN)
+    - fill NaN theo median (fallback 0)
+    """
+    X = df[feature_cols].copy()
+
+    # bool -> int
+    for col in X.columns:
+        if X[col].dtype == bool:
+            X[col] = X[col].astype(int)
+
+    # cast numeric
+    for col in X.columns:
+        X[col] = pd.to_numeric(X[col], errors="coerce")
+
+    # fill NaN
+    for col in X.columns:
+        med = X[col].median()
+        if np.isnan(med):
+            med = 0.0
+        X[col] = X[col].fillna(med)
+
     return X
 
 
-def _log_metrics(metrics: dict) -> None:
+# =========================
+# TOP-K METRICS
+# =========================
+def topk_metrics(y_true: np.ndarray, y_score: np.ndarray, ks: List[int]) -> Dict[str, float]:
+    """
+    Precision@K, Recall@K cho tập test theo score.
+    Đây là metric phù hợp hệ gợi ý.
+    """
+    order = np.argsort(-y_score)  # desc
+    y_sorted = y_true[order]
+
+    total_pos = int(y_true.sum())
+    metrics: Dict[str, float] = {}
+
+    for k in ks:
+        k = min(k, len(y_true))
+        topk = y_sorted[:k]
+        tp_k = int(topk.sum())
+
+        prec_k = tp_k / k if k > 0 else 0.0
+        rec_k = tp_k / total_pos if total_pos > 0 else 0.0
+
+        metrics[f"precision@{k}"] = float(prec_k)
+        metrics[f"recall@{k}"] = float(rec_k)
+
+    return metrics
+
+
+# =========================
+# LOG
+# =========================
+def log_metrics(metrics: dict) -> Path:
     EXPERIMENTS_DIR.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
     path = EXPERIMENTS_DIR / f"accept_predictor_{timestamp}.json"
     with path.open("w", encoding="utf-8") as f:
         json.dump(metrics, f, ensure_ascii=False, indent=2)
-    print(f"✅ Đã lưu metric tại {path}")
+    print(f"✅ Metrics saved: {path}")
+    return path
 
 
-def train():
-    df = load_data(DATA_PATH)
+# =========================
+# TRAIN
+# =========================
+def train() -> None:
+    df, y_col = load_data(DATA_PATH)
+    feature_cols = resolve_feature_cols(df, clean_mode=CLEAN_MODE)
 
-    X = _clean_features(df)
-    y = df["accepted"].astype(int)
+    X = clean_features(df, feature_cols)
+    y = pd.to_numeric(df[y_col], errors="coerce").fillna(0).astype(int)
 
-    print("📊 Class distribution (accepted=1 vs 0):")
+    print("📌 Label:", y_col)
+    print("📌 CLEAN_MODE:", CLEAN_MODE)
+    print("📌 Features:", feature_cols)
+    print("📊 Class distribution:")
     print(y.value_counts())
 
+    if y.nunique() < 2:
+        raise ValueError("Dataset chỉ có 1 lớp (toàn 0 hoặc toàn 1). Không thể train model.")
+
+    # split
     X_train, X_test, y_train, y_test = train_test_split(
         X,
         y,
@@ -89,13 +214,14 @@ def train():
         stratify=y,
     )
 
+    # model
     pipeline = Pipeline(
         steps=[
             ("scaler", StandardScaler()),
             (
                 "model",
                 LogisticRegression(
-                    max_iter=1000,
+                    max_iter=2000,
                     class_weight="balanced",
                     random_state=SEED,
                 ),
@@ -105,52 +231,61 @@ def train():
 
     pipeline.fit(X_train, y_train)
 
-    y_pred = pipeline.predict(X_test)
-    accuracy = accuracy_score(y_test, y_pred)
-    report = classification_report(y_test, y_pred, output_dict=True)
+    # predict proba
+    y_proba = pipeline.predict_proba(X_test)[:, 1]
 
-    print("✅ Accuracy:", accuracy)
-    print(classification_report(y_test, y_pred))
+    # threshold 0.5 chỉ để xem classification report (không phải metric chính cho recommender)
+    y_pred = (y_proba >= 0.5).astype(int)
 
-    # Cross-validation để kiểm soát độ ổn định
-    min_class = y.value_counts().min()
+    roc_auc = roc_auc_score(y_test, y_proba)
+    pr_auc = average_precision_score(y_test, y_proba)
+    report = classification_report(y_test, y_pred, output_dict=True, zero_division=0)
+    cm = confusion_matrix(y_test, y_pred).tolist()
+
+    # Top-K metrics
+    y_test_np = y_test.to_numpy()
+    topk = topk_metrics(y_test_np, y_proba, TOPK_LIST)
+
+    print("✅ ROC-AUC:", roc_auc)
+    print("✅ PR-AUC:", pr_auc)
+    print("✅ Confusion matrix:", cm)
+    print("✅ Top-K:", topk)
+    print(classification_report(y_test, y_pred, zero_division=0))
+
+    # CV (ROC-AUC)
+    min_class = int(y.value_counts().min())
+    cv_scores: Optional[np.ndarray]
     if min_class < 2:
         cv_scores = None
-        print("⚠️  Bỏ qua cross-validation vì số mẫu ở một lớp quá ít (", min_class, ")")
+        print(f"⚠️  Skip CV (min_class={min_class})")
     else:
         n_splits = min(5, min_class)
         skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=SEED)
-        cv_scores = cross_val_score(pipeline, X, y, cv=skf, scoring="accuracy")
+        cv_scores = cross_val_score(pipeline, X, y, cv=skf, scoring="roc_auc")
 
-    # Lưu artifact
-    # Giữ nguyên model & scaler như runtime đang dùng
-    model: LogisticRegression = pipeline.named_steps["model"]
-    scaler: StandardScaler = pipeline.named_steps["scaler"]
+    # Save artifacts
     ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
-    model_path = ARTIFACTS_DIR / "model_accept_predictor.pkl"
-    scaler_path = ARTIFACTS_DIR / "scaler_accept_predictor.pkl"
-    pipeline_path = ARTIFACTS_DIR / "pipeline_accept_predictor.pkl"
-
-    joblib.dump(model, model_path)
-    joblib.dump(scaler, scaler_path)
+    pipeline_path = ARTIFACTS_DIR / "pipeline_predictor.pkl"
     joblib.dump(pipeline, pipeline_path)
-    print(
-        "✅ Đã lưu artifact tại",
-        model_path,
-        scaler_path,
-        pipeline_path,
-    )
+    print("✅ Saved pipeline:", pipeline_path)
 
     metrics = {
         "seed": SEED,
-        "feature_order": FEATURE_COLS,
+        "clean_mode": CLEAN_MODE,
+        "data_path": str(DATA_PATH),
+        "label_col": y_col,
+        "feature_order": feature_cols,
         "class_distribution": y.value_counts().to_dict(),
-        "accuracy": accuracy,
-        "cv_accuracy_mean": None if cv_scores is None else float(cv_scores.mean()),
-        "cv_accuracy_std": None if cv_scores is None else float(cv_scores.std()),
+        "threshold": 0.5,
+        "roc_auc": float(roc_auc),
+        "pr_auc": float(pr_auc),
+        "confusion_matrix": cm,
+        "topk_metrics": topk,
+        "cv_roc_auc_mean": None if cv_scores is None else float(cv_scores.mean()),
+        "cv_roc_auc_std": None if cv_scores is None else float(cv_scores.std()),
         "classification_report": report,
     }
-    _log_metrics(metrics)
+    log_metrics(metrics)
 
 
 if __name__ == "__main__":

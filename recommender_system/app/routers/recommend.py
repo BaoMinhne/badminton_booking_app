@@ -16,7 +16,7 @@ router = APIRouter(prefix="/recommend", tags=["recommend"])
 
 
 @router.get("/players", response_model=List[MatchCandidate])
-async def recommend_players_endpoint(user_id: str, limit: int = 10):
+async def recommend_players_endpoint(user_id: str, limit: int = 20):
     """
     Gợi ý người chơi (partner) cho user_id.
     """

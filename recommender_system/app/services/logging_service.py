@@ -21,10 +21,15 @@ async def log_recommendations(
             features: Dict[str, Any] = dict(c.debug_info or {})
             features["mode"] = mode
 
+            # Với hybrid (rule + ML), c.score có thể là combined_score.
+            # Để phục vụ train/evaluate về sau, đảm bảo rule_score lưu đúng rule-based score.
+            # (rule_score được inject vào debug_info ở recommender.py)
+            rule_score = float(features.get("rule_score", c.score))
+
             await create_recommendation_log(
                 from_user_id=from_user_id,
                 to_user_id=c.user.user_id,
-                rule_score=c.score,
+                rule_score=rule_score,
                 rank_in_list=index,
                 features=features,
                 invited=False,

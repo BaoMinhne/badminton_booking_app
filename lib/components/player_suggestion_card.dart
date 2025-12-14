@@ -44,6 +44,9 @@ class PlayerSuggestionCard extends StatelessWidget {
             ? cs.onSecondary
             : matchColor.withOpacity(0.8));
 
+    final dismissBorder = const Color(0xFFC62828);
+    final dismissBackground = const Color(0xFFFFE5E5);
+
     return Card(
       elevation: 2, // Elevation nhẹ cho shadow hiện đại
       shape: RoundedRectangleBorder(
@@ -123,12 +126,22 @@ class PlayerSuggestionCard extends StatelessWidget {
                             IconButton.filled(
                               onPressed: onDismiss,
                               tooltip: 'Bỏ qua gợi ý',
-                              icon: const Icon(Icons.remove_rounded),
+                              icon: const Icon(Icons.remove_rounded, size: 18),
+                              constraints: const BoxConstraints(
+                                minHeight: 32,
+                                minWidth: 32,
+                              ),
                               style: IconButton.styleFrom(
-                                backgroundColor: const Color(0xFFFFE5E5),
-                                foregroundColor: const Color(0xFFC62828),
-                                minimumSize: const Size(40, 40),
-                                padding: const EdgeInsets.all(8),
+                                backgroundColor: dismissBackground,
+                                foregroundColor: dismissBorder,
+                                padding: const EdgeInsets.all(6),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  side: BorderSide(
+                                    color: dismissBorder,
+                                    width: 1.4,
+                                  ),
+                                ),
                               ),
                             ),
                           ],

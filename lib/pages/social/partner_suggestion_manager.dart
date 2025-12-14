@@ -163,6 +163,13 @@ class PartnerSuggestionManager extends ChangeNotifier {
     _notifyListeners();
   }
 
+  void dismissSuggestion(String userId) {
+    _suggestions = _suggestions
+        .where((suggestion) => suggestion.friend.user.id != userId)
+        .toList(growable: false);
+    _applyFilters();
+  }
+
   @override
   void dispose() {
     _isDisposed = true;

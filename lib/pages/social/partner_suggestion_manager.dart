@@ -30,6 +30,7 @@ class PartnerSuggestionManager extends ChangeNotifier {
   bool _hideExistingRelations = false;
   String? _homeCourtId;
   bool _hasLoggedShown = false;
+  String _currentSessionId = _newSessionId();
   final Set<String> _dismissedUserIds = <String>{};
   final Map<String, FriendRelationStatus> _relations =
       <String, FriendRelationStatus>{};
@@ -49,6 +50,7 @@ class PartnerSuggestionManager extends ChangeNotifier {
     _isLoading = true;
     _error = null;
     _hasLoggedShown = false;
+    _currentSessionId = _newSessionId();
     if (force) {
       _suggestions = const <PartnerRecommendation>[];
       _filteredSuggestions = const <PartnerRecommendation>[];
@@ -181,6 +183,9 @@ class PartnerSuggestionManager extends ChangeNotifier {
     _suggestions = _suggestions
         .where((suggestion) => suggestion.friend.user.id != userId)
         .toList(growable: false);
+    unawaited(
+      _safeLog(() => _service.logRecommendationDismissed(userId)),
+    );
     _applyFilters();
   }
 
@@ -204,11 +209,18 @@ class PartnerSuggestionManager extends ChangeNotifier {
     if (_hasLoggedShown || _filteredSuggestions.isEmpty) return;
     _hasLoggedShown = true;
 
-    final ids = _filteredSuggestions
-        .map((suggestion) => suggestion.friend.user.id)
-        .toList(growable: false);
+    final items = <RecommendationShownItem>[
+      for (int i = 0; i < _filteredSuggestions.length; i++)
+        RecommendationShownItem(
+          toUserId: _filteredSuggestions[i].friend.user.id,
+          rankShown: i + 1,
+        )
+    ];
 
-    unawaited(_safeLog(() => _service.logRecommendationsShown(ids)));
+    unawaited(_safeLog(() => _service.logRecommendationsShown(
+          sessionId: _currentSessionId,
+          items: items,
+        )));
   }
 
   Future<void> _safeLog(Future<void> Function() runner) async {
@@ -229,4 +241,7 @@ class PartnerSuggestionManager extends ChangeNotifier {
     if (_isDisposed) return;
     notifyListeners();
   }
+
+  static String _newSessionId() =>
+      DateTime.now().microsecondsSinceEpoch.toString();
 }

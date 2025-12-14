@@ -78,14 +78,20 @@ class RecommenderService {
     return results;
   }
 
-  Future<void> logRecommendationsShown(List<String> shownUserIds) async {
+  Future<void> logRecommendationsShown({
+    required String sessionId,
+    required List<RecommendationShownItem> items,
+  }) async {
+    if (items.isEmpty) return;
+
     final userId = await _requireCurrentUserId();
 
     await _postEvent(
       path: '/events/recommendations/shown',
       body: {
-        'user_id': userId,
-        'shown_user_ids': shownUserIds,
+        'from_user_id': userId,
+        'session_id': sessionId,
+        'items': items.map((item) => item.toJson()).toList(),
       },
     );
   }
@@ -96,8 +102,8 @@ class RecommenderService {
     await _postEvent(
       path: '/events/recommendations/clicked_profile',
       body: {
-        'user_id': userId,
-        'target_user_id': targetUserId,
+        'from_user_id': userId,
+        'to_user_id': targetUserId,
       },
     );
   }
@@ -111,8 +117,8 @@ class RecommenderService {
     await _postEvent(
       path: '/events/recommendations/action',
       body: {
-        'user_id': userId,
-        'target_user_id': targetUserId,
+        'from_user_id': userId,
+        'to_user_id': targetUserId,
         'action': action,
       },
     );
@@ -127,9 +133,25 @@ class RecommenderService {
     await _postEvent(
       path: '/events/recommendations/outcome',
       body: {
-        'user_id': userId,
-        'target_user_id': targetUserId,
+        'from_user_id': userId,
+        'to_user_id': targetUserId,
         'outcome': outcome,
+      },
+    );
+  }
+
+  Future<void> logRecommendationDismissed(
+    String targetUserId, {
+    String? reason,
+  }) async {
+    final userId = await _requireCurrentUserId();
+
+    await _postEvent(
+      path: '/events/recommendations/dismiss',
+      body: {
+        'from_user_id': userId,
+        'to_user_id': targetUserId,
+        if (reason != null) 'reason': reason,
       },
     );
   }
@@ -251,4 +273,19 @@ class RecommenderService {
       throw Exception('Event $path failed: ${res.statusCode} -> ${res.body}');
     }
   }
+}
+
+class RecommendationShownItem {
+  RecommendationShownItem({
+    required this.toUserId,
+    required this.rankShown,
+  });
+
+  final String toUserId;
+  final int rankShown;
+
+  Map<String, dynamic> toJson() => {
+        'to_user_id': toUserId,
+        'rank_shown': rankShown,
+      };
 }

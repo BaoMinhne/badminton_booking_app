@@ -66,7 +66,7 @@ class PlayerSuggestionCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   CircleAvatar(
                     radius: 28, // Tăng kích thước avatar cho nổi bật
@@ -86,7 +86,7 @@ class PlayerSuggestionCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Expanded(
                               child: Text(
@@ -99,7 +99,7 @@ class PlayerSuggestionCard extends StatelessWidget {
                             ),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 6),
+                                  horizontal: 12, vertical: 5),
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
                                   // Tăng độ tương phản cho badge match score
@@ -112,7 +112,7 @@ class PlayerSuggestionCard extends StatelessWidget {
                                   color: matchColor.withOpacity(0.55),
                                   width: 0.9,
                                 ),
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(11),
                               ),
                               child: Text(
                                 'Match: $matchScore%',
@@ -122,25 +122,26 @@ class PlayerSuggestionCard extends StatelessWidget {
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            IconButton.filled(
-                              onPressed: onDismiss,
-                              tooltip: 'Bỏ qua gợi ý',
-                              icon: const Icon(Icons.remove_rounded, size: 18),
-                              constraints: const BoxConstraints(
-                                minHeight: 32,
-                                minWidth: 32,
-                              ),
-                              style: IconButton.styleFrom(
-                                backgroundColor: dismissBackground,
-                                foregroundColor: dismissBorder,
-                                padding: const EdgeInsets.all(6),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  side: BorderSide(
-                                    color: dismissBorder,
-                                    width: 1.4,
+                            const SizedBox(width: 10),
+                            SizedBox(
+                              height: 28,
+                              child: OutlinedButton(
+                                onPressed: onDismiss,
+                                style: OutlinedButton.styleFrom(
+                                  padding: EdgeInsets.zero,
+                                  minimumSize: const Size(28, 28),
+                                  maximumSize: const Size(30, 28),
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  side: BorderSide(color: dismissBorder, width: 1.4),
+                                  backgroundColor: dismissBackground,
+                                  foregroundColor: dismissBorder,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
                                   ),
+                                ),
+                                child: const Icon(
+                                  Icons.remove_rounded,
+                                  size: 16,
                                 ),
                               ),
                             ),

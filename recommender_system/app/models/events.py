@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 from pydantic import BaseModel
 
 
@@ -14,3 +14,37 @@ class InvitationEvent(BaseModel):
     to_user_id: str
     invitation_id: Optional[str] = None
     mode: Optional[str] = None
+
+
+class RecommendationShownItem(BaseModel):
+    to_user_id: str
+    rank_shown: int
+
+
+class RecommendationShownEvent(BaseModel):
+    from_user_id: str
+    session_id: str
+    items: List[RecommendationShownItem]
+
+
+class RecommendationClickedEvent(BaseModel):
+    from_user_id: str
+    to_user_id: str
+
+
+class RecommendationActionEvent(BaseModel):
+    from_user_id: str
+    to_user_id: str
+    action: str  # invited | accepted
+
+
+class RecommendationOutcomeEvent(BaseModel):
+    from_user_id: str
+    to_user_id: str
+    outcome: str  # accepted | rejected | ignored
+
+
+class RecommendationDismissEvent(BaseModel):
+    from_user_id: str
+    to_user_id: str
+    reason: Optional[str] = None

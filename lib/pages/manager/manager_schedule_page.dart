@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+
+import '../../models/booking.dart';
+import '../../services/booking_service.dart';
+import '../../services/manager_schedule_service.dart';
 
 class ManagerSchedulePage extends StatefulWidget {
   const ManagerSchedulePage({super.key});
@@ -8,104 +13,35 @@ class ManagerSchedulePage extends StatefulWidget {
 }
 
 class _ManagerSchedulePageState extends State<ManagerSchedulePage> {
+  final _service = ManagerScheduleService();
+
+  late Future<ManagerScheduleData> _future;
+  ManagerScheduleData? _latestData;
   bool _tableView = true;
   DateTime _selectedDate = DateTime.now();
-  String _selectedCourt = 'Tất cả';
-
-  final List<String> _courts = const ['Tất cả', 'Sân 1', 'Sân 2', 'Sân 3'];
-  final List<_ScheduleItem> _items = const [
-    _ScheduleItem(
-      court: 'Sân 1',
-      start: '06:00',
-      end: '07:30',
-      customer: 'Nguyễn Minh',
-      phone: '0901 234 567',
-      status: 'Confirmed',
-      color: Colors.green,
-    ),
-    _ScheduleItem(
-      court: 'Sân 2',
-      start: '08:00',
-      end: '10:00',
-      customer: 'Trần Thảo',
-      phone: '0933 888 999',
-      status: 'Offline',
-      color: Colors.orange,
-    ),
-    _ScheduleItem(
-      court: 'Sân 3',
-      start: '10:00',
-      end: '12:00',
-      customer: 'CLB Đồng Đội',
-      phone: '0912 456 789',
-      status: 'Blocked',
-      color: Colors.red,
-    ),
-  ];
+  String _selectedCourt = 'all';
+  Set<BookingStatus> _statusFilters = {
+    BookingStatus.held,
+    BookingStatus.awaitingPayment,
+    BookingStatus.confirmed,
+    BookingStatus.cancelled,
+  };
 
   @override
-  Widget build(BuildContext context) {
-    final filteredItems = _selectedCourt == 'Tất cả'
-        ? _items
-        : _items.where((item) => item.court == _selectedCourt).toList();
+  void initState() {
+    super.initState();
+    _future = _loadAndCacheSchedule();
+  }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Wrap(
-          spacing: 12,
-          runSpacing: 8,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            ChoiceChip(
-              label: const Text('Bảng'),
-              selected: _tableView,
-              onSelected: (_) => setState(() => _tableView = true),
-            ),
-            ChoiceChip(
-              label: const Text('Timeline'),
-              selected: !_tableView,
-              onSelected: (_) => setState(() => _tableView = false),
-            ),
-            FilledButton.tonalIcon(
-              onPressed: _pickDate,
-              icon: const Icon(Icons.calendar_today_outlined),
-              label: Text(_formattedDate(_selectedDate)),
-              style: FilledButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-            DropdownButton<String>(
-              value: _selectedCourt,
-              items: _courts
-                  .map((court) => DropdownMenuItem(
-                        value: court,
-                        child: Text(court),
-                      ))
-                  .toList(),
-              onChanged: (value) {
-                if (value != null) setState(() => _selectedCourt = value);
-              },
-            ),
-            FilledButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.search),
-              label: const Text('Lọc'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Expanded(
-          child: _tableView
-              ? _ScheduleTable(items: filteredItems)
-              : _TimelineView(items: filteredItems),
-        ),
-      ],
+  Future<ManagerScheduleData> _loadAndCacheSchedule() async {
+    final normalized = DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
     );
+    final data = await _service.fetchSchedule(normalized);
+    _latestData = data;
+    return data;
   }
 
   Future<void> _pickDate() async {
@@ -114,22 +50,365 @@ class _ManagerSchedulePageState extends State<ManagerSchedulePage> {
       initialDate: _selectedDate,
       firstDate: DateTime.now().subtract(const Duration(days: 365)),
       lastDate: DateTime.now().add(const Duration(days: 365)),
+      locale: const Locale('vi'),
     );
 
     if (picked != null) {
-      setState(() => _selectedDate = picked);
+      setState(() {
+        _selectedDate = picked;
+        _future = _loadAndCacheSchedule();
+      });
     }
   }
 
-  String _formattedDate(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}';
+  Future<void> _openFilterSheet() async {
+    final current = Set<BookingStatus>.from(_statusFilters);
+    final result = await showModalBottomSheet<Set<BookingStatus>>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        final statuses = BookingStatus.values;
+        return StatefulBuilder(
+          builder: (context, modalSetState) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Lọc trạng thái',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text('Chọn những trạng thái muốn hiển thị trong lịch.'),
+                  const SizedBox(height: 12),
+                  ...statuses.map((status) {
+                    final checked = current.contains(status);
+                    return CheckboxListTile(
+                      value: checked,
+                      dense: true,
+                      title: Text(_statusText(status)),
+                      activeColor: _statusColor(status),
+                      onChanged: (value) {
+                        modalSetState(() {
+                          if (value == true) {
+                            current.add(status);
+                          } else {
+                            current.remove(status);
+                          }
+                        });
+                      },
+                    );
+                  }),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      TextButton(
+                        onPressed: () {
+                          modalSetState(
+                            () => current.addAll(BookingStatus.values),
+                          );
+                        },
+                        child: const Text('Chọn tất cả'),
+                      ),
+                      const Spacer(),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Huỷ'),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton(
+                        onPressed: () => Navigator.pop(context, current),
+                        child: const Text('Áp dụng'),
+                      )
+                    ],
+                  )
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (result != null) {
+      setState(() => _statusFilters = result);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<ManagerScheduleData>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error_outline, color: Colors.red),
+                const SizedBox(height: 8),
+                Text(
+                  'Không thể tải lịch: ${snapshot.error}',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  onPressed: () =>
+                      setState(() => _future = _loadAndCacheSchedule()),
+                  icon: const Icon(Icons.refresh_outlined),
+                  label: const Text('Thử lại'),
+                )
+              ],
+            ),
+          );
+        }
+
+        final data = snapshot.data;
+        if (data == null || !data.hasCourts) {
+          return const Center(
+            child: Text('Bạn chưa có sân nào để hiển thị lịch.'),
+          );
+        }
+
+        _latestData ??= data;
+
+        final availableCourtIds = data.courts.map((c) => c.id).toSet();
+        if (_selectedCourt != 'all' && !availableCourtIds.contains(_selectedCourt)) {
+          WidgetsBinding.instance.addPostFrameCallback(
+            (_) => setState(() => _selectedCourt = 'all'),
+          );
+        }
+
+        final filteredItems = data.items
+            .where((item) {
+              final matchesCourt =
+                  _selectedCourt == 'all' || item.courtId == _selectedCourt;
+              final matchesStatus = _statusFilters.contains(item.status);
+              return matchesCourt && matchesStatus;
+            })
+            .toList()
+          ..sort((a, b) => a.startTime.compareTo(b.startTime));
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                ChoiceChip(
+                  label: const Text('Bảng'),
+                  selected: _tableView,
+                  onSelected: (_) => setState(() => _tableView = true),
+                ),
+                ChoiceChip(
+                  label: const Text('Timeline'),
+                  selected: !_tableView,
+                  onSelected: (_) => setState(() => _tableView = false),
+                ),
+                FilledButton.tonalIcon(
+                  onPressed: _pickDate,
+                  icon: const Icon(Icons.calendar_today_outlined),
+                  label: Text(DateFormat('dd/MM').format(_selectedDate)),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+                DropdownButton<String>(
+                  value: _selectedCourt,
+                  items: [
+                    const DropdownMenuItem(
+                      value: 'all',
+                      child: Text('Tất cả'),
+                    ),
+                    ...data.courts
+                        .map(
+                          (court) => DropdownMenuItem(
+                            value: court.id,
+                            child: Text(court.label),
+                          ),
+                        )
+                        .toList(),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) setState(() => _selectedCourt = value);
+                  },
+                ),
+                FilledButton.icon(
+                  onPressed: _openFilterSheet,
+                  icon: const Icon(Icons.tune),
+                  label: const Text('Lọc'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: filteredItems.isEmpty
+                  ? const Center(child: Text('Không có lịch trong ngày.'))
+                  : _tableView
+                      ? _ScheduleTable(
+                          items: filteredItems,
+                          formatRange: _formatRange,
+                          statusColor: _statusColor,
+                          statusText: _statusText,
+                        )
+                      : _TimelineView(
+                          items: filteredItems,
+                          formatRange: _formatRange,
+                          statusColor: _statusColor,
+                          statusText: _statusText,
+                          onAction: _showComingSoon,
+                          onCancelBooking: _confirmCancelBooking,
+                        ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  String _formatRange(DateTime start, DateTime end) {
+    final formatter = DateFormat('HH:mm');
+    return '${formatter.format(start)} - ${formatter.format(end)}';
+  }
+
+  Color _statusColor(BookingStatus status) {
+    switch (status) {
+      case BookingStatus.held:
+        return Colors.orange;
+      case BookingStatus.awaitingPayment:
+        return Colors.blue;
+      case BookingStatus.confirmed:
+        return Colors.green;
+      case BookingStatus.cancelled:
+        return Colors.grey;
+      case BookingStatus.expired:
+        return Colors.red.shade300;
+    }
+  }
+
+  String _statusText(BookingStatus status) {
+    switch (status) {
+      case BookingStatus.held:
+        return 'Giữ chỗ';
+      case BookingStatus.awaitingPayment:
+        return 'Chờ thanh toán';
+      case BookingStatus.confirmed:
+        return 'Đã thanh toán';
+      case BookingStatus.cancelled:
+        return 'Đã huỷ';
+      case BookingStatus.expired:
+        return 'Hết hạn';
+    }
+  }
+
+  void _showComingSoon(String action) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$action đang được phát triển.')),
+    );
+  }
+
+  Future<void> _confirmCancelBooking(ScheduleItem item) async {
+    final shouldCancel = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Huỷ booking'),
+          content: Text(
+            'Bạn có chắc muốn huỷ booking của ${item.customerName}?\n'
+            'Thời gian: ${_formatRange(item.startTime, item.endTime)}',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Đóng'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Huỷ booking'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldCancel != true) return;
+
+    try {
+      await _service.cancelBooking(item.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã huỷ booking thành công.')),
+      );
+      _applyLocalCancellation(item.id);
+      _refreshScheduleSilently();
+    } on BookingServiceException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    }
+  }
+
+  void _applyLocalCancellation(String bookingId) {
+    final cached = _latestData;
+    if (cached == null) return;
+
+    final updatedItems = cached.items
+        .map(
+          (scheduleItem) => scheduleItem.id == bookingId
+              ? scheduleItem.copyWith(status: BookingStatus.cancelled)
+              : scheduleItem,
+        )
+        .toList();
+
+    final updatedData = ManagerScheduleData(
+      courts: cached.courts,
+      items: updatedItems,
+    );
+
+    setState(() {
+      _latestData = updatedData;
+      _future = Future.value(updatedData);
+    });
+  }
+
+  void _refreshScheduleSilently() {
+    _loadAndCacheSchedule().then((freshData) {
+      if (!mounted) return;
+      setState(() {
+        _latestData = freshData;
+        _future = Future.value(freshData);
+      });
+    }).catchError((_) {});
   }
 }
 
 class _ScheduleTable extends StatelessWidget {
-  final List<_ScheduleItem> items;
+  const _ScheduleTable({
+    required this.items,
+    required this.formatRange,
+    required this.statusColor,
+    required this.statusText,
+  });
 
-  const _ScheduleTable({required this.items});
+  final List<ScheduleItem> items;
+  final String Function(DateTime start, DateTime end) formatRange;
+  final Color Function(BookingStatus status) statusColor;
+  final String Function(BookingStatus status) statusText;
 
   @override
   Widget build(BuildContext context) {
@@ -152,18 +431,24 @@ class _ScheduleTable extends StatelessWidget {
                   ],
                   rows: items
                       .map(
-                        (item) => DataRow(cells: [
-                          DataCell(Text(item.court)),
-                          DataCell(Text('${item.start} - ${item.end}')),
-                          DataCell(Text(item.customer)),
-                          DataCell(Text(item.phone)),
-                          DataCell(Chip(
-                            label: Text(item.status),
-                            backgroundColor: item.color.withOpacity(0.1),
-                            side: BorderSide(color: item.color.withOpacity(0.6)),
-                            labelStyle: TextStyle(color: item.color),
-                          )),
-                        ]),
+                        (item) => DataRow(
+                          cells: [
+                            DataCell(Text(item.courtLabel)),
+                            DataCell(Text(formatRange(item.startTime, item.endTime))),
+                            DataCell(Text(item.customerName)),
+                            DataCell(Text(item.customerPhone ?? '-')),
+                            DataCell(
+                              Chip(
+                                label: Text(statusText(item.status)),
+                                backgroundColor: statusColor(item.status).withOpacity(0.1),
+                                side: BorderSide(
+                                  color: statusColor(item.status).withOpacity(0.6),
+                                ),
+                                labelStyle: TextStyle(color: statusColor(item.status)),
+                              ),
+                            ),
+                          ],
+                        ),
                       )
                       .toList(),
                 ),
@@ -177,9 +462,21 @@ class _ScheduleTable extends StatelessWidget {
 }
 
 class _TimelineView extends StatelessWidget {
-  final List<_ScheduleItem> items;
+  const _TimelineView({
+    required this.items,
+    required this.formatRange,
+    required this.statusColor,
+    required this.statusText,
+    required this.onAction,
+    required this.onCancelBooking,
+  });
 
-  const _TimelineView({required this.items});
+  final List<ScheduleItem> items;
+  final String Function(DateTime start, DateTime end) formatRange;
+  final Color Function(BookingStatus status) statusColor;
+  final String Function(BookingStatus status) statusText;
+  final void Function(String action) onAction;
+  final Future<void> Function(ScheduleItem item) onCancelBooking;
 
   @override
   Widget build(BuildContext context) {
@@ -190,9 +487,9 @@ class _TimelineView extends StatelessWidget {
         final item = items[index];
         return Container(
           decoration: BoxDecoration(
-            color: item.color.withOpacity(0.05),
+            color: statusColor(item.status).withOpacity(0.05),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: item.color.withOpacity(0.3)),
+            border: Border.all(color: statusColor(item.status).withOpacity(0.3)),
           ),
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -200,11 +497,14 @@ class _TimelineView extends StatelessWidget {
             children: [
               Column(
                 children: [
-                  CircleAvatar(radius: 6, backgroundColor: item.color),
+                  CircleAvatar(
+                    radius: 6,
+                    backgroundColor: statusColor(item.status),
+                  ),
                   Container(
                     width: 2,
                     height: 60,
-                    color: item.color.withOpacity(0.4),
+                    color: statusColor(item.status).withOpacity(0.4),
                   ),
                 ],
               ),
@@ -215,26 +515,61 @@ class _TimelineView extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Text(item.court, style: const TextStyle(fontWeight: FontWeight.w700)),
+                        Text(
+                          item.courtLabel,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
                         const SizedBox(width: 8),
                         Chip(
-                          label: Text(item.status),
-                          backgroundColor: item.color.withOpacity(0.12),
-                          labelStyle: TextStyle(color: item.color),
-                          side: BorderSide(color: item.color.withOpacity(0.6)),
+                          label: Text(statusText(item.status)),
+                          backgroundColor:
+                              statusColor(item.status).withOpacity(0.12),
+                          labelStyle: TextStyle(color: statusColor(item.status)),
+                          side: BorderSide(
+                            color: statusColor(item.status).withOpacity(0.6),
+                          ),
                         ),
                       ],
                     ),
-                    Text('${item.start} - ${item.end}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                    Text(
+                      formatRange(item.startTime, item.endTime),
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
                     const SizedBox(height: 4),
-                    Text('${item.customer} • ${item.phone}'),
+                    Text(
+                      [
+                        item.customerName,
+                        if (item.customerPhone != null) item.customerPhone!,
+                      ].join(' • '),
+                    ),
+                    if (item.note != null && item.note!.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        'Ghi chú: ${item.note}',
+                        style: const TextStyle(color: Colors.black54),
+                      ),
+                    ],
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
-                      children: const [
-                        _ActionChip(icon: Icons.swap_horiz, label: 'Đổi giờ/sân'),
-                        _ActionChip(icon: Icons.cancel_outlined, label: 'Hủy booking'),
-                        _ActionChip(icon: Icons.block, label: 'Block slot'),
+                      children: [
+                        _ActionChip(
+                          icon: Icons.swap_horiz,
+                          label: 'Đổi giờ/sân',
+                          onPressed: () => onAction('Đổi giờ/sân'),
+                        ),
+                        _ActionChip(
+                          icon: Icons.cancel_outlined,
+                          label: 'Hủy booking',
+                          onPressed: item.status == BookingStatus.cancelled
+                              ? null
+                              : () => onCancelBooking(item),
+                        ),
+                        _ActionChip(
+                          icon: Icons.phone_forwarded_outlined,
+                          label: 'Liên hệ',
+                          onPressed: () => onAction('Liên hệ khách'),
+                        ),
                       ],
                     ),
                   ],
@@ -249,37 +584,22 @@ class _TimelineView extends StatelessWidget {
 }
 
 class _ActionChip extends StatelessWidget {
+  const _ActionChip({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
+
   final IconData icon;
   final String label;
-
-  const _ActionChip({required this.icon, required this.label});
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
     return ActionChip(
       avatar: Icon(icon, size: 18),
       label: Text(label),
-      onPressed: () {},
+      onPressed: onPressed,
     );
   }
-}
-
-class _ScheduleItem {
-  final String court;
-  final String start;
-  final String end;
-  final String customer;
-  final String phone;
-  final String status;
-  final Color color;
-
-  const _ScheduleItem({
-    required this.court,
-    required this.start,
-    required this.end,
-    required this.customer,
-    required this.phone,
-    required this.status,
-    required this.color,
-  });
 }

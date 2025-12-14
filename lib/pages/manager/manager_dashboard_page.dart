@@ -28,8 +28,11 @@ class _ManagerDashboardPageState extends State<ManagerDashboardPage> {
   }
 
   Future<void> _refresh() async {
-    setState(() => _future = _load());
-    await _future;
+    final future = _load();
+    setState(() {
+      _future = future;
+    });
+    await future;
   }
 
   void _changeDay(int delta) {

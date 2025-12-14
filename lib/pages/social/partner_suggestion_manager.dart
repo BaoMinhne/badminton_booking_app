@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:badminton_booking_app/models/partner_recommendation.dart';
 import 'package:badminton_booking_app/models/friend_relation.dart';
 import 'package:badminton_booking_app/services/recommender_service.dart';
@@ -27,6 +29,8 @@ class PartnerSuggestionManager extends ChangeNotifier {
   double _minMatchScore = 0;
   bool _hideExistingRelations = false;
   String? _homeCourtId;
+  bool _hasLoggedShown = false;
+  final Set<String> _dismissedUserIds = <String>{};
   final Map<String, FriendRelationStatus> _relations =
       <String, FriendRelationStatus>{};
 
@@ -44,6 +48,7 @@ class PartnerSuggestionManager extends ChangeNotifier {
     if (_isLoading) return;
     _isLoading = true;
     _error = null;
+    _hasLoggedShown = false;
     if (force) {
       _suggestions = const <PartnerRecommendation>[];
       _filteredSuggestions = const <PartnerRecommendation>[];
@@ -51,7 +56,10 @@ class PartnerSuggestionManager extends ChangeNotifier {
     _notifyListeners();
 
     try {
-      _suggestions = await _service.fetchRecommendations();
+      final results = await _service.fetchRecommendations();
+      _suggestions = results
+          .where((rec) => !_dismissedUserIds.contains(rec.friend.user.id))
+          .toList(growable: false);
       await _maybeLoadRelations();
       _applyFilters();
     } catch (err) {
@@ -131,6 +139,10 @@ class PartnerSuggestionManager extends ChangeNotifier {
     _filteredSuggestions = _suggestions.where((suggestion) {
       final details = suggestion.friend.details;
 
+      if (_dismissedUserIds.contains(suggestion.friend.user.id)) {
+        return false;
+      }
+
       if (_selectedMatchType != null &&
           !(details?.matchTypes.contains(_selectedMatchType) ?? false)) {
         return false;
@@ -161,13 +173,50 @@ class PartnerSuggestionManager extends ChangeNotifier {
     }).toList(growable: false);
 
     _notifyListeners();
+    _logShownIfNeeded();
   }
 
   void dismissSuggestion(String userId) {
+    _dismissedUserIds.add(userId);
     _suggestions = _suggestions
         .where((suggestion) => suggestion.friend.user.id != userId)
         .toList(growable: false);
     _applyFilters();
+  }
+
+  Future<void> logProfileClicked(String userId) async {
+    await _safeLog(() => _service.logProfileClicked(userId));
+  }
+
+  Future<void> logInviteAction(String userId) async {
+    await _safeLog(
+      () => _service.logRecommendationAction(action: 'invited', targetUserId: userId),
+    );
+  }
+
+  Future<void> logActionOutcome(String userId, String outcome) async {
+    await _safeLog(
+      () => _service.logRecommendationOutcome(outcome: outcome, targetUserId: userId),
+    );
+  }
+
+  void _logShownIfNeeded() {
+    if (_hasLoggedShown || _filteredSuggestions.isEmpty) return;
+    _hasLoggedShown = true;
+
+    final ids = _filteredSuggestions
+        .map((suggestion) => suggestion.friend.user.id)
+        .toList(growable: false);
+
+    unawaited(_safeLog(() => _service.logRecommendationsShown(ids)));
+  }
+
+  Future<void> _safeLog(Future<void> Function() runner) async {
+    try {
+      await runner();
+    } catch (_) {
+      // Bỏ qua lỗi log để không ảnh hưởng trải nghiệm người dùng
+    }
   }
 
   @override

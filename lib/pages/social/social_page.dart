@@ -957,6 +957,7 @@ class SocialPageState extends State<SocialPage> {
   }
 
   void _openProfile(BuildContext context, FriendSearchResult friend) {
+    unawaited(_partnerManager.logProfileClicked(friend.user.id));
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => UserPublicProfilePage(result: friend),
@@ -974,6 +975,8 @@ class SocialPageState extends State<SocialPage> {
     setState(() {
       _pendingRequests.add(userId);
     });
+
+    unawaited(_partnerManager.logInviteAction(friend.user.id));
 
     try {
       await showModalBottomSheet<void>(

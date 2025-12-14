@@ -78,6 +78,62 @@ class RecommenderService {
     return results;
   }
 
+  Future<void> logRecommendationsShown(List<String> shownUserIds) async {
+    final userId = await _requireCurrentUserId();
+
+    await _postEvent(
+      path: '/events/recommendations/shown',
+      body: {
+        'user_id': userId,
+        'shown_user_ids': shownUserIds,
+      },
+    );
+  }
+
+  Future<void> logProfileClicked(String targetUserId) async {
+    final userId = await _requireCurrentUserId();
+
+    await _postEvent(
+      path: '/events/recommendations/clicked_profile',
+      body: {
+        'user_id': userId,
+        'target_user_id': targetUserId,
+      },
+    );
+  }
+
+  Future<void> logRecommendationAction({
+    required String action,
+    required String targetUserId,
+  }) async {
+    final userId = await _requireCurrentUserId();
+
+    await _postEvent(
+      path: '/events/recommendations/action',
+      body: {
+        'user_id': userId,
+        'target_user_id': targetUserId,
+        'action': action,
+      },
+    );
+  }
+
+  Future<void> logRecommendationOutcome({
+    required String outcome,
+    required String targetUserId,
+  }) async {
+    final userId = await _requireCurrentUserId();
+
+    await _postEvent(
+      path: '/events/recommendations/outcome',
+      body: {
+        'user_id': userId,
+        'target_user_id': targetUserId,
+        'outcome': outcome,
+      },
+    );
+  }
+
   Future<PartnerRecommendation> _mapCandidate(
     Map<String, dynamic> json,
     PocketBase pb,
@@ -168,6 +224,31 @@ class RecommenderService {
       throw Exception(
         'notifyInvitationAccepted failed: ${res.statusCode} -> ${res.body}',
       );
+    }
+  }
+
+  Future<String> _requireCurrentUserId() async {
+    final pb = await getPocketbaseInstance();
+    final currentUserId = pb.authStore.record?.id;
+    if (currentUserId == null) {
+      throw Exception('Bạn chưa đăng nhập.');
+    }
+    return currentUserId;
+  }
+
+  Future<void> _postEvent({
+    required String path,
+    required Map<String, dynamic> body,
+  }) async {
+    final uri = Uri.parse('$_baseUrl$path');
+    final res = await _client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+
+    if (res.statusCode != 200) {
+      throw Exception('Event $path failed: ${res.statusCode} -> ${res.body}');
     }
   }
 }

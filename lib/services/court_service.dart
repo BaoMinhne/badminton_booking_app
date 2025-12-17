@@ -1,3 +1,4 @@
+import 'package:http/http.dart' as http;
 import 'package:pocketbase/pocketbase.dart';
 
 import '../models/court.dart';
@@ -11,6 +12,20 @@ class CourtServiceException implements Exception {
 
   @override
   String toString() => message;
+}
+
+class CourtImageFile {
+  const CourtImageFile({
+    required this.recordId,
+    required this.fileName,
+    required this.url,
+    required this.recordFiles,
+  });
+
+  final String recordId;
+  final String fileName;
+  final String url;
+  final List<String> recordFiles;
 }
 
 class CourtService {
@@ -142,6 +157,111 @@ class CourtService {
     } catch (_) {
       throw CourtServiceException(
         'Có lỗi xảy ra khi cập nhật thông tin sân. Vui lòng thử lại.',
+      );
+    }
+  }
+
+  Future<List<CourtImageFile>> listCourtImages(String courtId) async {
+    final pb = await getPocketbaseInstance();
+    final escapedId = _escapeFilterValue(courtId);
+
+    try {
+      final result = await pb.collection('court_images').getList(
+            filter: "court_id='$escapedId'",
+            perPage: 100,
+          );
+
+      final images = <CourtImageFile>[];
+
+      for (final record in result.items) {
+        final fileNames = _extractFileNames(record, 'image');
+
+        for (final name in fileNames) {
+          images.add(
+            CourtImageFile(
+              recordId: record.id,
+              fileName: name,
+              url: pb.files.getUrl(record, name).toString(),
+              recordFiles: List.unmodifiable(fileNames),
+            ),
+          );
+        }
+      }
+
+      return images;
+    } on ClientException catch (error) {
+      throw CourtServiceException(
+        _mapClientException(
+          error,
+          fallback: 'Không thể tải hình ảnh sân. Vui lòng thử lại.',
+        ),
+      );
+    } catch (_) {
+      throw CourtServiceException(
+        'Có lỗi xảy ra khi tải hình ảnh sân. Vui lòng thử lại.',
+      );
+    }
+  }
+
+  Future<void> uploadCourtImages({
+    required String courtId,
+    required List<http.MultipartFile> files,
+  }) async {
+    if (files.isEmpty) {
+      throw CourtServiceException('Vui lòng chọn ít nhất một hình ảnh.');
+    }
+
+    final pb = await getPocketbaseInstance();
+
+    try {
+      await pb.collection('court_images').create(
+        body: {'court_id': courtId},
+        files: files,
+      );
+    } on ClientException catch (error) {
+      throw CourtServiceException(
+        _mapClientException(
+          error,
+          fallback: 'Không thể tải lên hình ảnh. Vui lòng thử lại.',
+        ),
+      );
+    } catch (_) {
+      throw CourtServiceException(
+        'Có lỗi xảy ra khi tải lên hình ảnh. Vui lòng thử lại.',
+      );
+    }
+  }
+
+  Future<void> removeCourtImage({
+    required String recordId,
+    required String fileName,
+  }) async {
+    final pb = await getPocketbaseInstance();
+
+    try {
+      final record = await pb.collection('court_images').getOne(recordId);
+      final fileNames = _extractFileNames(record, 'image');
+
+      final remaining = fileNames.where((name) => name != fileName).toList();
+
+      if (remaining.isEmpty) {
+        await pb.collection('court_images').delete(recordId);
+      } else {
+        await pb.collection('court_images').update(
+          recordId,
+          body: {'image': remaining},
+        );
+      }
+    } on ClientException catch (error) {
+      throw CourtServiceException(
+        _mapClientException(
+          error,
+          fallback: 'Không thể xóa hình ảnh. Vui lòng thử lại.',
+        ),
+      );
+    } catch (_) {
+      throw CourtServiceException(
+        'Có lỗi xảy ra khi xóa hình ảnh. Vui lòng thử lại.',
       );
     }
   }
@@ -288,6 +408,15 @@ class CourtService {
     String field,
   ) {
     final value = record.data[field];
+    final files = _extractFileNames(record, field);
+
+    return files
+        .map((fileName) => pb.files.getUrl(record, fileName).toString())
+        .toList(growable: false);
+  }
+
+  List<String> _extractFileNames(RecordModel record, String field) {
+    final value = record.data[field];
     final files = <String>[];
 
     if (value is String && value.isNotEmpty) {
@@ -300,9 +429,7 @@ class CourtService {
       }
     }
 
-    return files
-        .map((fileName) => pb.files.getUrl(record, fileName).toString())
-        .toList(growable: false);
+    return files;
   }
 
   String _escapeFilterValue(String value) {

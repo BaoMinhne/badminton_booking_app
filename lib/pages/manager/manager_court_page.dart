@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/court.dart';
 import '../../services/court_service.dart';
+import 'court_images_page.dart';
 
 class ManagerCourtPage extends StatefulWidget {
   const ManagerCourtPage({super.key});
@@ -49,6 +50,14 @@ class _ManagerCourtPageState extends State<ManagerCourtPage> {
           },
         );
       },
+    );
+  }
+
+  void _openImageManager(Court court) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CourtImagesPage(court: court),
+      ),
     );
   }
 
@@ -114,6 +123,7 @@ class _ManagerCourtPageState extends State<ManagerCourtPage> {
               ...courts.map((court) => _CourtCard(
                     court: court,
                     onEdit: () => _showEditSheet(court),
+                    onManageImages: () => _openImageManager(court),
                   )),
             ],
           ),
@@ -124,10 +134,15 @@ class _ManagerCourtPageState extends State<ManagerCourtPage> {
 }
 
 class _CourtCard extends StatelessWidget {
-  const _CourtCard({required this.court, required this.onEdit});
+  const _CourtCard({
+    required this.court,
+    required this.onEdit,
+    required this.onManageImages,
+  });
 
   final Court court;
   final VoidCallback onEdit;
+  final VoidCallback onManageImages;
 
   @override
   Widget build(BuildContext context) {
@@ -199,8 +214,17 @@ class _CourtCard extends StatelessWidget {
             Text(
               court.description?.isNotEmpty == true
                   ? court.description!
-                  : 'Chưa có mô tả cho sân này.',
+              : 'Chưa có mô tả cho sân này.',
               style: TextStyle(color: Colors.grey.shade800),
+            ),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: onManageImages,
+                icon: const Icon(Icons.photo_library_outlined),
+                label: const Text('Quản lý hình ảnh'),
+              ),
             ),
           ],
         ),

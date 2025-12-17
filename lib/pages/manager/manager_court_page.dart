@@ -4,6 +4,7 @@ import '../../models/court.dart';
 import '../../services/court_service.dart';
 import 'court_images_page.dart';
 import 'court_services_page.dart';
+import 'manager_pricing_page.dart';
 
 class ManagerCourtPage extends StatefulWidget {
   const ManagerCourtPage({super.key});
@@ -61,6 +62,12 @@ class _ManagerCourtPageState extends State<ManagerCourtPage> {
   void _openServiceManager(Court court) {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => CourtServicesPage(court: court)),
+    );
+  }
+
+  void _openPricingManager(Court court) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => ManagerPricingPage(court: court)),
     );
   }
 
@@ -165,6 +172,7 @@ class _ManagerCourtPageState extends State<ManagerCourtPage> {
                       court: court,
                       onEdit: () => _showEditSheet(court),
                       onManageImages: () => _openImageManager(court),
+                      onManagePricing: () => _openPricingManager(court),
                       onManageServices: () => _openServiceManager(court),
                     );
                   },
@@ -421,12 +429,14 @@ class _CourtCard extends StatelessWidget {
     required this.court,
     required this.onEdit,
     required this.onManageImages,
+    required this.onManagePricing,
     required this.onManageServices,
   });
 
   final Court court;
   final VoidCallback onEdit;
   final VoidCallback onManageImages;
+  final VoidCallback onManagePricing;
   final VoidCallback onManageServices;
 
   @override
@@ -495,18 +505,10 @@ class _CourtCard extends StatelessWidget {
                       case 0:
                         onEdit();
                         break;
-                      case 1:
-                        onManageImages();
-                        break;
-                      case 2:
-                        onManageServices();
-                        break;
                     }
                   },
                   itemBuilder: (_) => const [
                     PopupMenuItem(value: 0, child: Text('Chỉnh sửa thông tin')),
-                    PopupMenuItem(value: 1, child: Text('Quản lý hình ảnh')),
-                    PopupMenuItem(value: 2, child: Text('Quản lý dịch vụ')),
                   ],
                   child: const Padding(
                     padding: EdgeInsets.all(6),
@@ -572,6 +574,14 @@ class _CourtCard extends StatelessWidget {
             const SizedBox(height: 12),
             Row(
               children: [
+                Expanded(
+                  child: FilledButton.tonalIcon(
+                    onPressed: onManagePricing,
+                    icon: const Icon(Icons.price_change_outlined),
+                    label: const Text('Giá giờ chơi'),
+                  ),
+                ),
+                const SizedBox(width: 10),
                 Expanded(
                   child: FilledButton.tonalIcon(
                     onPressed: onManageServices,

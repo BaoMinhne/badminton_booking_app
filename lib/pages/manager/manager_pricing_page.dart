@@ -1,141 +1,429 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
-class ManagerPricingPage extends StatelessWidget {
-  const ManagerPricingPage({super.key});
+import '../../models/court.dart';
+import '../../models/court_detail.dart';
+import '../../services/court_service.dart';
+
+class ManagerPricingPage extends StatefulWidget {
+  const ManagerPricingPage({super.key, required this.court});
+
+  final Court court;
+
+  @override
+  State<ManagerPricingPage> createState() => _ManagerPricingPageState();
+}
+
+class _ManagerPricingPageState extends State<ManagerPricingPage> {
+  final _service = CourtService();
+  late Future<List<CourtPricing>> _future;
+  List<CourtPricing>? _cached;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _loadPricing();
+  }
+
+  Future<List<CourtPricing>> _loadPricing() async {
+    final pricing = await _service.listCourtPricing(widget.court.id);
+    _cached = pricing;
+    return pricing;
+  }
+
+  Future<void> _refresh() async {
+    final next = _loadPricing();
+    setState(() => _future = next);
+    await next;
+  }
+
+  void _updateCached(CourtPricing updated) {
+    final current = _cached;
+    if (current == null) return;
+
+    final next = [...current];
+    final index = next.indexWhere((item) => item.id == updated.id);
+    if (index == -1) return;
+
+    next[index] = updated;
+    setState(() {
+      _cached = next;
+      _future = Future.value(next);
+    });
+  }
+
+  void _showEditPricing(CourtPricing pricing) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => _EditPricingSheet(
+        pricing: pricing,
+        onSaved: (updated) {
+          Navigator.of(context).pop();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Đã cập nhật giá giờ chơi.')),
+          );
+          _updateCached(updated);
+          _refresh();
+        },
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final pricing = [
-      _PriceRow(label: 'Sân tiêu chuẩn', day: 'Thứ 2 - Thứ 6', time: '06:00 - 17:00', price: '120.000đ', tag: 'Thấp điểm'),
-      _PriceRow(label: 'Sân tiêu chuẩn', day: 'Thứ 2 - Thứ 6', time: '17:00 - 22:00', price: '180.000đ', tag: 'Cao điểm'),
-      _PriceRow(label: 'Sân VIP', day: 'Thứ 7, CN', time: '06:00 - 22:00', price: '220.000đ', tag: 'Cao điểm'),
-      _PriceRow(label: 'Giải đấu 12/10', day: '12/10', time: 'Cả ngày', price: 'Block', tag: 'Sự kiện'),
-    ];
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final actionButtons = Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          alignment: WrapAlignment.end,
-          children: [
-            OutlinedButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.upload_file_outlined),
-              label: const Text('Import/Export JSON'),
-            ),
-            FilledButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.add),
-              label: const Text('Thêm dòng giá'),
-            ),
-          ],
-        );
-
-        final header = SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minWidth: constraints.maxWidth),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'Bảng giá sân',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(width: 24),
-                actionButtons,
-              ],
-            ),
-          ),
-        );
-
-        return Column(
+    return Scaffold(
+      appBar: AppBar(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            header,
-            const SizedBox(height: 12),
-            Expanded(
-              child: Card(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      child: DataTable(
-                        columns: const [
-                          DataColumn(label: Text('Loại sân')),
-                          DataColumn(label: Text('Ngày áp dụng')),
-                          DataColumn(label: Text('Khung giờ')),
-                          DataColumn(label: Text('Loại giá')),
-                          DataColumn(label: Text('Giá')), 
-                          DataColumn(label: Text('Thao tác')),
-                        ],
-                        rows: pricing.map((row) {
-                          return DataRow(
-                            cells: [
-                              DataCell(Text(row.label, style: const TextStyle(fontWeight: FontWeight.bold))),
-                              DataCell(Text(row.day)),
-                              DataCell(Text(row.time)),
-                              DataCell(
-                                Chip(
-                                  label: Text(row.tag),
-                                  avatar: const Icon(Icons.bolt, size: 16),
-                                ),
-                              ),
-                              DataCell(
-                                Chip(
-                                  label: Text(row.price),
-                                  backgroundColor: Colors.green.shade50,
-                                ),
-                              ),
-                              DataCell(
-                                Wrap(
-                                  spacing: 8,
-                                  children: [
-                                    IconButton(
-                                      onPressed: () {},
-                                      icon: const Icon(Icons.copy_outlined),
-                                      tooltip: 'Nhân bản',
-                                    ),
-                                    IconButton(
-                                      onPressed: () {},
-                                      icon: const Icon(Icons.edit_outlined),
-                                      tooltip: 'Chỉnh sửa',
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+            const Text('Giá giờ chơi'),
+            Text(
+              widget.court.name,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
           ],
-        );
-      },
+        ),
+      ),
+      body: FutureBuilder<List<CourtPricing>>(
+        future: _future,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.red),
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      snapshot.error.toString(),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  FilledButton.icon(
+                    onPressed: _refresh,
+                    icon: const Icon(Icons.refresh_outlined),
+                    label: const Text('Thử lại'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          final pricing = snapshot.data ?? [];
+          _cached = pricing;
+
+          if (pricing.isEmpty) {
+            return RefreshIndicator(
+              onRefresh: _refresh,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: const [
+                  SizedBox(height: 40),
+                  Center(
+                    child: Text('Chưa có bảng giá cho sân này.'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return RefreshIndicator(
+            onRefresh: _refresh,
+            child: ListView.builder(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              itemCount: pricing.length,
+              itemBuilder: (context, index) {
+                final item = pricing[index];
+                return _PricingTile(
+                  pricing: item,
+                  onEdit: () => _showEditPricing(item),
+                );
+              },
+            ),
+          );
+        },
+      ),
     );
   }
 }
 
-class _PriceRow {
-  final String label;
-  final String day;
-  final String time;
-  final String price;
-  final String tag;
+class _PricingTile extends StatelessWidget {
+  const _PricingTile({required this.pricing, required this.onEdit});
 
-  _PriceRow({
-    required this.label,
-    required this.day,
-    required this.time,
-    required this.price,
-    required this.tag,
-  });
+  final CourtPricing pricing;
+  final VoidCallback onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final formatter = NumberFormat.currency(
+      locale: 'vi_VN',
+      symbol: 'đ',
+      decimalDigits: 0,
+    );
+
+    final timeRange = _buildTimeRange();
+    final priceLabel = pricing.pricePerHour != null
+        ? formatter.format(pricing.pricePerHour)
+        : (pricing.priceLabel ?? 'Chưa có giá');
+
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      child: ListTile(
+        contentPadding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
+        title: Text(timeRange),
+        subtitle: Text(
+          'Giá / giờ',
+          style: TextStyle(color: cs.onSurfaceVariant),
+        ),
+        trailing: Wrap(
+          spacing: 4,
+          children: [
+            Chip(
+              label: Text(priceLabel),
+              backgroundColor: cs.primaryContainer.withOpacity(0.35),
+            ),
+            IconButton(
+              tooltip: 'Chỉnh sửa giá',
+              icon: const Icon(Icons.edit_outlined),
+              onPressed: onEdit,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _buildTimeRange() {
+    final from = pricing.timeFrom?.trim();
+    final to = pricing.timeTo?.trim();
+
+    if ((from == null || from.isEmpty) && (to == null || to.isEmpty)) {
+      return 'Khung giờ chưa xác định';
+    }
+
+    if (from == null || from.isEmpty) return 'Trước $to';
+    if (to == null || to.isEmpty) return 'Sau $from';
+    return '$from - $to';
+  }
+}
+
+class _EditPricingSheet extends StatefulWidget {
+  const _EditPricingSheet({required this.pricing, required this.onSaved});
+
+  final CourtPricing pricing;
+  final ValueChanged<CourtPricing> onSaved;
+
+  @override
+  State<_EditPricingSheet> createState() => _EditPricingSheetState();
+}
+
+class _EditPricingSheetState extends State<_EditPricingSheet> {
+  final _formKey = GlobalKey<FormState>();
+  final _priceCtrl = TextEditingController();
+  bool _submitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget.pricing.pricePerHour?.toString() ?? '';
+    _priceCtrl.text = initial;
+  }
+
+  @override
+  void dispose() {
+    _priceCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final parsed = int.tryParse(_priceCtrl.text.replaceAll(RegExp(r'[^0-9]'), ''));
+    if (parsed == null || parsed <= 0) return;
+
+    setState(() => _submitting = true);
+    final service = CourtService();
+
+    try {
+      final updated = await service.updateCourtPricing(
+        id: widget.pricing.id,
+        pricePerHour: parsed,
+        timeFrom: widget.pricing.timeFrom,
+        timeTo: widget.pricing.timeTo,
+      );
+      widget.onSaved(updated);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final pricing = widget.pricing;
+
+    return SafeArea(
+      top: false,
+      child: DraggableScrollableSheet(
+        initialChildSize: 0.5,
+        minChildSize: 0.4,
+        maxChildSize: 0.8,
+        builder: (context, controller) {
+          return Container(
+            decoration: BoxDecoration(
+              color: cs.surface,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 24,
+                  offset: const Offset(0, -8),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                const SizedBox(height: 12),
+                Container(
+                  width: 42,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: cs.outlineVariant,
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: cs.primary.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(Icons.price_change_outlined, color: cs.primary),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Chỉnh sửa giá giờ chơi',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _timeLabel(pricing),
+                              style: TextStyle(color: cs.onSurfaceVariant),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: _submitting ? null : () => Navigator.pop(context),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: SingleChildScrollView(
+                    controller: controller,
+                    padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Giá / giờ (VND)', style: Theme.of(context).textTheme.titleSmall),
+                          const SizedBox(height: 8),
+                          TextFormField(
+                            controller: _priceCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              hintText: 'Ví dụ: 180000',
+                              prefixIcon: const Icon(Icons.attach_money_outlined),
+                              filled: true,
+                              isDense: true,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Vui lòng nhập giá';
+                              }
+                              final parsed = int.tryParse(
+                                value.replaceAll(RegExp(r'[^0-9]'), ''),
+                              );
+                              if (parsed == null || parsed <= 0) {
+                                return 'Giá phải là số dương';
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 24),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton.icon(
+                              onPressed: _submitting ? null : _submit,
+                              icon: _submitting
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    )
+                                  : const Icon(Icons.save_outlined),
+                              label: const Text('Lưu giá giờ chơi'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  static String _timeLabel(CourtPricing pricing) {
+    final from = pricing.timeFrom?.trim();
+    final to = pricing.timeTo?.trim();
+
+    if ((from == null || from.isEmpty) && (to == null || to.isEmpty)) {
+      return 'Khung giờ chưa xác định';
+    }
+    if (from == null || from.isEmpty) return 'Trước $to';
+    if (to == null || to.isEmpty) return 'Sau $from';
+    return '$from - $to';
+  }
 }

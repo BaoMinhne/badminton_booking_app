@@ -147,15 +147,6 @@ class _ManagerCourtPageState extends State<ManagerCourtPage> {
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(pageHPad, 16, pageHPad, 10),
-                sliver: SliverToBoxAdapter(
-                  child: _ManagerHeaderCard(
-                    courtCount: courts.length,
-                    onRefresh: _refresh,
-                  ),
-                ),
-              ),
-              SliverPadding(
                 padding: const EdgeInsets.fromLTRB(pageHPad, 0, pageHPad, 12),
                 sliver: SliverToBoxAdapter(
                   child: _OverviewSection(courts: courts),
@@ -182,77 +173,6 @@ class _ManagerCourtPageState extends State<ManagerCourtPage> {
           ),
         );
       },
-    );
-  }
-}
-
-class _ManagerHeaderCard extends StatelessWidget {
-  const _ManagerHeaderCard({
-    required this.courtCount,
-    required this.onRefresh,
-  });
-
-  final int courtCount;
-  final VoidCallback onRefresh;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: LinearGradient(
-          colors: [
-            cs.primary.withOpacity(0.10),
-            cs.tertiary.withOpacity(0.08),
-          ],
-        ),
-        border: Border.all(color: cs.outlineVariant.withOpacity(0.6)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: cs.primary.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(Icons.sports_tennis_outlined, color: cs.primary),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Sân & dịch vụ',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Bạn đang quản lý $courtCount sân. Cập nhật mô tả, hình ảnh và dịch vụ để tăng chuyển đổi đặt sân.',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: cs.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            IconButton.filledTonal(
-              onPressed: onRefresh,
-              tooltip: 'Tải lại',
-              icon: const Icon(Icons.refresh_outlined),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

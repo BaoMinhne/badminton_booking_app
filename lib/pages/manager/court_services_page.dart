@@ -16,6 +16,7 @@ class CourtServicesPage extends StatefulWidget {
 class _CourtServicesPageState extends State<CourtServicesPage> {
   final _service = CourtService();
   late Future<_ServiceData> _future;
+  _ServiceData? _cached;
 
   @override
   void initState() {
@@ -37,8 +38,46 @@ class _CourtServicesPageState extends State<CourtServicesPage> {
 
   Future<void> _refresh() async {
     final future = _loadData();
-    setState(() => _future = future);
+    setState(() {
+      _cached = null;
+      _future = future;
+    });
     await future;
+  }
+
+  void _updateCachedService(CourtServiceItem updated) {
+    if (_cached == null) return;
+
+    final updatedServices = List<CourtServiceItem>.from(_cached!.services);
+    final index = updatedServices.indexWhere((item) => item.id == updated.id);
+
+    if (index == -1) return;
+
+    updatedServices[index] = updated;
+
+    final next = _ServiceData(
+      services: updatedServices,
+      catalog: _cached!.catalog,
+    );
+
+    setState(() {
+      _cached = next;
+      _future = Future.value(next);
+    });
+  }
+
+  void _addCachedService(CourtServiceItem created) {
+    if (_cached == null) return;
+
+    final next = _ServiceData(
+      services: [..._cached!.services, created],
+      catalog: _cached!.catalog,
+    );
+
+    setState(() {
+      _cached = next;
+      _future = Future.value(next);
+    });
   }
 
   void _showAddService(List<CourtServiceItem> services, List<ServiceCatalogItem> catalog) {
@@ -63,6 +102,7 @@ class _CourtServicesPageState extends State<CourtServicesPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Đã thêm dịch vụ.')),
           );
+          _addCachedService(created);
           _refresh();
         },
       ),
@@ -80,6 +120,7 @@ class _CourtServicesPageState extends State<CourtServicesPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Đã cập nhật dịch vụ.')),
           );
+          _updateCachedService(updated);
           _refresh();
         },
       ),
@@ -119,6 +160,7 @@ class _CourtServicesPageState extends State<CourtServicesPage> {
           }
 
           final data = snapshot.data!;
+          _cached = data;
           final services = data.services;
           final catalog = data.catalog;
 

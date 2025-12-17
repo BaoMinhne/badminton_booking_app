@@ -467,8 +467,8 @@ class ManagerReportsService {
         .take(5)
         .map((record) {
           final booking = CourtBooking.fromRecord(record);
-          final userRecord = record.expand?['user_id'];
-          final courtUnit = record.expand?['court_unit_id'];
+          final userRecord = _asRecordModel(record.expand?['user_id']);
+          final courtUnit = _asRecordModel(record.expand?['court_unit_id']);
           final name = _extractUserName(userRecord) ?? 'Khách lẻ';
           final courtLabel = _extractCourtLabel(courtUnit) ?? 'Sân';
           final startTime = booking.startTime.toLocal();
@@ -542,19 +542,31 @@ class ManagerReportsService {
     return diff.inMinutes.toDouble().clamp(0, double.infinity).toDouble();
   }
 
-  String? _extractUserName(dynamic expandedUser) {
-    if (expandedUser is RecordModel) {
-      final data = expandedUser.data;
-      return (data['username'] as String?) ?? data['name'] as String?;
+  RecordModel? _asRecordModel(dynamic expandedValue) {
+    if (expandedValue is RecordModel) return expandedValue;
+    if (expandedValue is List && expandedValue.isNotEmpty) {
+      final first = expandedValue.first;
+      if (first is RecordModel) return first;
     }
     return null;
   }
 
-  String? _extractCourtLabel(dynamic expandedCourtUnit) {
-    if (expandedCourtUnit is RecordModel) {
-      final unit = CourtUnit.fromRecord(expandedCourtUnit);
-      if (unit.label.isNotEmpty) return unit.label;
-    }
+  String? _extractUserName(RecordModel? expandedUser) {
+    final data = expandedUser?.data;
+    if (data == null) return null;
+
+    final username = data['username'] as String?;
+    final name = data['name'] as String?;
+    if (username != null && username.trim().isNotEmpty) return username.trim();
+    if (name != null && name.trim().isNotEmpty) return name.trim();
+    return null;
+  }
+
+  String? _extractCourtLabel(RecordModel? expandedCourtUnit) {
+    if (expandedCourtUnit == null) return null;
+
+    final unit = CourtUnit.fromRecord(expandedCourtUnit);
+    if (unit.label.isNotEmpty) return unit.label;
     return null;
   }
 

@@ -246,13 +246,13 @@ class ManagerReportsService {
           );
 
       return payments.items.fold<int>(0, (sum, record) {
-        final booking = record.expand?['booking_id'];
-        if (booking is RecordModel) {
-          final courtId = booking.data['court_id'] as String?;
-          if (courtId == null || !courtIds.contains(courtId)) {
-            return sum;
-          }
-        } else {
+        final booking = _asRecordModel(record.expand?['booking_id']);
+        if (booking == null) {
+          return sum;
+        }
+
+        final courtId = booking.data['court_id'] as String?;
+        if (courtId == null || !courtIds.contains(courtId)) {
           return sum;
         }
 

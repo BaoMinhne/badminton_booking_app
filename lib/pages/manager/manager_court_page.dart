@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/court.dart';
 import '../../services/court_service.dart';
 import 'court_images_page.dart';
+import 'court_services_page.dart';
 
 class ManagerCourtPage extends StatefulWidget {
   const ManagerCourtPage({super.key});
@@ -57,6 +58,14 @@ class _ManagerCourtPageState extends State<ManagerCourtPage> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => CourtImagesPage(court: court),
+      ),
+    );
+  }
+
+  void _openServiceManager(Court court) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CourtServicesPage(court: court),
       ),
     );
   }
@@ -124,6 +133,7 @@ class _ManagerCourtPageState extends State<ManagerCourtPage> {
                     court: court,
                     onEdit: () => _showEditSheet(court),
                     onManageImages: () => _openImageManager(court),
+                    onManageServices: () => _openServiceManager(court),
                   )),
             ],
           ),
@@ -138,11 +148,13 @@ class _CourtCard extends StatelessWidget {
     required this.court,
     required this.onEdit,
     required this.onManageImages,
+    required this.onManageServices,
   });
 
   final Court court;
   final VoidCallback onEdit;
   final VoidCallback onManageImages;
+  final VoidCallback onManageServices;
 
   @override
   Widget build(BuildContext context) {
@@ -218,13 +230,21 @@ class _CourtCard extends StatelessWidget {
               style: TextStyle(color: Colors.grey.shade800),
             ),
             const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed: onManageImages,
-                icon: const Icon(Icons.photo_library_outlined),
-                label: const Text('Quản lý hình ảnh'),
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton.icon(
+                  onPressed: onManageServices,
+                  icon: const Icon(Icons.miscellaneous_services_outlined),
+                  label: const Text('Quản lý dịch vụ'),
+                ),
+                const SizedBox(width: 4),
+                TextButton.icon(
+                  onPressed: onManageImages,
+                  icon: const Icon(Icons.photo_library_outlined),
+                  label: const Text('Quản lý hình ảnh'),
+                ),
+              ],
             ),
           ],
         ),

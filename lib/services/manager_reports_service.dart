@@ -373,9 +373,15 @@ class ManagerReportsService {
     for (final entry in capacityByCourt.entries) {
       final capacity = entry.value;
       final booked = bookedByCourt[entry.key] ?? 0;
-      final rate = capacity == 0 ? 0.0 : (booked / capacity).clamp(0, 1);
-      final label = unitLabels.values.isNotEmpty
-          ? unitLabels.values.first
+      final rate = capacity == 0
+          ? 0.0
+          : (booked / capacity).clamp(0.0, 1.0).toDouble();
+      final matchingUnit = unitCourt.entries.firstWhere(
+        (unit) => unit.value == entry.key,
+        orElse: () => const MapEntry('', ''),
+      );
+      final label = matchingUnit.key.isNotEmpty
+          ? (unitLabels[matchingUnit.key] ?? 'Sân')
           : 'Sân';
       results.add(CourtOccupancy(label, rate));
     }

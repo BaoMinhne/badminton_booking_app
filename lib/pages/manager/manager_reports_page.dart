@@ -581,8 +581,10 @@ class _ChannelPieChart extends StatelessWidget {
     }).toList();
 
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Expanded(
+        SizedBox(
+          height: 160,
           child: PieChart(
             PieChartData(
               sections: sections,
@@ -600,6 +602,7 @@ class _ChannelPieChart extends StatelessWidget {
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
                       width: 12,

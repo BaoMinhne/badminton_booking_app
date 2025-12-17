@@ -7,8 +7,6 @@ import 'manager_dashboard_page.dart';
 import 'manager_schedule_page.dart';
 import 'manager_offline_booking_page.dart';
 import 'manager_court_page.dart';
-import 'manager_operating_hours_page.dart';
-import 'manager_pricing_page.dart';
 import 'manager_reports_page.dart';
 
 class ManagerNavPage extends StatefulWidget {
@@ -65,16 +63,6 @@ class _ManagerNavPageState extends State<ManagerNavPage> {
         label: 'Sân & dịch vụ',
         icon: Icons.sports_tennis_outlined,
         builder: (context) => const ManagerCourtPage(),
-      ),
-      _ManagerTab(
-        label: 'Giờ & slot',
-        icon: Icons.schedule_outlined,
-        builder: (context) => const ManagerOperatingHoursPage(),
-      ),
-      _ManagerTab(
-        label: 'Giá sân',
-        icon: Icons.price_change_outlined,
-        builder: (context) => const ManagerPricingPage(),
       ),
       _ManagerTab(
         label: 'Báo cáo',

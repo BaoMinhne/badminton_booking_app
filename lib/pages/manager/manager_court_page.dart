@@ -830,6 +830,7 @@ class _EditCourtSheetState extends State<_EditCourtSheet> {
   late final TextEditingController _locationCtrl;
   late final TextEditingController _phoneCtrl;
   late final TextEditingController _descCtrl;
+  late final TextEditingController _priceCtrl;
 
   late int _quantity;
   late bool _isActive;
@@ -843,6 +844,9 @@ class _EditCourtSheetState extends State<_EditCourtSheet> {
     _locationCtrl = TextEditingController(text: widget.court.location);
     _phoneCtrl = TextEditingController(text: widget.court.phoneLocal);
     _descCtrl = TextEditingController(text: widget.court.description ?? '');
+    _priceCtrl = TextEditingController(
+      text: widget.court.pricePerHour?.toString() ?? '',
+    );
     _quantity = widget.court.courtQuantity;
     _isActive = widget.court.isActive;
   }
@@ -853,6 +857,7 @@ class _EditCourtSheetState extends State<_EditCourtSheet> {
     _locationCtrl.dispose();
     _phoneCtrl.dispose();
     _descCtrl.dispose();
+    _priceCtrl.dispose();
     super.dispose();
   }
 
@@ -862,6 +867,11 @@ class _EditCourtSheetState extends State<_EditCourtSheet> {
     setState(() => _submitting = true);
     final service = CourtService();
 
+    final price = int.tryParse(
+      _priceCtrl.text.replaceAll(RegExp(r'[^0-9]'), ''),
+    );
+    final normalizedPrice = price ?? widget.court.pricePerHour;
+
     try {
       final updated = await service.updateCourt(
         courtId: widget.court.id,
@@ -869,6 +879,7 @@ class _EditCourtSheetState extends State<_EditCourtSheet> {
         location: _locationCtrl.text,
         phone: _phoneCtrl.text,
         courtQuantity: _quantity,
+        pricePerHour: normalizedPrice,
         isActive: _isActive,
         description: _descCtrl.text,
       );
@@ -1064,6 +1075,30 @@ class _EditCourtSheetState extends State<_EditCourtSheet> {
                                 ),
                               ),
                             ],
+                          ),
+                          _LabeledField(
+                            label: 'Giá sân/giờ (VND)',
+                            child: TextFormField(
+                              controller: _priceCtrl,
+                              textInputAction: TextInputAction.next,
+                              decoration: _decoration(
+                                hint: 'Ví dụ: 180000',
+                                icon: Icons.price_change_outlined,
+                              ),
+                              keyboardType: TextInputType.number,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return null;
+                                }
+                                final parsed = int.tryParse(
+                                  value.replaceAll(RegExp(r'[^0-9]'), ''),
+                                );
+                                if (parsed == null || parsed <= 0) {
+                                  return 'Giá phải là số dương';
+                                }
+                                return null;
+                              },
+                            ),
                           ),
                           _LabeledField(
                             label: 'Mô tả / nội quy',

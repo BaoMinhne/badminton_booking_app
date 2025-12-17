@@ -282,23 +282,30 @@ class CourtService {
     required String location,
     required String phone,
     required int courtQuantity,
+    int? pricePerHour,
     bool isActive = true,
     String? description,
   }) async {
     final pb = await getPocketbaseInstance();
     try {
+      final body = <String, dynamic>{
+        'name': name.trim(),
+        'location': location.trim(),
+        'phone': phone.trim(),
+        'court_quantity': courtQuantity,
+        'is_active': isActive,
+        'description': description?.trim().isEmpty == true
+            ? null
+            : description?.trim(),
+      };
+
+      if (pricePerHour != null) {
+        body['price_per_hour'] = pricePerHour;
+      }
+
       final record = await pb.collection(collection).update(
         courtId,
-        body: {
-          'name': name.trim(),
-          'location': location.trim(),
-          'phone': phone.trim(),
-          'court_quantity': courtQuantity,
-          'is_active': isActive,
-          'description': description?.trim().isEmpty == true
-              ? null
-              : description?.trim(),
-        },
+        body: body,
       );
 
       return _mapRecordToCourt(pb, record);

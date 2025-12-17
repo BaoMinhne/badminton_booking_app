@@ -141,8 +141,8 @@ def recommend_partners(
             # fallback: chỉ dùng rule_score
             combined_score = rule_score
         else:
-            # kết hợp: 70% rule + 30% ML (scaled 0..100)
-            combined_score = 0.7 * rule_score + 0.3 * (ml_prob * 100.0)
+            # ưu tiên ml_prob
+            combined_score = (ml_prob * 100.0) * 0.7 + rule_score * 0.3
 
         final_candidates.append(
             MatchCandidate(

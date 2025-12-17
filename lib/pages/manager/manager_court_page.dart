@@ -504,23 +504,6 @@ class _CourtCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _InfoPill(
-                  icon: Icons.call_outlined,
-                  label: 'Liên hệ',
-                  value: court.phonePretty,
-                ),
-                _InfoPill(
-                  icon: Icons.grid_view_outlined,
-                  label: 'Số sân',
-                  value: court.courtQuantity.toString(),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
@@ -529,35 +512,24 @@ class _CourtCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: cs.outlineVariant.withOpacity(0.6)),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
-                  Row(
-                    children: [
-                      Icon(Icons.notes_outlined, size: 18, color: cs.primary),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Mô tả & nội quy',
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ],
+                  _InfoPill(
+                    icon: Icons.call_outlined,
+                    label: 'Liên hệ',
+                    value: court.phonePretty,
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    (court.description?.trim().isNotEmpty ?? false)
-                        ? court.description!.trim()
-                        : 'Chưa có mô tả cho sân này.',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: cs.onSurface.withOpacity(0.85),
-                      height: 1.35,
-                    ),
+                  _InfoPill(
+                    icon: Icons.grid_view_outlined,
+                    label: 'Số sân',
+                    value: court.courtQuantity.toString(),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             Row(
               children: [
                 Expanded(

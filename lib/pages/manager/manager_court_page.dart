@@ -430,136 +430,143 @@ class _CourtCard extends StatelessWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
-    return Card(
-      elevation: 0.8,
-      shadowColor: Colors.black.withOpacity(0.10),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: cs.primary.withOpacity(0.10),
-                    borderRadius: BorderRadius.circular(14),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: cs.surfaceContainerHighest.withOpacity(0.45),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: cs.outlineVariant.withOpacity(0.6)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: cs.primary.withOpacity(0.10),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(Icons.home_work_outlined, color: cs.primary),
                   ),
-                  child: Icon(Icons.home_work_outlined, color: cs.primary),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        court.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w900,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          court.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          _StatusChip(isActive: court.isActive),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              court.location,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: cs.onSurfaceVariant,
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            _StatusChip(isActive: court.isActive),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                court.location,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: cs.onSurfaceVariant,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  PopupMenuButton<int>(
+                    tooltip: 'Tác vụ',
+                    onSelected: (v) {
+                      switch (v) {
+                        case 0:
+                          onEdit();
+                          break;
+                      }
+                    },
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(value: 0, child: Text('Chỉnh sửa thông tin')),
                     ],
-                  ),
-                ),
-                PopupMenuButton<int>(
-                  tooltip: 'Tác vụ',
-                  onSelected: (v) {
-                    switch (v) {
-                      case 0:
-                        onEdit();
-                        break;
-                    }
-                  },
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(value: 0, child: Text('Chỉnh sửa thông tin')),
-                  ],
-                  child: const Padding(
-                    padding: EdgeInsets.all(6),
-                    child: Icon(Icons.more_horiz),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: cs.surfaceContainerHighest.withOpacity(0.55),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: cs.outlineVariant.withOpacity(0.6)),
-              ),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _InfoPill(
-                    icon: Icons.call_outlined,
-                    label: 'Liên hệ',
-                    value: court.phonePretty,
-                  ),
-                  _InfoPill(
-                    icon: Icons.grid_view_outlined,
-                    label: 'Số sân',
-                    value: court.courtQuantity.toString(),
+                    child: const Padding(
+                      padding: EdgeInsets.all(6),
+                      child: Icon(Icons.more_horiz),
+                    ),
                   ),
                 ],
               ),
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: cs.surface.withOpacity(0.65),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: cs.outlineVariant.withOpacity(0.6)),
+                ),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _InfoPill(
+                      icon: Icons.call_outlined,
+                      label: 'Liên hệ',
+                      value: court.phonePretty,
+                    ),
+                    _InfoPill(
+                      icon: Icons.grid_view_outlined,
+                      label: 'Số sân',
+                      value: court.courtQuantity.toString(),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            Expanded(
+              child: FilledButton.tonalIcon(
+                onPressed: onManagePricing,
+                icon: const Icon(Icons.price_change_outlined),
+                label: const Text('Giá giờ chơi'),
+              ),
             ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: FilledButton.tonalIcon(
-                    onPressed: onManagePricing,
-                    icon: const Icon(Icons.price_change_outlined),
-                    label: const Text('Giá giờ chơi'),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: FilledButton.tonalIcon(
-                    onPressed: onManageServices,
-                    icon: const Icon(Icons.miscellaneous_services_outlined),
-                    label: const Text('Dịch vụ'),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: FilledButton.tonalIcon(
-                    onPressed: onManageImages,
-                    icon: const Icon(Icons.photo_library_outlined),
-                    label: const Text('Hình ảnh'),
-                  ),
-                ),
-              ],
+            const SizedBox(width: 10),
+            Expanded(
+              child: FilledButton.tonalIcon(
+                onPressed: onManageServices,
+                icon: const Icon(Icons.miscellaneous_services_outlined),
+                label: const Text('Dịch vụ'),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: FilledButton.tonalIcon(
+                onPressed: onManageImages,
+                icon: const Icon(Icons.photo_library_outlined),
+                label: const Text('Hình ảnh'),
+              ),
             ),
           ],
         ),
-      ),
+        const SizedBox(height: 10),
+        Divider(color: cs.outlineVariant.withOpacity(0.8)),
+      ],
     );
   }
 }

@@ -503,7 +503,6 @@ class _RevenueLineChart extends StatelessWidget {
         ],
         lineTouchData: LineTouchData(
           touchTooltipData: LineTouchTooltipData(
-            tooltipBgColor: Theme.of(context).colorScheme.surface,
             getTooltipItems: (spots) => spots
                 .map(
                   (spot) => LineTooltipItem(

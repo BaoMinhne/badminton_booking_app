@@ -508,6 +508,13 @@ class _CourtCard extends StatelessWidget {
                 onPressed: onManagePricing,
                 icon: const Icon(Icons.price_change_outlined),
                 label: const Text('Giá giờ chơi'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: cs.primary.withOpacity(0.1),
+                  foregroundColor: cs.onSurface,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                  shape: const StadiumBorder(),
+                ),
               ),
             ),
             const SizedBox(width: 10),
@@ -516,6 +523,13 @@ class _CourtCard extends StatelessWidget {
                 onPressed: onManageServices,
                 icon: const Icon(Icons.miscellaneous_services_outlined),
                 label: const Text('Dịch vụ'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: cs.primary.withOpacity(0.1),
+                  foregroundColor: cs.onSurface,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                  shape: const StadiumBorder(),
+                ),
               ),
             ),
             const SizedBox(width: 10),
@@ -524,6 +538,13 @@ class _CourtCard extends StatelessWidget {
                 onPressed: onManageImages,
                 icon: const Icon(Icons.photo_library_outlined),
                 label: const Text('Hình ảnh'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: cs.primary.withOpacity(0.1),
+                  foregroundColor: cs.onSurface,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                  shape: const StadiumBorder(),
+                ),
               ),
             ),
           ],

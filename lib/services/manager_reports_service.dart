@@ -18,7 +18,6 @@ class ManagerReportSnapshot {
   final double occupancyChange;
   final List<ReportChartPoint> revenueTrend;
   final List<CourtOccupancy> occupancyByCourt;
-  final List<ChannelStat> channelBreakdown;
   final List<ReportBookingRow> bookings;
 
   const ManagerReportSnapshot({
@@ -32,7 +31,6 @@ class ManagerReportSnapshot {
     required this.occupancyChange,
     required this.revenueTrend,
     required this.occupancyByCourt,
-    required this.channelBreakdown,
     required this.bookings,
   });
 }
@@ -49,13 +47,6 @@ class CourtOccupancy {
   final double rate;
 
   const CourtOccupancy(this.label, this.rate);
-}
-
-class ChannelStat {
-  final String label;
-  final int count;
-
-  const ChannelStat(this.label, this.count);
 }
 
 class ReportBookingRow {
@@ -104,7 +95,6 @@ class ManagerReportsService {
         occupancyChange: 0,
         revenueTrend: [],
         occupancyByCourt: [],
-        channelBreakdown: [],
         bookings: [],
       );
     }
@@ -206,7 +196,6 @@ class ManagerReportsService {
       end: rangeEnd,
     );
 
-    final channelBreakdown = _computeChannels(bookingsResult.items);
     final bookingRows = _mapBookings(bookingsResult.items, rangeStart, rangeEnd);
 
     final todayChange = _computeChange(paymentToday, paymentYesterday);
@@ -224,7 +213,6 @@ class ManagerReportsService {
       occupancyChange: occupancyRate - previousOccupancy,
       revenueTrend: trend,
       occupancyByCourt: occupancyByCourt,
-      channelBreakdown: channelBreakdown,
       bookings: bookingRows,
     );
   }
@@ -433,23 +421,6 @@ class ManagerReportsService {
     return points;
   }
 
-  List<ChannelStat> _computeChannels(List<RecordModel> bookings) {
-    var online = 0;
-    var offline = 0;
-    for (final record in bookings) {
-      final userId = record.data['user_id'] as String?;
-      if (userId == null || userId.isEmpty) {
-        offline++;
-      } else {
-        online++;
-      }
-    }
-    return [
-      ChannelStat('Online', online),
-      ChannelStat('Offline', offline),
-    ];
-  }
-
   List<ReportBookingRow> _mapBookings(
     List<RecordModel> records,
     DateTime start,
@@ -461,6 +432,7 @@ class ManagerReportsService {
         .where((record) {
           final booking = CourtBooking.fromRecord(record);
           return booking.status == BookingStatus.confirmed &&
+              booking.userId.isEmpty &&
               booking.startTime.isAfter(start.subtract(const Duration(minutes: 1))) &&
               booking.endTime.isBefore(end.add(const Duration(minutes: 1)));
         })
@@ -473,12 +445,11 @@ class ManagerReportsService {
           final courtLabel = _extractCourtLabel(courtUnit) ?? 'Sân';
           final startTime = booking.startTime.toLocal();
           final endTime = booking.endTime.toLocal();
-          final channel = booking.userId.isEmpty ? 'Offline' : 'Online';
           return ReportBookingRow(
             customer: name,
             court: courtLabel,
             time: '${formatter.format(startTime)} - ${formatter.format(endTime)}',
-            channel: channel,
+            channel: 'Offline',
           );
         })
         .toList();

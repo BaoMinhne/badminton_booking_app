@@ -235,25 +235,27 @@ class ManagerReportsService {
     required DateTime start,
     required DateTime end,
   }) async {
-    final bookings = await _listBookingsInRange(
-      pb: pb,
-      courtIds: courtIds,
-      start: start,
-      end: end,
-    );
-
-    if (bookings.isEmpty) return 0;
-
     final filter =
-        "(status='succeeded' || status='success') && created >= '${start.toUtc().toIso8601String()}' && created < '${end.toUtc().toIso8601String()}' && (${_buildOrFilter('booking_id', bookings.map((b) => b.id).toList())})";
+        "(status='succeeded' || status='success') && created >= '${start.toUtc().toIso8601String()}' && created < '${end.toUtc().toIso8601String()}'";
 
     try {
       final payments = await pb.collection('payment').getList(
             perPage: 200,
             filter: filter,
+            expand: 'booking_id',
           );
 
       return payments.items.fold<int>(0, (sum, record) {
+        final booking = record.expand?['booking_id'];
+        if (booking is RecordModel) {
+          final courtId = booking.data['court_id'] as String?;
+          if (courtId == null || !courtIds.contains(courtId)) {
+            return sum;
+          }
+        } else {
+          return sum;
+        }
+
         final raw = record.data['amount_minor'];
         return sum + _parseMinorUnit(raw);
       });

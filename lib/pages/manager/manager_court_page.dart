@@ -533,6 +533,50 @@ class _CourtCard extends StatelessWidget {
                   ],
                 ),
               ),
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: cs.surfaceContainerHighest.withOpacity(0.45),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: cs.outlineVariant.withOpacity(0.6)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: cs.primary.withOpacity(0.10),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(Icons.description_outlined, color: cs.primary),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Thông tin chi tiết',
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      (court.description?.trim().isNotEmpty ?? false)
+                          ? court.description!
+                          : 'Chưa cập nhật mô tả cho sân này.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),

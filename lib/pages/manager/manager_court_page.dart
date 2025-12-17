@@ -138,7 +138,6 @@ class _ManagerCourtPageState extends State<ManagerCourtPage> {
           );
         }
 
-        // NOTE: giảm padding ngang để card "ăn" thêm chiều ngang
         const pageHPad = 12.0;
 
         return RefreshIndicator(
@@ -200,10 +199,6 @@ class _OverviewSection extends StatelessWidget {
               ?.copyWith(fontWeight: FontWeight.w900),
         ),
         const SizedBox(height: 10),
-
-        // FIX OVERFLOW:
-        // - childAspectRatio giảm để mỗi tile cao hơn
-        // - tile bên trong xử lý text mềm + FittedBox cho value
         GridView.count(
           crossAxisCount: 2,
           shrinkWrap: true,
@@ -290,12 +285,12 @@ class _StatTile extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  maxLines: 2, // FIX: cho phép 2 dòng
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.labelMedium?.copyWith(
                     color: cs.onSurfaceVariant,
                     fontWeight: FontWeight.w800,
-                    height: 1.1, // FIX: giảm line-height
+                    height: 1.1,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -311,7 +306,7 @@ class _StatTile extends StatelessWidget {
                   )
                 else
                   FittedBox(
-                    fit: BoxFit.scaleDown, // FIX: value không bao giờ tràn
+                    fit: BoxFit.scaleDown,
                     alignment: Alignment.centerLeft,
                     child: Text(
                       value,
@@ -411,14 +406,11 @@ class _CourtCard extends StatelessWidget {
                   PopupMenuButton<int>(
                     tooltip: 'Tác vụ',
                     onSelected: (v) {
-                      switch (v) {
-                        case 0:
-                          onEdit();
-                          break;
-                      }
+                      if (v == 0) onEdit();
                     },
                     itemBuilder: (_) => const [
-                      PopupMenuItem(value: 0, child: Text('Chỉnh sửa thông tin')),
+                      PopupMenuItem(
+                          value: 0, child: Text('Chỉnh sửa thông tin')),
                     ],
                     child: const Padding(
                       padding: EdgeInsets.all(6),
@@ -474,7 +466,8 @@ class _CourtCard extends StatelessWidget {
                             color: cs.primary.withOpacity(0.10),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Icon(Icons.description_outlined, color: cs.primary),
+                          child: Icon(Icons.description_outlined,
+                              color: cs.primary),
                         ),
                         const SizedBox(width: 10),
                         Text(
@@ -500,58 +493,149 @@ class _CourtCard extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 14),
-        Row(
-          children: [
-            Expanded(
-              child: FilledButton.tonalIcon(
-                onPressed: onManagePricing,
-                icon: const Icon(Icons.price_change_outlined),
-                label: const Text('Giá giờ chơi'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: cs.primary.withOpacity(0.1),
-                  foregroundColor: cs.onSurface,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                  shape: const StadiumBorder(),
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: FilledButton.tonalIcon(
-                onPressed: onManageServices,
-                icon: const Icon(Icons.miscellaneous_services_outlined),
-                label: const Text('Dịch vụ'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: cs.primary.withOpacity(0.1),
-                  foregroundColor: cs.onSurface,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                  shape: const StadiumBorder(),
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: FilledButton.tonalIcon(
-                onPressed: onManageImages,
-                icon: const Icon(Icons.photo_library_outlined),
-                label: const Text('Hình ảnh'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: cs.primary.withOpacity(0.1),
-                  foregroundColor: cs.onSurface,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                  shape: const StadiumBorder(),
-                ),
-              ),
-            ),
-          ],
+
+        // ===== Modern Action Bar (3 nút) =====
+        const SizedBox(height: 12),
+        _ModernActionBar(
+          onPricing: onManagePricing,
+          onServices: onManageServices,
+          onImages: onManageImages,
         ),
+
         const SizedBox(height: 10),
         Divider(color: cs.outlineVariant.withOpacity(0.8)),
       ],
+    );
+  }
+}
+
+class _ModernActionBar extends StatelessWidget {
+  const _ModernActionBar({
+    required this.onPricing,
+    required this.onServices,
+    required this.onImages,
+  });
+
+  final VoidCallback onPricing;
+  final VoidCallback onServices;
+  final VoidCallback onImages;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    final bg = cs.surfaceContainerHighest.withOpacity(0.55);
+    final border = cs.outlineVariant.withOpacity(0.7);
+
+    return Container(
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: border),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _ActionPillButton(
+              icon: Icons.price_change_outlined,
+              label: 'Giá giờ chơi',
+              onTap: onPricing,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: _ActionPillButton(
+              icon: Icons.miscellaneous_services_outlined,
+              label: 'Dịch vụ',
+              onTap: onServices,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: _ActionPillButton(
+              icon: Icons.photo_library_outlined,
+              label: 'Hình ảnh',
+              onTap: onImages,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActionPillButton extends StatefulWidget {
+  const _ActionPillButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  State<_ActionPillButton> createState() => _ActionPillButtonState();
+}
+
+class _ActionPillButtonState extends State<_ActionPillButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    final base = cs.surface;
+    final border = cs.outlineVariant.withOpacity(0.70);
+
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        duration: const Duration(milliseconds: 110),
+        scale: _pressed ? 0.985 : 1.0,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          decoration: BoxDecoration(
+            color: base.withOpacity(_pressed ? 0.92 : 0.98),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: border),
+            boxShadow: [
+              if (!_pressed)
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.06),
+                  blurRadius: 10,
+                  offset: const Offset(0, 6),
+                ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(widget.icon, size: 18, color: cs.primary),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  widget.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.1,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -764,8 +848,9 @@ class _EditCourtSheetState extends State<_EditCourtSheet> {
           return Container(
             decoration: BoxDecoration(
               color: cs.surface,
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(26)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(26),
+              ),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.12),
@@ -875,8 +960,9 @@ class _EditCourtSheetState extends State<_EditCourtSheet> {
                                     keyboardType: TextInputType.phone,
                                     validator: (value) {
                                       final phone = value?.trim() ?? '';
-                                      if (phone.isEmpty)
+                                      if (phone.isEmpty) {
                                         return 'Vui lòng nhập số điện thoại';
+                                      }
                                       if (!_phoneReg.hasMatch(phone)) {
                                         return 'Sai định dạng 0xxxxxxxxx hoặc +84xxxxxxxxx';
                                       }
@@ -898,8 +984,9 @@ class _EditCourtSheetState extends State<_EditCourtSheet> {
                                     keyboardType: TextInputType.number,
                                     onChanged: (value) {
                                       final parsed = int.tryParse(value);
-                                      if (parsed != null && parsed > 0)
+                                      if (parsed != null && parsed > 0) {
                                         _quantity = parsed;
+                                      }
                                     },
                                     validator: (value) {
                                       final parsed = int.tryParse(value ?? '');
@@ -924,9 +1011,7 @@ class _EditCourtSheetState extends State<_EditCourtSheet> {
                               ),
                               keyboardType: TextInputType.number,
                               validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return null;
-                                }
+                                if (value == null || value.isEmpty) return null;
                                 final parsed = int.tryParse(
                                   value.replaceAll(RegExp(r'[^0-9]'), ''),
                                 );
@@ -955,7 +1040,8 @@ class _EditCourtSheetState extends State<_EditCourtSheet> {
                                   cs.surfaceContainerHighest.withOpacity(0.55),
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
-                                  color: cs.outlineVariant.withOpacity(0.6)),
+                                color: cs.outlineVariant.withOpacity(0.6),
+                              ),
                             ),
                             child: SwitchListTile.adaptive(
                               contentPadding: const EdgeInsets.symmetric(
@@ -1004,7 +1090,8 @@ class _EditCourtSheetState extends State<_EditCourtSheet> {
                                           width: 18,
                                           height: 18,
                                           child: CircularProgressIndicator(
-                                              strokeWidth: 2),
+                                            strokeWidth: 2,
+                                          ),
                                         )
                                       : const Icon(Icons.save_outlined),
                                   label: const Text('Lưu thay đổi'),

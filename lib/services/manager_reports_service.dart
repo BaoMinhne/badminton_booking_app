@@ -9,8 +9,11 @@ import 'pocketbase_client.dart';
 
 class ManagerReportSnapshot {
   final int todayRevenueMinor;
+  final double todayRevenueChange;
   final int weekRevenueMinor;
+  final double weekRevenueChange;
   final int monthRevenueMinor;
+  final double monthRevenueChange;
   final double occupancyRate;
   final double occupancyChange;
   final List<ReportChartPoint> revenueTrend;
@@ -20,8 +23,11 @@ class ManagerReportSnapshot {
 
   const ManagerReportSnapshot({
     required this.todayRevenueMinor,
+    required this.todayRevenueChange,
     required this.weekRevenueMinor,
+    required this.weekRevenueChange,
     required this.monthRevenueMinor,
+    required this.monthRevenueChange,
     required this.occupancyRate,
     required this.occupancyChange,
     required this.revenueTrend,
@@ -89,8 +95,11 @@ class ManagerReportsService {
     if (courtsResult.items.isEmpty) {
       return const ManagerReportSnapshot(
         todayRevenueMinor: 0,
+        todayRevenueChange: 0,
         weekRevenueMinor: 0,
+        weekRevenueChange: 0,
         monthRevenueMinor: 0,
+        monthRevenueChange: 0,
         occupancyRate: 0,
         occupancyChange: 0,
         revenueTrend: [],
@@ -125,6 +134,13 @@ class ManagerReportsService {
       end: _startOfDayUtc(now).add(const Duration(days: 1)),
     );
 
+    final paymentYesterday = await _sumPayments(
+      pb: pb,
+      courtIds: courtIds,
+      start: _startOfDayUtc(now.subtract(const Duration(days: 1))),
+      end: _startOfDayUtc(now),
+    );
+
     final paymentWeek = await _sumPayments(
       pb: pb,
       courtIds: courtIds,
@@ -132,11 +148,25 @@ class ManagerReportsService {
       end: _startOfDayUtc(now).add(const Duration(days: 1)),
     );
 
+    final paymentPrevWeek = await _sumPayments(
+      pb: pb,
+      courtIds: courtIds,
+      start: _startOfDayUtc(now.subtract(const Duration(days: 13))),
+      end: _startOfDayUtc(now.subtract(const Duration(days: 6))),
+    );
+
     final paymentMonth = await _sumPayments(
       pb: pb,
       courtIds: courtIds,
       start: _startOfDayUtc(now.subtract(const Duration(days: 29))),
       end: _startOfDayUtc(now).add(const Duration(days: 1)),
+    );
+
+    final paymentPrevMonth = await _sumPayments(
+      pb: pb,
+      courtIds: courtIds,
+      start: _startOfDayUtc(now.subtract(const Duration(days: 59))),
+      end: _startOfDayUtc(now.subtract(const Duration(days: 29))),
     );
 
     final occupancyRate = await _computeOccupancy(

@@ -87,7 +87,7 @@ class _ManagerReportsPageState extends State<ManagerReportsPage> {
     final isWide = MediaQuery.of(context).size.width > 900;
     final crossAxisCount = isWide ? 4 : 2;
     final horizontalSpacing = 2.0;
-    final cardHeight = isWide ? 190.0 : 220.0;
+    final cardHeight = isWide ? 210.0 : 230.0;
 
     final kpiCards = [
       _ReportCard(

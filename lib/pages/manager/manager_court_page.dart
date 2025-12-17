@@ -35,6 +35,7 @@ class _ManagerCourtPageState extends State<ManagerCourtPage> {
   void _showEditSheet(Court court) {
     showModalBottomSheet<void>(
       context: context,
+      backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) {
         return _EditCourtSheet(
@@ -281,124 +282,253 @@ class _EditCourtSheetState extends State<_EditCourtSheet> {
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
 
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 12,
-        bottom: bottom + 16,
-      ),
-      child: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Center(
-                child: Container(
-                  width: 50,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade400,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const Text(
-                'Chỉnh sửa thông tin sân',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _nameCtrl,
-                decoration: const InputDecoration(labelText: 'Tên sân'),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Vui lòng nhập tên sân';
-                  }
-                  return null;
-                },
-              ),
-              TextFormField(
-                controller: _locationCtrl,
-                decoration: const InputDecoration(labelText: 'Địa chỉ'),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Vui lòng nhập địa chỉ';
-                  }
-                  return null;
-                },
-              ),
-              TextFormField(
-                controller: _phoneCtrl,
-                decoration: const InputDecoration(labelText: 'Số điện thoại'),
-                keyboardType: TextInputType.phone,
-                validator: (value) {
-                  final phone = value?.trim() ?? '';
-                  if (phone.isEmpty) return 'Vui lòng nhập số điện thoại';
-                  if (!_phoneReg.hasMatch(phone)) {
-                    return 'Số điện thoại phải theo định dạng 0xxxxxxxxx hoặc +84xxxxxxxxx';
-                  }
-                  return null;
-                },
-              ),
-              TextFormField(
-                initialValue: _quantity.toString(),
-                decoration: const InputDecoration(labelText: 'Số sân hiện có'),
-                keyboardType: TextInputType.number,
-                onChanged: (value) {
-                  final parsed = int.tryParse(value);
-                  if (parsed != null && parsed > 0) {
-                    _quantity = parsed;
-                  }
-                },
-                validator: (value) {
-                  final parsed = int.tryParse(value ?? '');
-                  if (parsed == null || parsed <= 0) {
-                    return 'Số sân phải lớn hơn 0';
-                  }
-                  return null;
-                },
-              ),
-              TextFormField(
-                controller: _descCtrl,
-                decoration: const InputDecoration(labelText: 'Mô tả / nội quy'),
-                maxLines: 3,
-              ),
-              SwitchListTile.adaptive(
-                contentPadding: EdgeInsets.zero,
-                value: _isActive,
-                onChanged: (value) => setState(() => _isActive = value),
-                title: const Text('Hiển thị sân cho người dùng đặt lịch'),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: _submitting ? null : _submit,
-                      icon: _submitting
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.save_outlined),
-                      label: const Text('Lưu thay đổi'),
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOut,
+      padding: EdgeInsets.only(bottom: bottom),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 20,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Center(
+                  child: Container(
+                    width: 48,
+                    height: 5,
+                    margin: const EdgeInsets.only(bottom: 18),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade400,
+                      borderRadius: BorderRadius.circular(50),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  OutlinedButton(
-                    onPressed: _submitting ? null : () => Navigator.pop(context),
-                    child: const Text('Hủy'),
+                ),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color:
+                            Theme.of(context).colorScheme.primary.withOpacity(0.08),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.sports_tennis_outlined,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'Chỉnh sửa thông tin sân',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 18,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: _submitting ? null : () => Navigator.pop(context),
+                      icon: const Icon(Icons.close),
+                      tooltip: 'Đóng',
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _LabeledField(
+                  label: 'Tên sân',
+                  child: TextFormField(
+                    controller: _nameCtrl,
+                    decoration: const InputDecoration(
+                      hintText: 'Ví dụ: Quang Sport',
+                      prefixIcon: Icon(Icons.home_work_outlined),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Vui lòng nhập tên sân';
+                      }
+                      return null;
+                    },
                   ),
-                ],
-              ),
-            ],
+                ),
+                _LabeledField(
+                  label: 'Địa chỉ',
+                  child: TextFormField(
+                    controller: _locationCtrl,
+                    decoration: const InputDecoration(
+                      hintText: 'Số nhà, đường, quận/huyện...',
+                      prefixIcon: Icon(Icons.place_outlined),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Vui lòng nhập địa chỉ';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _LabeledField(
+                        label: 'Số điện thoại',
+                        child: TextFormField(
+                          controller: _phoneCtrl,
+                          decoration: const InputDecoration(
+                            hintText: '0xxxxxxxxx / +84xxxxxxxxx',
+                            prefixIcon: Icon(Icons.call_outlined),
+                          ),
+                          keyboardType: TextInputType.phone,
+                          validator: (value) {
+                            final phone = value?.trim() ?? '';
+                            if (phone.isEmpty) {
+                              return 'Vui lòng nhập số điện thoại';
+                            }
+                            if (!_phoneReg.hasMatch(phone)) {
+                              return 'Số điện thoại phải theo định dạng 0xxxxxxxxx hoặc +84xxxxxxxxx';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _LabeledField(
+                        label: 'Số sân',
+                        child: TextFormField(
+                          initialValue: _quantity.toString(),
+                          decoration: const InputDecoration(
+                            hintText: 'Nhập số sân',
+                            prefixIcon: Icon(Icons.grid_view_outlined),
+                          ),
+                          keyboardType: TextInputType.number,
+                          onChanged: (value) {
+                            final parsed = int.tryParse(value);
+                            if (parsed != null && parsed > 0) {
+                              _quantity = parsed;
+                            }
+                          },
+                          validator: (value) {
+                            final parsed = int.tryParse(value ?? '');
+                            if (parsed == null || parsed <= 0) {
+                              return 'Số sân phải lớn hơn 0';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                _LabeledField(
+                  label: 'Mô tả / nội quy',
+                  child: TextFormField(
+                    controller: _descCtrl,
+                    decoration: const InputDecoration(
+                      hintText: 'Thông tin chi tiết giúp khách hiểu hơn...',
+                      prefixIcon: Icon(Icons.notes_outlined),
+                    ),
+                    maxLines: 3,
+                  ),
+                ),
+                Container(
+                  margin: const EdgeInsets.only(top: 8),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: Theme.of(context).colorScheme.surfaceVariant,
+                  ),
+                  child: SwitchListTile.adaptive(
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    value: _isActive,
+                    onChanged: (value) => setState(() => _isActive = value),
+                    title: const Text('Hiển thị sân cho người dùng đặt lịch'),
+                    secondary: Icon(
+                      _isActive ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed:
+                            _submitting ? null : () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        child: const Text('Hủy'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: _submitting ? null : _submit,
+                        icon: _submitting
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.save_outlined),
+                        label: const Text('Lưu thay đổi'),
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _LabeledField extends StatelessWidget {
+  const _LabeledField({required this.label, required this.child});
+
+  final String label;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.85),
+              ),
+            ),
+          ),
+          child,
+        ],
       ),
     );
   }

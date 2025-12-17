@@ -165,7 +165,7 @@ class _ManagerReportsPageState extends State<ManagerReportsPage> {
     final snapshot = _dataByRange[_selectedRange]!;
     final isWide = MediaQuery.of(context).size.width > 900;
     final crossAxisCount = isWide ? 4 : 2;
-    final horizontalSpacing = 12.0;
+    final horizontalSpacing = 2.0;
     final cardHeight = isWide ? 190.0 : 220.0;
 
     final kpiCards = [
@@ -196,14 +196,13 @@ class _ManagerReportsPageState extends State<ManagerReportsPage> {
     ];
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 0, // hoặc 4
+        vertical: 16,
+      ),
       children: [
         Row(
           children: [
-            const Expanded(
-              child: Text('Báo cáo & thống kê',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            ),
             Wrap(
               spacing: 8,
               children: _ReportRange.values
@@ -255,7 +254,8 @@ class _ManagerReportsPageState extends State<ManagerReportsPage> {
                     child: _ChartCard(
                       title: 'Tỷ lệ lấp đầy theo sân',
                       subtitle: 'So sánh nhanh giữa các sân',
-                      child: _OccupancyBarChart(points: snapshot.occupancyByCourt),
+                      child:
+                          _OccupancyBarChart(points: snapshot.occupancyByCourt),
                     ),
                   ),
                 ],
@@ -399,7 +399,9 @@ class _BookingsCard extends StatelessWidget {
                     subtitle: Text('${b.court} • ${b.time}'),
                     trailing: Chip(
                       avatar: Icon(
-                        b.channel == 'Online' ? Icons.wifi : Icons.phone_forwarded,
+                        b.channel == 'Online'
+                            ? Icons.wifi
+                            : Icons.phone_forwarded,
                         size: 16,
                       ),
                       label: Text(b.channel),
@@ -448,12 +450,15 @@ class _ReportCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                  child: Text(title,
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            Text(value,
+                style:
+                    const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -497,7 +502,8 @@ class _RevenueLineChart extends StatelessWidget {
               interval: 1,
               getTitlesWidget: (value, _) {
                 final index = value.toInt();
-                if (index < 0 || index >= points.length) return const SizedBox.shrink();
+                if (index < 0 || index >= points.length)
+                  return const SizedBox.shrink();
                 return Text(points[index].label);
               },
             ),
@@ -507,13 +513,17 @@ class _RevenueLineChart extends StatelessWidget {
               showTitles: true,
               reservedSize: 46,
               interval: _computeInterval(points.map((e) => e.value).toList()),
-              getTitlesWidget: (value, _) => Text('${value.toStringAsFixed(0)}tr'),
+              getTitlesWidget: (value, _) =>
+                  Text('${value.toStringAsFixed(0)}tr'),
             ),
           ),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles:
+              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles:
+              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
-        gridData: FlGridData(show: true, drawVerticalLine: false, horizontalInterval: 5),
+        gridData: FlGridData(
+            show: true, drawVerticalLine: false, horizontalInterval: 5),
         borderData: FlBorderData(show: false),
         lineBarsData: [
           LineChartBarData(
@@ -538,7 +548,9 @@ class _RevenueLineChart extends StatelessWidget {
                   (spot) => LineTooltipItem(
                     '${points[spot.spotIndex].label}\n',
                     const TextStyle(fontWeight: FontWeight.bold),
-                    children: [TextSpan(text: '${spot.y.toStringAsFixed(1)} triệu')],
+                    children: [
+                      TextSpan(text: '${spot.y.toStringAsFixed(1)} triệu')
+                    ],
                   ),
                 )
                 .toList(),
@@ -567,7 +579,9 @@ class _OccupancyBarChart extends StatelessWidget {
             getTooltipItem: (group, _, rod, __) => BarTooltipItem(
               '${points[group.x.toInt()].label}\n',
               const TextStyle(fontWeight: FontWeight.bold),
-              children: [TextSpan(text: '${(rod.toY * 100).toStringAsFixed(0)}%')],
+              children: [
+                TextSpan(text: '${(rod.toY * 100).toStringAsFixed(0)}%')
+              ],
             ),
           ),
         ),
@@ -595,10 +609,13 @@ class _OccupancyBarChart extends StatelessWidget {
               },
             ),
           ),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles:
+              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles:
+              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
-        gridData: FlGridData(show: true, drawVerticalLine: false, horizontalInterval: 0.2),
+        gridData: FlGridData(
+            show: true, drawVerticalLine: false, horizontalInterval: 0.2),
         borderData: FlBorderData(show: false),
         barGroups: [
           for (int i = 0; i < points.length; i++)
@@ -610,7 +627,8 @@ class _OccupancyBarChart extends StatelessWidget {
                   width: 26,
                   borderRadius: BorderRadius.circular(6),
                   color: primary,
-                  backDrawRodData: BackgroundBarChartRodData(show: true, toY: 1, color: Colors.grey.shade200),
+                  backDrawRodData: BackgroundBarChartRodData(
+                      show: true, toY: 1, color: Colors.grey.shade200),
                 ),
               ],
             ),
@@ -630,14 +648,16 @@ class _ChannelPieChart extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final total = stats.fold<int>(0, (sum, e) => sum + e.count);
     final sections = stats.asMap().entries.map((entry) {
-      final color = entry.key == 0 ? colorScheme.primary : colorScheme.secondary;
+      final color =
+          entry.key == 0 ? colorScheme.primary : colorScheme.secondary;
       final percentage = total == 0 ? 0 : (entry.value.count / total * 100);
       return PieChartSectionData(
         color: color,
         value: entry.value.count.toDouble(),
         title: '${percentage.toStringAsFixed(0)}%',
         radius: 70,
-        titleStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        titleStyle:
+            const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
       );
     }).toList();
 
@@ -656,12 +676,17 @@ class _ChannelPieChart extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: stats.asMap().entries.map((entry) {
-            final color = entry.key == 0 ? colorScheme.primary : colorScheme.secondary;
+            final color =
+                entry.key == 0 ? colorScheme.primary : colorScheme.secondary;
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Row(
                 children: [
-                  Container(width: 12, height: 12, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+                  Container(
+                      width: 12,
+                      height: 12,
+                      decoration:
+                          BoxDecoration(color: color, shape: BoxShape.circle)),
                   const SizedBox(width: 6),
                   Text('${entry.value.label} (${entry.value.count})'),
                 ],

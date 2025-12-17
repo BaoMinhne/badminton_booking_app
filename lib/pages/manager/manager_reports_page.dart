@@ -239,26 +239,44 @@ class _ManagerReportsPageState extends State<ManagerReportsPage> {
         LayoutBuilder(
           builder: (context, constraints) {
             final chartsAreSideBySide = constraints.maxWidth > 900;
-            return Flex(
-              direction: chartsAreSideBySide ? Axis.horizontal : Axis.vertical,
+            if (chartsAreSideBySide) {
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: _ChartCard(
+                      title: 'Doanh thu theo thời gian',
+                      subtitle: 'Biểu đồ đường thể hiện xu hướng doanh thu',
+                      child: _RevenueLineChart(points: snapshot.revenueTrend),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    flex: 2,
+                    child: _ChartCard(
+                      title: 'Tỷ lệ lấp đầy theo sân',
+                      subtitle: 'So sánh nhanh giữa các sân',
+                      child: _OccupancyBarChart(points: snapshot.occupancyByCourt),
+                    ),
+                  ),
+                ],
+              );
+            }
+
+            return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Flexible(
-                  flex: 3,
-                  child: _ChartCard(
-                    title: 'Doanh thu theo thời gian',
-                    subtitle: 'Biểu đồ đường thể hiện xu hướng doanh thu',
-                    child: _RevenueLineChart(points: snapshot.revenueTrend),
-                  ),
+                _ChartCard(
+                  title: 'Doanh thu theo thời gian',
+                  subtitle: 'Biểu đồ đường thể hiện xu hướng doanh thu',
+                  child: _RevenueLineChart(points: snapshot.revenueTrend),
                 ),
-                SizedBox(width: chartsAreSideBySide ? 16 : 0, height: chartsAreSideBySide ? 0 : 16),
-                Flexible(
-                  flex: 2,
-                  child: _ChartCard(
-                    title: 'Tỷ lệ lấp đầy theo sân',
-                    subtitle: 'So sánh nhanh giữa các sân',
-                    child: _OccupancyBarChart(points: snapshot.occupancyByCourt),
-                  ),
+                const SizedBox(height: 16),
+                _ChartCard(
+                  title: 'Tỷ lệ lấp đầy theo sân',
+                  subtitle: 'So sánh nhanh giữa các sân',
+                  child: _OccupancyBarChart(points: snapshot.occupancyByCourt),
                 ),
               ],
             );
@@ -268,23 +286,37 @@ class _ManagerReportsPageState extends State<ManagerReportsPage> {
         LayoutBuilder(
           builder: (context, constraints) {
             final isRow = constraints.maxWidth > 900;
-            return Flex(
-              direction: isRow ? Axis.horizontal : Axis.vertical,
+            if (isRow) {
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: _ChartCard(
+                      title: 'Kênh đặt sân',
+                      subtitle: 'Tỷ trọng giữa online và offline',
+                      child: _ChannelPieChart(stats: snapshot.channelBreakdown),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    flex: 3,
+                    child: _BookingsCard(bookings: snapshot.bookings),
+                  ),
+                ],
+              );
+            }
+
+            return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Flexible(
-                  flex: 2,
-                  child: _ChartCard(
-                    title: 'Kênh đặt sân',
-                    subtitle: 'Tỷ trọng giữa online và offline',
-                    child: _ChannelPieChart(stats: snapshot.channelBreakdown),
-                  ),
+                _ChartCard(
+                  title: 'Kênh đặt sân',
+                  subtitle: 'Tỷ trọng giữa online và offline',
+                  child: _ChannelPieChart(stats: snapshot.channelBreakdown),
                 ),
-                SizedBox(width: isRow ? 16 : 0, height: isRow ? 0 : 16),
-                Flexible(
-                  flex: 3,
-                  child: _BookingsCard(bookings: snapshot.bookings),
-                ),
+                const SizedBox(height: 16),
+                _BookingsCard(bookings: snapshot.bookings),
               ],
             );
           },

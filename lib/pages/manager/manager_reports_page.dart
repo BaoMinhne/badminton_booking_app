@@ -166,12 +166,7 @@ class _ManagerReportsPageState extends State<ManagerReportsPage> {
     final isWide = MediaQuery.of(context).size.width > 900;
     final crossAxisCount = isWide ? 4 : 2;
     final horizontalSpacing = 12.0;
-    final availableWidth = MediaQuery.of(context).size.width -
-        (crossAxisCount - 1) * horizontalSpacing -
-        32; // outer padding
-    final cardWidth = availableWidth / crossAxisCount;
-    final targetHeight = isWide ? 140.0 : 160.0;
-    final childAspectRatio = cardWidth / targetHeight;
+    final cardHeight = isWide ? 170.0 : 190.0;
 
     final kpiCards = [
       _ReportCard(
@@ -226,14 +221,17 @@ class _ManagerReportsPageState extends State<ManagerReportsPage> {
           ],
         ),
         const SizedBox(height: 12),
-        GridView.count(
+        GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: crossAxisCount,
-          crossAxisSpacing: horizontalSpacing,
-          mainAxisSpacing: 12,
-          childAspectRatio: childAspectRatio,
-          children: kpiCards,
+          itemCount: kpiCards.length,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            crossAxisSpacing: horizontalSpacing,
+            mainAxisSpacing: 12,
+            mainAxisExtent: cardHeight,
+          ),
+          itemBuilder: (context, index) => kpiCards[index],
         ),
         const SizedBox(height: 16),
         LayoutBuilder(

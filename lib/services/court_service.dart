@@ -47,6 +47,45 @@ class CourtService {
     }
   }
 
+  Future<List<Court>> listOwnerCourts({
+    int page = 1,
+    int perPage = 50,
+  }) async {
+    final pb = await getPocketbaseInstance();
+    final authRecord = pb.authStore.record;
+
+    if (authRecord == null) {
+      throw CourtServiceException(
+        'Bạn cần đăng nhập để xem danh sách sân của mình.',
+      );
+    }
+
+    final escapedOwner = _escapeFilterValue(authRecord.id);
+
+    try {
+      final result = await pb.collection(collection).getList(
+            page: page,
+            perPage: perPage,
+            filter: "owner='$escapedOwner'",
+          );
+
+      return result.items
+          .map((record) => _mapRecordToCourt(pb, record))
+          .toList(growable: false);
+    } on ClientException catch (error) {
+      throw CourtServiceException(
+        _mapClientException(
+          error,
+          fallback: 'Không thể tải danh sách sân. Vui lòng thử lại sau.',
+        ),
+      );
+    } catch (_) {
+      throw CourtServiceException(
+        'Có lỗi xảy ra khi tải danh sách sân. Vui lòng thử lại.',
+      );
+    }
+  }
+
   Future<Court> getCourt(String id) async {
     final pb = await getPocketbaseInstance();
 
@@ -63,6 +102,46 @@ class CourtService {
     } catch (_) {
       throw CourtServiceException(
         'Đã xảy ra lỗi khi lấy thông tin sân. Vui lòng thử lại.',
+      );
+    }
+  }
+
+  Future<Court> updateCourt({
+    required String courtId,
+    required String name,
+    required String location,
+    required String phone,
+    required int courtQuantity,
+    bool isActive = true,
+    String? description,
+  }) async {
+    final pb = await getPocketbaseInstance();
+    try {
+      final record = await pb.collection(collection).update(
+        courtId,
+        body: {
+          'name': name.trim(),
+          'location': location.trim(),
+          'phone': phone.trim(),
+          'court_quantity': courtQuantity,
+          'is_active': isActive,
+          'description': description?.trim().isEmpty == true
+              ? null
+              : description?.trim(),
+        },
+      );
+
+      return _mapRecordToCourt(pb, record);
+    } on ClientException catch (error) {
+      throw CourtServiceException(
+        _mapClientException(
+          error,
+          fallback: 'Không thể cập nhật thông tin sân. Vui lòng thử lại.',
+        ),
+      );
+    } catch (_) {
+      throw CourtServiceException(
+        'Có lỗi xảy ra khi cập nhật thông tin sân. Vui lòng thử lại.',
       );
     }
   }

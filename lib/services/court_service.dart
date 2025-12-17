@@ -178,6 +178,33 @@ class CourtService {
     }
   }
 
+  Future<List<CourtPricing>> listCourtPricing(String courtId) async {
+    final pb = await getPocketbaseInstance();
+    final escapedId = _escapeFilterValue(courtId);
+
+    try {
+      final result = await pb.collection('court_pricing').getList(
+            filter: "court_id='$escapedId'",
+            perPage: 200,
+          );
+
+      return result.items
+          .map(CourtPricing.fromRecord)
+          .toList(growable: false);
+    } on ClientException catch (error) {
+      throw CourtServiceException(
+        _mapClientException(
+          error,
+          fallback: 'Không thể tải bảng giá giờ chơi. Vui lòng thử lại.',
+        ),
+      );
+    } catch (_) {
+      throw CourtServiceException(
+        'Có lỗi xảy ra khi tải bảng giá giờ chơi. Vui lòng thử lại.',
+      );
+    }
+  }
+
   Future<CourtServiceItem> createCourtService({
     required String courtId,
     required String serviceId,
@@ -256,6 +283,42 @@ class CourtService {
     }
   }
 
+  Future<CourtPricing> updateCourtPricing({
+    required String id,
+    required int pricePerHour,
+    String? timeFrom,
+    String? timeTo,
+    String? priceLabel,
+  }) async {
+    final pb = await getPocketbaseInstance();
+
+    try {
+      final record = await pb.collection('court_pricing').update(
+        id,
+        body: {
+          'price_per_hour': pricePerHour,
+          if (timeFrom != null) 'time_from': timeFrom,
+          if (timeTo != null) 'time_to': timeTo,
+          if (priceLabel != null && priceLabel.trim().isNotEmpty)
+            'price_label': priceLabel.trim(),
+        },
+      );
+
+      return CourtPricing.fromRecord(record);
+    } on ClientException catch (error) {
+      throw CourtServiceException(
+        _mapClientException(
+          error,
+          fallback: 'Không thể cập nhật giá giờ chơi. Vui lòng thử lại.',
+        ),
+      );
+    } catch (_) {
+      throw CourtServiceException(
+        'Có lỗi xảy ra khi cập nhật giá giờ chơi. Vui lòng thử lại.',
+      );
+    }
+  }
+
   Future<Court> getCourt(String id) async {
     final pb = await getPocketbaseInstance();
 
@@ -282,23 +345,30 @@ class CourtService {
     required String location,
     required String phone,
     required int courtQuantity,
+    int? pricePerHour,
     bool isActive = true,
     String? description,
   }) async {
     final pb = await getPocketbaseInstance();
     try {
+      final body = <String, dynamic>{
+        'name': name.trim(),
+        'location': location.trim(),
+        'phone': phone.trim(),
+        'court_quantity': courtQuantity,
+        'is_active': isActive,
+        'description': description?.trim().isEmpty == true
+            ? null
+            : description?.trim(),
+      };
+
+      if (pricePerHour != null) {
+        body['price_per_hour'] = pricePerHour;
+      }
+
       final record = await pb.collection(collection).update(
         courtId,
-        body: {
-          'name': name.trim(),
-          'location': location.trim(),
-          'phone': phone.trim(),
-          'court_quantity': courtQuantity,
-          'is_active': isActive,
-          'description': description?.trim().isEmpty == true
-              ? null
-              : description?.trim(),
-        },
+        body: body,
       );
 
       return _mapRecordToCourt(pb, record);

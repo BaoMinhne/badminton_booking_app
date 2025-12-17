@@ -4,6 +4,7 @@ import '../../models/court.dart';
 import '../../services/court_service.dart';
 import 'court_images_page.dart';
 import 'court_services_page.dart';
+import 'manager_pricing_page.dart';
 
 class ManagerCourtPage extends StatefulWidget {
   const ManagerCourtPage({super.key});
@@ -61,6 +62,12 @@ class _ManagerCourtPageState extends State<ManagerCourtPage> {
   void _openServiceManager(Court court) {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => CourtServicesPage(court: court)),
+    );
+  }
+
+  void _openPricingManager(Court court) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => ManagerPricingPage(court: court)),
     );
   }
 
@@ -131,7 +138,6 @@ class _ManagerCourtPageState extends State<ManagerCourtPage> {
           );
         }
 
-        // NOTE: giảm padding ngang để card "ăn" thêm chiều ngang
         const pageHPad = 12.0;
 
         return RefreshIndicator(
@@ -139,15 +145,6 @@ class _ManagerCourtPageState extends State<ManagerCourtPage> {
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(pageHPad, 16, pageHPad, 10),
-                sliver: SliverToBoxAdapter(
-                  child: _ManagerHeaderCard(
-                    courtCount: courts.length,
-                    onRefresh: _refresh,
-                  ),
-                ),
-              ),
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(pageHPad, 0, pageHPad, 12),
                 sliver: SliverToBoxAdapter(
@@ -165,100 +162,16 @@ class _ManagerCourtPageState extends State<ManagerCourtPage> {
                       court: court,
                       onEdit: () => _showEditSheet(court),
                       onManageImages: () => _openImageManager(court),
+                      onManagePricing: () => _openPricingManager(court),
                       onManageServices: () => _openServiceManager(court),
                     );
                   },
-                ),
-              ),
-              SliverFillRemaining(
-                hasScrollBody: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(pageHPad, 0, pageHPad, 24),
-                  child: Align(
-                    alignment: Alignment.topCenter,
-                    child: _ManagerTipsCard(
-                      onRefresh: _refresh,
-                      onOpenServices: () => _openServiceManager(courts.first),
-                      onOpenImages: () => _openImageManager(courts.first),
-                    ),
-                  ),
                 ),
               ),
             ],
           ),
         );
       },
-    );
-  }
-}
-
-class _ManagerHeaderCard extends StatelessWidget {
-  const _ManagerHeaderCard({
-    required this.courtCount,
-    required this.onRefresh,
-  });
-
-  final int courtCount;
-  final VoidCallback onRefresh;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: LinearGradient(
-          colors: [
-            cs.primary.withOpacity(0.10),
-            cs.tertiary.withOpacity(0.08),
-          ],
-        ),
-        border: Border.all(color: cs.outlineVariant.withOpacity(0.6)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: cs.primary.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(Icons.sports_tennis_outlined, color: cs.primary),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Sân & dịch vụ',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Bạn đang quản lý $courtCount sân. Cập nhật mô tả, hình ảnh và dịch vụ để tăng chuyển đổi đặt sân.',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: cs.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            IconButton.filledTonal(
-              onPressed: onRefresh,
-              tooltip: 'Tải lại',
-              icon: const Icon(Icons.refresh_outlined),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -286,10 +199,6 @@ class _OverviewSection extends StatelessWidget {
               ?.copyWith(fontWeight: FontWeight.w900),
         ),
         const SizedBox(height: 10),
-
-        // FIX OVERFLOW:
-        // - childAspectRatio giảm để mỗi tile cao hơn
-        // - tile bên trong xử lý text mềm + FittedBox cho value
         GridView.count(
           crossAxisCount: 2,
           shrinkWrap: true,
@@ -376,12 +285,12 @@ class _StatTile extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  maxLines: 2, // FIX: cho phép 2 dòng
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.labelMedium?.copyWith(
                     color: cs.onSurfaceVariant,
                     fontWeight: FontWeight.w800,
-                    height: 1.1, // FIX: giảm line-height
+                    height: 1.1,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -397,7 +306,7 @@ class _StatTile extends StatelessWidget {
                   )
                 else
                   FittedBox(
-                    fit: BoxFit.scaleDown, // FIX: value không bao giờ tràn
+                    fit: BoxFit.scaleDown,
                     alignment: Alignment.centerLeft,
                     child: Text(
                       value,
@@ -421,12 +330,14 @@ class _CourtCard extends StatelessWidget {
     required this.court,
     required this.onEdit,
     required this.onManageImages,
+    required this.onManagePricing,
     required this.onManageServices,
   });
 
   final Court court;
   final VoidCallback onEdit;
   final VoidCallback onManageImages;
+  final VoidCallback onManagePricing;
   final VoidCallback onManageServices;
 
   @override
@@ -434,162 +345,295 @@ class _CourtCard extends StatelessWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
-    return Card(
-      elevation: 0.8,
-      shadowColor: Colors.black.withOpacity(0.10),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: cs.primary.withOpacity(0.10),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Icon(Icons.home_work_outlined, color: cs.primary),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        court.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          _StatusChip(isActive: court.isActive),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              court.location,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: cs.onSurfaceVariant,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                PopupMenuButton<int>(
-                  tooltip: 'Tác vụ',
-                  onSelected: (v) {
-                    switch (v) {
-                      case 0:
-                        onEdit();
-                        break;
-                      case 1:
-                        onManageImages();
-                        break;
-                      case 2:
-                        onManageServices();
-                        break;
-                    }
-                  },
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(value: 0, child: Text('Chỉnh sửa thông tin')),
-                    PopupMenuItem(value: 1, child: Text('Quản lý hình ảnh')),
-                    PopupMenuItem(value: 2, child: Text('Quản lý dịch vụ')),
-                  ],
-                  child: const Padding(
-                    padding: EdgeInsets.all(6),
-                    child: Icon(Icons.more_horiz),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _InfoPill(
-                  icon: Icons.call_outlined,
-                  label: 'Liên hệ',
-                  value: court.phonePretty,
-                ),
-                _InfoPill(
-                  icon: Icons.grid_view_outlined,
-                  label: 'Số sân',
-                  value: court.courtQuantity.toString(),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: cs.surfaceContainerHighest.withOpacity(0.55),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: cs.outlineVariant.withOpacity(0.6)),
-              ),
-              child: Column(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: cs.surfaceContainerHighest.withOpacity(0.45),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: cs.outlineVariant.withOpacity(0.6)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Icon(Icons.notes_outlined, size: 18, color: cs.primary),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Mô tả & nội quy',
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ],
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: cs.primary.withOpacity(0.10),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(Icons.home_work_outlined, color: cs.primary),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    (court.description?.trim().isNotEmpty ?? false)
-                        ? court.description!.trim()
-                        : 'Chưa có mô tả cho sân này.',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: cs.onSurface.withOpacity(0.85),
-                      height: 1.35,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          court.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            _StatusChip(isActive: court.isActive),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                court.location,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: cs.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  PopupMenuButton<int>(
+                    tooltip: 'Tác vụ',
+                    onSelected: (v) {
+                      if (v == 0) onEdit();
+                    },
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(
+                          value: 0, child: Text('Chỉnh sửa thông tin')),
+                    ],
+                    child: const Padding(
+                      padding: EdgeInsets.all(6),
+                      child: Icon(Icons.more_horiz),
                     ),
                   ),
                 ],
               ),
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: cs.surface.withOpacity(0.65),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: cs.outlineVariant.withOpacity(0.6)),
+                ),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _InfoPill(
+                      icon: Icons.call_outlined,
+                      label: 'Liên hệ',
+                      value: court.phonePretty,
+                    ),
+                    _InfoPill(
+                      icon: Icons.grid_view_outlined,
+                      label: 'Số sân',
+                      value: court.courtQuantity.toString(),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: cs.surfaceContainerHighest.withOpacity(0.45),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: cs.outlineVariant.withOpacity(0.6)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: cs.primary.withOpacity(0.10),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(Icons.description_outlined,
+                              color: cs.primary),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Thông tin chi tiết',
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      (court.description?.trim().isNotEmpty ?? false)
+                          ? court.description!
+                          : 'Chưa cập nhật mô tả cho sân này.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // ===== Modern Action Bar (3 nút) =====
+        const SizedBox(height: 12),
+        _ModernActionBar(
+          onPricing: onManagePricing,
+          onServices: onManageServices,
+          onImages: onManageImages,
+        ),
+
+        const SizedBox(height: 10),
+        Divider(color: cs.outlineVariant.withOpacity(0.8)),
+      ],
+    );
+  }
+}
+
+class _ModernActionBar extends StatelessWidget {
+  const _ModernActionBar({
+    required this.onPricing,
+    required this.onServices,
+    required this.onImages,
+  });
+
+  final VoidCallback onPricing;
+  final VoidCallback onServices;
+  final VoidCallback onImages;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    final bg = cs.surfaceContainerHighest.withOpacity(0.55);
+    final border = cs.outlineVariant.withOpacity(0.7);
+
+    return Container(
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: border),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _ActionPillButton(
+              icon: Icons.price_change_outlined,
+              label: 'Giá giờ chơi',
+              onTap: onPricing,
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: FilledButton.tonalIcon(
-                    onPressed: onManageServices,
-                    icon: const Icon(Icons.miscellaneous_services_outlined),
-                    label: const Text('Dịch vụ'),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: _ActionPillButton(
+              icon: Icons.miscellaneous_services_outlined,
+              label: 'Dịch vụ',
+              onTap: onServices,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: _ActionPillButton(
+              icon: Icons.photo_library_outlined,
+              label: 'Hình ảnh',
+              onTap: onImages,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActionPillButton extends StatefulWidget {
+  const _ActionPillButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  State<_ActionPillButton> createState() => _ActionPillButtonState();
+}
+
+class _ActionPillButtonState extends State<_ActionPillButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    final base = cs.surface;
+    final border = cs.outlineVariant.withOpacity(0.70);
+
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        duration: const Duration(milliseconds: 110),
+        scale: _pressed ? 0.985 : 1.0,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          decoration: BoxDecoration(
+            color: base.withOpacity(_pressed ? 0.92 : 0.98),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: border),
+            boxShadow: [
+              if (!_pressed)
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.06),
+                  blurRadius: 10,
+                  offset: const Offset(0, 6),
+                ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(widget.icon, size: 18, color: cs.primary),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  widget.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.1,
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: FilledButton.tonalIcon(
-                    onPressed: onManageImages,
-                    icon: const Icon(Icons.photo_library_outlined),
-                    label: const Text('Hình ảnh'),
-                  ),
-                ),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -689,129 +733,6 @@ class _StatusChip extends StatelessWidget {
   }
 }
 
-class _ManagerTipsCard extends StatelessWidget {
-  const _ManagerTipsCard({
-    required this.onRefresh,
-    required this.onOpenServices,
-    required this.onOpenImages,
-  });
-
-  final VoidCallback onRefresh;
-  final VoidCallback onOpenServices;
-  final VoidCallback onOpenImages;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: cs.outlineVariant.withOpacity(0.6)),
-        color: cs.surfaceContainerHighest.withOpacity(0.35),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.auto_awesome_outlined, color: cs.primary),
-              const SizedBox(width: 8),
-              Text(
-                'Gợi ý tối ưu trang sân',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const Spacer(),
-              IconButton(
-                onPressed: onRefresh,
-                tooltip: 'Tải lại',
-                icon: const Icon(Icons.refresh_outlined),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Trang sẽ đầy và “có sức sống” hơn nếu bạn hoàn thiện đủ 3 nhóm nội dung:',
-            style: theme.textTheme.bodyMedium
-                ?.copyWith(color: cs.onSurfaceVariant),
-          ),
-          const SizedBox(height: 10),
-          const _Bullet(
-              'Hình ảnh: thêm ảnh sân, khu vực gửi xe, nhà vệ sinh, bảng giá.'),
-          const _Bullet('Dịch vụ: nước uống, thuê vợt, cầu, khăn, bãi xe.'),
-          const _Bullet(
-              'Mô tả/nội quy: giờ mở cửa, quy định giày, đặt cọc (nếu có).'),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton.tonalIcon(
-                  onPressed: onOpenImages,
-                  icon: const Icon(Icons.photo_library_outlined),
-                  label: const Text('Bổ sung hình ảnh'),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: FilledButton.tonalIcon(
-                  onPressed: onOpenServices,
-                  icon: const Icon(Icons.miscellaneous_services_outlined),
-                  label: const Text('Bổ sung dịch vụ'),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Bullet extends StatelessWidget {
-  const _Bullet(this.text);
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Container(
-              width: 6,
-              height: 6,
-              decoration: BoxDecoration(
-                color: cs.primary,
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              text,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: cs.onSurface.withOpacity(0.85),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _EditCourtSheet extends StatefulWidget {
   const _EditCourtSheet({required this.court, required this.onSaved});
 
@@ -830,6 +751,7 @@ class _EditCourtSheetState extends State<_EditCourtSheet> {
   late final TextEditingController _locationCtrl;
   late final TextEditingController _phoneCtrl;
   late final TextEditingController _descCtrl;
+  late final TextEditingController _priceCtrl;
 
   late int _quantity;
   late bool _isActive;
@@ -843,6 +765,9 @@ class _EditCourtSheetState extends State<_EditCourtSheet> {
     _locationCtrl = TextEditingController(text: widget.court.location);
     _phoneCtrl = TextEditingController(text: widget.court.phoneLocal);
     _descCtrl = TextEditingController(text: widget.court.description ?? '');
+    _priceCtrl = TextEditingController(
+      text: widget.court.pricePerHour?.toString() ?? '',
+    );
     _quantity = widget.court.courtQuantity;
     _isActive = widget.court.isActive;
   }
@@ -853,6 +778,7 @@ class _EditCourtSheetState extends State<_EditCourtSheet> {
     _locationCtrl.dispose();
     _phoneCtrl.dispose();
     _descCtrl.dispose();
+    _priceCtrl.dispose();
     super.dispose();
   }
 
@@ -862,6 +788,11 @@ class _EditCourtSheetState extends State<_EditCourtSheet> {
     setState(() => _submitting = true);
     final service = CourtService();
 
+    final price = int.tryParse(
+      _priceCtrl.text.replaceAll(RegExp(r'[^0-9]'), ''),
+    );
+    final normalizedPrice = price ?? widget.court.pricePerHour;
+
     try {
       final updated = await service.updateCourt(
         courtId: widget.court.id,
@@ -869,6 +800,7 @@ class _EditCourtSheetState extends State<_EditCourtSheet> {
         location: _locationCtrl.text,
         phone: _phoneCtrl.text,
         courtQuantity: _quantity,
+        pricePerHour: normalizedPrice,
         isActive: _isActive,
         description: _descCtrl.text,
       );
@@ -916,8 +848,9 @@ class _EditCourtSheetState extends State<_EditCourtSheet> {
           return Container(
             decoration: BoxDecoration(
               color: cs.surface,
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(26)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(26),
+              ),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.12),
@@ -1027,8 +960,9 @@ class _EditCourtSheetState extends State<_EditCourtSheet> {
                                     keyboardType: TextInputType.phone,
                                     validator: (value) {
                                       final phone = value?.trim() ?? '';
-                                      if (phone.isEmpty)
+                                      if (phone.isEmpty) {
                                         return 'Vui lòng nhập số điện thoại';
+                                      }
                                       if (!_phoneReg.hasMatch(phone)) {
                                         return 'Sai định dạng 0xxxxxxxxx hoặc +84xxxxxxxxx';
                                       }
@@ -1050,8 +984,9 @@ class _EditCourtSheetState extends State<_EditCourtSheet> {
                                     keyboardType: TextInputType.number,
                                     onChanged: (value) {
                                       final parsed = int.tryParse(value);
-                                      if (parsed != null && parsed > 0)
+                                      if (parsed != null && parsed > 0) {
                                         _quantity = parsed;
+                                      }
                                     },
                                     validator: (value) {
                                       final parsed = int.tryParse(value ?? '');
@@ -1064,6 +999,28 @@ class _EditCourtSheetState extends State<_EditCourtSheet> {
                                 ),
                               ),
                             ],
+                          ),
+                          _LabeledField(
+                            label: 'Giá sân/giờ (VND)',
+                            child: TextFormField(
+                              controller: _priceCtrl,
+                              textInputAction: TextInputAction.next,
+                              decoration: _decoration(
+                                hint: 'Ví dụ: 180000',
+                                icon: Icons.price_change_outlined,
+                              ),
+                              keyboardType: TextInputType.number,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) return null;
+                                final parsed = int.tryParse(
+                                  value.replaceAll(RegExp(r'[^0-9]'), ''),
+                                );
+                                if (parsed == null || parsed <= 0) {
+                                  return 'Giá phải là số dương';
+                                }
+                                return null;
+                              },
+                            ),
                           ),
                           _LabeledField(
                             label: 'Mô tả / nội quy',
@@ -1083,7 +1040,8 @@ class _EditCourtSheetState extends State<_EditCourtSheet> {
                                   cs.surfaceContainerHighest.withOpacity(0.55),
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
-                                  color: cs.outlineVariant.withOpacity(0.6)),
+                                color: cs.outlineVariant.withOpacity(0.6),
+                              ),
                             ),
                             child: SwitchListTile.adaptive(
                               contentPadding: const EdgeInsets.symmetric(
@@ -1132,7 +1090,8 @@ class _EditCourtSheetState extends State<_EditCourtSheet> {
                                           width: 18,
                                           height: 18,
                                           child: CircularProgressIndicator(
-                                              strokeWidth: 2),
+                                            strokeWidth: 2,
+                                          ),
                                         )
                                       : const Icon(Icons.save_outlined),
                                   label: const Text('Lưu thay đổi'),

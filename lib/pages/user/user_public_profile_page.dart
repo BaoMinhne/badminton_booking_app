@@ -78,7 +78,7 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
           _details = null;
           _homeCourtName = null;
           _isHomeCourtLoading = false;
-          _error = 'Không thể tải hồ sơ người dùng. Vui lòng thử lại sau.';
+          _error = "Can't load the user profile. Please try again later.";
           _isLoading = false;
         });
         return;
@@ -92,7 +92,7 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _error = 'Không thể tải hồ sơ người dùng. Vui lòng thử lại sau.';
+        _error = "Can't load the user profile. Please try again later.";
         _isLoading = false;
       });
     }
@@ -118,7 +118,7 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
       }
     } catch (_) {
       if (!mounted) return;
-      _relationError = 'Không thể kiểm tra trạng thái kết bạn.';
+      _relationError = "Can't check friend status.";
     } finally {
       if (!mounted) return;
       setState(() {
@@ -407,7 +407,7 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
     final intensity = _details?.intensity;
     if (intensity == null || intensity.isEmpty) {
       return Chip(
-        label: const Text('Chưa cập nhật'),
+        label: const Text('Not updated'),
         backgroundColor: cs.surfaceVariant,
         labelStyle: TextStyle(color: cs.onSurfaceVariant),
       );
@@ -456,8 +456,7 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 12),
-            FilledButton(
-                onPressed: _fetchDetails, child: const Text('Thử lại')),
+            FilledButton(onPressed: _fetchDetails, child: const Text('Retry')),
           ],
         ),
       );
@@ -478,51 +477,51 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
         const SizedBox(height: 16),
         _buildInfoSection(
           context,
-          title: 'Thông tin cơ bản',
+          title: 'Basic information',
           items: [
-            _infoTile(Icons.person_outline, 'Giới tính',
-                _humanize(details.gender) ?? 'Chưa cập nhật'),
+            _infoTile(Icons.person_outline, 'Gender',
+                _humanize(details.gender) ?? 'Not updated'),
             _infoTile(
               Icons.cake_outlined,
-              'Ngày sinh',
+              'Birthday',
               _formatBirthday(details.birthday),
             ),
             _infoTile(
               Icons.house_outlined,
-              'Sân yêu thích',
+              'Home court',
               _homeCourtName ??
                   (_isHomeCourtLoading
-                      ? 'Đang tải...'
-                      : (details.homeCourtId ?? 'Chưa cập nhật')),
+                      ? 'Loading...'
+                      : (details.homeCourtId ?? 'Not updated')),
             ),
           ],
         ),
         const SizedBox(height: 16),
         _buildInfoSection(
           context,
-          title: 'Lối chơi & sở thích',
+          title: 'Play style & preferences',
           items: [
             _chipsTile(
               context,
               icon: Icons.sports_tennis_outlined,
-              label: 'Hình thức thi đấu',
+              label: 'Match formats',
               values: details.matchTypes,
             ),
             _chipsTile(
               context,
               icon: Icons.style_outlined,
-              label: 'Phong cách',
+              label: 'Play styles',
               values: details.playStyleTags,
             ),
             _infoTile(
               Icons.people_outline,
-              'Vị trí ưa thích khi đánh đôi',
-              _humanize(details.preferredRoleDoubles) ?? 'Chưa cập nhật',
+              'Preferred doubles role',
+              _humanize(details.preferredRoleDoubles) ?? 'Not updated',
             ),
             _infoTile(
               Icons.local_fire_department_outlined,
-              'Mức độ nghiêm túc',
-              _humanize(details.intensity) ?? 'Chưa cập nhật',
+              'Play intensity',
+              _humanize(details.intensity) ?? 'Not updated',
             ),
           ],
         ),
@@ -557,12 +556,12 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
           if (_isRelationLoading)
             const Center(child: CircularProgressIndicator())
           else if (isSelf)
-            const Text('Đây là hồ sơ của bạn.')
+            const Text('This is your profile.')
           else if (isFriend)
             Row(
               children: [
                 Chip(
-                  label: const Text('Bạn bè'),
+                  label: const Text('Friends'),
                   avatar:
                       const Icon(Icons.check_circle_outline, color: Colors.green),
                   backgroundColor: cs.primaryContainer,
@@ -573,7 +572,7 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
                   child: FilledButton.icon(
                     onPressed: _openChat,
                     icon: const Icon(Icons.send_rounded),
-                    label: const Text('Nhắn tin'),
+                    label: const Text('Message'),
                   ),
                 ),
               ],
@@ -588,8 +587,8 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
                     icon: const Icon(Icons.person_add_alt_1_rounded),
                     label: Text(
                       isPending
-                          ? 'Đã gửi lời mời'
-                          : 'Gửi lời mời kết bạn',
+                          ? 'Request sent'
+                          : 'Send friend request',
                     ),
                   ),
                 ),
@@ -618,7 +617,7 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
         _statCard(
           context,
           icon: Icons.stacked_line_chart_rounded,
-          label: 'Trình độ',
+          label: 'Level',
           value: _levelLabels[details?.levelNumeric ?? 3] ?? 'Intermediate',
           background: cs.primaryContainer,
           foreground: cs.onPrimaryContainer,
@@ -634,8 +633,8 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
               child: _statCard(
                 context,
                 icon: Icons.calendar_month_outlined,
-                label: 'Số buổi/tuần',
-                value: details?.playsPerWeek?.toString() ?? 'Chưa rõ',
+                label: 'Sessions/week',
+                value: details?.playsPerWeek?.toString() ?? 'Not specified',
                 background: cs.secondaryContainer,
                 foreground: cs.onSecondaryContainer,
                 alignHorizontal: true,
@@ -646,10 +645,10 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
               child: _statCard(
                 context,
                 icon: Icons.military_tech_outlined,
-                label: 'Kinh nghiệm',
+                label: 'Experience',
                 value: details?.experienceYears != null
-                    ? '${details!.experienceYears} năm'
-                    : 'Chưa rõ',
+                    ? '${details!.experienceYears} years'
+                    : 'Not specified',
                 background: cs.tertiaryContainer,
                 foreground: cs.onTertiaryContainer,
                 alignHorizontal: true,
@@ -795,7 +794,7 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
   }
 
   Widget _infoTile(IconData icon, String label, String value) {
-    final formatted = value.isEmpty ? 'Chưa cập nhật' : value;
+    final formatted = value.isEmpty ? 'Not updated' : value;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
@@ -869,7 +868,7 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
                   )
                 else
                   Text(
-                    'Chưa cập nhật',
+                    'Not updated',
                     style: TextStyle(color: cs.onSurfaceVariant),
                   ),
               ],
@@ -881,7 +880,7 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
   }
 
   String _formatBirthday(DateTime? birthday) {
-    if (birthday == null) return 'Chưa cập nhật';
+    if (birthday == null) return 'Not updated';
     return DateFormat('dd/MM/yyyy').format(birthday);
   }
 
@@ -913,7 +912,7 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã gửi lời mời kết bạn.')),
+        const SnackBar(content: Text('Friend request sent.')),
       );
     } catch (err) {
       if (!mounted) return;
@@ -948,7 +947,7 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
         final targetUserId = contact.userId ?? contact.id;
 
         if (targetUserId == null) {
-          throw Exception('Không xác định được người nhận tin nhắn.');
+          throw Exception('Cannot identify message recipient.');
         }
 
         String? roomId = contact.chatId;

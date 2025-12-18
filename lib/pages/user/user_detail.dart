@@ -94,7 +94,7 @@ class _UserDetailState extends State<UserDetail> {
       if (userId == null) {
         setState(() {
           _error =
-              'Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại.';
+              'User info not found. Please sign in again to continue.';
           _isLoading = false;
         });
         return;
@@ -113,7 +113,7 @@ class _UserDetailState extends State<UserDetail> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = 'Đã xảy ra lỗi khi tải dữ liệu. Vui lòng thử lại sau.';
+        _error = 'Something went wrong while loading data. Please try again later.';
         _isLoading = false;
       });
     }
@@ -187,13 +187,13 @@ class _UserDetailState extends State<UserDetail> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Thông tin cá nhân'),
+        title: const Text('Personal Information'),
         centerTitle: true,
         actions: [
           IconButton(
             onPressed: _isLoading ? null : _loadDetails,
             icon: const Icon(Icons.refresh_rounded),
-            tooltip: 'Tải lại',
+            tooltip: 'Reload',
           ),
         ],
         elevation: 0,
@@ -226,7 +226,7 @@ class _UserDetailState extends State<UserDetail> {
               ElevatedButton.icon(
                 onPressed: _loadDetails,
                 icon: const Icon(Icons.refresh),
-                label: const Text('Thử lại'),
+                label: const Text('Try again'),
               ),
             ],
           ),
@@ -241,25 +241,25 @@ class _UserDetailState extends State<UserDetail> {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
         children: [
           Text(
-            'Bạn có thể chạm vào các ô thông tin bên dưới để chỉnh sửa.',
+            'You can tap any of the fields below to edit your details.',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 24),
           _buildField(
-            'Tên đăng nhập',
+            'Username',
             _usernameController,
             readOnly: true,
           ),
           _buildField(
-            'Họ và tên',
+            'Full name',
             _fullNameController,
-            hintText: 'Nhập họ tên của bạn',
+            hintText: 'Enter your full name',
           ),
           _buildDropdownField(
-            label: 'Trình độ',
+            label: 'Level',
             value: _selectedLevel,
             options: _levelOptions,
-            hintText: 'Vui lòng chọn trình độ',
+            hintText: 'Please select a level',
             onChanged: (String? value) {
               setState(() {
                 _selectedLevel = value;
@@ -269,10 +269,10 @@ class _UserDetailState extends State<UserDetail> {
           _buildMatchTypeMultiSelect(),
           _buildPlayStyleTagsMultiSelect(),
           _buildDropdownField(
-            label: 'Vị trí ưa thích khi đánh đôi',
+            label: 'Preferred doubles position',
             value: _selectedPreferredRole,
             options: _preferredRoleOptions,
-            hintText: 'Chọn vị trí',
+            hintText: 'Select a position',
             onChanged: (String? value) {
               setState(() {
                 _selectedPreferredRole = value;
@@ -280,10 +280,10 @@ class _UserDetailState extends State<UserDetail> {
             },
           ),
           _buildDropdownField(
-            label: 'Cường độ chơi',
+            label: 'Play intensity',
             value: _selectedIntensity,
             options: _intensityOptions,
-            hintText: 'Chọn cường độ',
+            hintText: 'Select intensity',
             onChanged: (String? value) {
               setState(() {
                 _selectedIntensity = value;
@@ -291,20 +291,20 @@ class _UserDetailState extends State<UserDetail> {
             },
           ),
           _buildNumberField(
-            'Số năm kinh nghiệm',
+            'Years of experience',
             _experienceYearsController,
-            hintText: 'Ví dụ: 2',
+            hintText: 'Example: 2',
           ),
           _buildNumberField(
-            'Số buổi/tuần',
+            'Sessions per week',
             _playsPerWeekController,
-            hintText: 'Ví dụ: 3',
+            hintText: 'Example: 3',
           ),
           _buildDropdownField(
-            label: 'Giới tính',
+            label: 'Gender',
             value: _selectedGender,
             options: _genderOptions,
-            hintText: 'Vui lòng chọn giới tính',
+            hintText: 'Please select your gender',
             onChanged: (String? value) {
               setState(() {
                 _selectedGender = value;
@@ -312,9 +312,9 @@ class _UserDetailState extends State<UserDetail> {
             },
           ),
           _buildField(
-            'Ngày sinh',
+            'Birthday',
             _birthdayController,
-            hintText: 'Định dạng dd/MM/yyyy',
+            hintText: 'Format dd/MM/yyyy',
             readOnly: true,
             onTap: _pickBirthday,
           ),
@@ -330,7 +330,7 @@ class _UserDetailState extends State<UserDetail> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.save_rounded),
-              label: Text(_isSaving ? 'Đang lưu...' : 'LƯU THAY ĐỔI'),
+              label: Text(_isSaving ? 'Saving...' : 'SAVE CHANGES'),
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
@@ -491,7 +491,7 @@ class _UserDetailState extends State<UserDetail> {
       padding: const EdgeInsets.only(bottom: 24),
       child: InputDecorator(
         decoration: InputDecoration(
-          labelText: 'Hình thức tham gia',
+          labelText: 'Match formats',
           filled: true,
           fillColor:
               Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
@@ -516,7 +516,7 @@ class _UserDetailState extends State<UserDetail> {
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Text(
-                  'Vui lòng chọn một hoặc nhiều lựa chọn bên dưới.',
+                  'Please choose one or more options below.',
                   style: TextStyle(color: Theme.of(context).hintColor),
                 ),
               ),
@@ -571,7 +571,7 @@ class _UserDetailState extends State<UserDetail> {
       padding: const EdgeInsets.only(bottom: 24),
       child: InputDecorator(
         decoration: InputDecoration(
-          labelText: 'Phong cách chơi',
+          labelText: 'Play style',
           filled: true,
           fillColor:
               Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
@@ -596,7 +596,7 @@ class _UserDetailState extends State<UserDetail> {
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Text(
-                  'Chọn các thẻ mô tả phong cách của bạn.',
+                  'Pick the tags that best describe your play style.',
                   style: TextStyle(color: Theme.of(context).hintColor),
                 ),
               ),
@@ -721,13 +721,14 @@ class _UserDetailState extends State<UserDetail> {
       _applyData(details: updatedDetails);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã cập nhật thông tin thành công.')),
+        const SnackBar(content: Text('Your information was updated successfully.')),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Không thể lưu thông tin. Vui lòng thử lại sau. ($e)'),
+          content:
+              Text('Could not save your information. Please try again later. ($e)'),
         ),
       );
     } finally {

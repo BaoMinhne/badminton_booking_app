@@ -56,19 +56,22 @@ class CourtInfoSection extends StatelessWidget {
                 child: Icon(Icons.sports_tennis, color: cs.primary),
               ),
               const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Booked court information',
-                    style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Choose your booked court and the matching time slot.',
-                    style: textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-                  ),
-                ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Booked court information',
+                      style:
+                          textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Choose your booked court and the matching time slot.',
+                      style: textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),

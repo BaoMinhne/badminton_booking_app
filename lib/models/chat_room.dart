@@ -70,7 +70,7 @@ class ChatRoom {
   ChatContact toContact(String currentUserId) {
     final isMyMessage = lastSenderId == currentUserId;
     final prefix =
-        isMyMessage && (lastMessage?.isNotEmpty ?? false) ? 'Bạn: ' : '';
+        isMyMessage && (lastMessage?.isNotEmpty ?? false) ? 'You: ' : '';
 
     return ChatContact(
       id: id,

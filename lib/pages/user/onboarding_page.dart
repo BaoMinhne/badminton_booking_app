@@ -34,6 +34,12 @@ class _OnboardingPageState extends State<OnboardingPage> {
     'mixed',
   ];
 
+  static const Map<String, String> _matchTypeLabels = <String, String>{
+    'singles': 'Singles',
+    'doubles': 'Doubles',
+    'mixed': 'Mixed',
+  };
+
   static const List<String> _playStyleTagOptions = <String>[
     'attack',
     'defense',
@@ -44,11 +50,27 @@ class _OnboardingPageState extends State<OnboardingPage> {
     'competitive',
   ];
 
+  static const Map<String, String> _playStyleLabels = <String, String>{
+    'attack': 'Attack',
+    'defense': 'Defense',
+    'net': 'Net',
+    'baseline': 'Baseline',
+    'all_round': 'All-round',
+    'fun': 'Fun',
+    'competitive': 'Competitive',
+  };
+
   static const List<String> _preferredRoleOptions = <String>[
     'front',
     'back',
     'flexible',
   ];
+
+  static const Map<String, String> _preferredRoleLabels = <String, String>{
+    'front': 'Front',
+    'back': 'Back',
+    'flexible': 'Flexible',
+  };
 
   static const List<String> _intensityOptions = <String>[
     'casual',
@@ -56,10 +78,21 @@ class _OnboardingPageState extends State<OnboardingPage> {
     'competitive',
   ];
 
+  static const Map<String, String> _intensityLabels = <String, String>{
+    'casual': 'Casual',
+    'semi_competitive': 'Semi-competitive',
+    'competitive': 'Competitive',
+  };
+
   static const List<String> _genderOptions = <String>[
     'male',
     'female',
   ];
+
+  static const Map<String, String> _genderLabels = <String, String>{
+    'male': 'Male',
+    'female': 'Female',
+  };
 
   bool _saving = false;
   String? _selectedLevel;
@@ -114,7 +147,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: const Text('Chào mừng đến Courtify'),
+        title: const Text('Welcome to Courtify'),
         centerTitle: true,
       ),
       body: SafeArea(
@@ -126,7 +159,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Hãy hoàn thiện hồ sơ của bạn để nhận gợi ý phù hợp.',
+                  'Complete your profile to get tailored suggestions.',
                   style: Theme.of(context)
                       .textTheme
                       .titleMedium
@@ -134,70 +167,80 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 ),
                 const SizedBox(height: 16),
                 _buildTextField(
-                  label: 'Họ và tên',
+                  label: 'Full name',
                   controller: _fullnameController,
                   validator: (value) =>
                       value == null || value.trim().isEmpty
-                          ? 'Vui lòng nhập họ tên'
+                          ? 'Please enter your full name'
                           : null,
                 ),
                 const SizedBox(height: 12),
                 _buildDropdown(
-                  label: 'Trình độ',
+                  label: 'Skill level',
                   value: _selectedLevel,
                   options: _levelOptions,
                   onChanged: (value) => setState(() => _selectedLevel = value),
                 ),
                 const SizedBox(height: 12),
                 _buildChips(
-                  label: 'Hình thức chơi yêu thích',
+                  label: 'Preferred match format',
                   options: _matchTypeOptions,
                   selectedValues: _selectedMatchTypes,
                   onChanged: (newValues) =>
                       setState(() => _selectedMatchTypes = newValues),
+                  labelBuilder: (value) =>
+                      _matchTypeLabels[value] ?? _titleCase(value),
                 ),
                 const SizedBox(height: 12),
                 _buildChips(
-                  label: 'Phong cách chơi',
+                  label: 'Play style',
                   options: _playStyleTagOptions,
                   selectedValues: _selectedPlayStyleTags,
                   onChanged: (newValues) =>
                       setState(() => _selectedPlayStyleTags = newValues),
+                  labelBuilder: (value) =>
+                      _playStyleLabels[value] ?? _titleCase(value),
                   maxSelection: 4,
                 ),
                 const SizedBox(height: 12),
                 _buildDropdown(
-                  label: 'Vị trí ưa thích khi đánh đôi',
+                  label: 'Preferred doubles position',
                   value: _selectedPreferredRole,
                   options: _preferredRoleOptions,
                   onChanged: (value) =>
                       setState(() => _selectedPreferredRole = value),
+                  labelBuilder: (value) =>
+                      _preferredRoleLabels[value] ?? _titleCase(value),
                 ),
                 const SizedBox(height: 12),
                 _buildDropdown(
-                  label: 'Mức độ chơi',
+                  label: 'Play intensity',
                   value: _selectedIntensity,
                   options: _intensityOptions,
                   onChanged: (value) => setState(() => _selectedIntensity = value),
+                  labelBuilder: (value) =>
+                      _intensityLabels[value] ?? _titleCase(value),
                 ),
                 const SizedBox(height: 12),
                 _buildDropdown(
-                  label: 'Giới tính',
+                  label: 'Gender',
                   value: _selectedGender,
                   options: _genderOptions,
                   onChanged: (value) => setState(() => _selectedGender = value),
+                  labelBuilder: (value) =>
+                      _genderLabels[value] ?? _titleCase(value),
                 ),
                 const SizedBox(height: 12),
                 _buildDatePicker(context),
                 const SizedBox(height: 12),
                 _buildNumberField(
-                  label: 'Số năm kinh nghiệm',
+                  label: 'Years of experience',
                   controller: _experienceController,
                   max: 40,
                 ),
                 const SizedBox(height: 12),
                 _buildNumberField(
-                  label: 'Số buổi chơi mỗi tuần',
+                  label: 'Sessions per week',
                   controller: _playPerWeekController,
                   max: 14,
                   min: 0,
@@ -214,7 +257,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.check_circle_outline),
-                    label: const Text('Hoàn tất hồ sơ'),
+                    label: const Text('Complete profile'),
                   ),
                 ),
               ],
@@ -245,11 +288,13 @@ class _OnboardingPageState extends State<OnboardingPage> {
     required List<String> options,
     required String? value,
     required ValueChanged<String?> onChanged,
+    String Function(String value)? labelBuilder,
   }) {
+    final buildLabel = labelBuilder ?? (v) => v;
     return DropdownButtonFormField<String>(
       value: value,
       onChanged: onChanged,
-      validator: (v) => v == null || v.isEmpty ? 'Vui lòng chọn $label' : null,
+      validator: (v) => v == null || v.isEmpty ? 'Please select $label' : null,
       decoration: InputDecoration(
         labelText: label,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -258,7 +303,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
           .map(
             (opt) => DropdownMenuItem<String>(
               value: opt,
-              child: Text(opt),
+              child: Text(buildLabel(opt)),
             ),
           )
           .toList(),
@@ -271,7 +316,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
     required List<String> selectedValues,
     required ValueChanged<List<String>> onChanged,
     int? maxSelection,
+    String Function(String value)? labelBuilder,
   }) {
+    final buildLabel = labelBuilder ?? (v) => v;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -287,7 +334,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
           children: options.map((opt) {
             final isSelected = selectedValues.contains(opt);
             return FilterChip(
-              label: Text(opt),
+              label: Text(buildLabel(opt)),
               selected: isSelected,
               onSelected: (selected) {
                 final current = List<String>.from(selectedValues);
@@ -307,7 +354,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
           Padding(
             padding: const EdgeInsets.only(top: 6),
             child: Text(
-              'Vui lòng chọn ít nhất 1 mục',
+              'Please select at least one option',
               style: TextStyle(
                 color: Theme.of(context).colorScheme.error,
                 fontSize: 12,
@@ -320,13 +367,13 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
   Widget _buildDatePicker(BuildContext context) {
     final dateText = _selectedBirthday == null
-        ? 'Chọn ngày sinh'
+        ? 'Select birthday'
         : DateFormat('dd/MM/yyyy').format(_selectedBirthday!);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Ngày sinh',
+        Text('Birthday',
             style: Theme.of(context)
                 .textTheme
                 .labelLarge
@@ -346,7 +393,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
           Padding(
             padding: const EdgeInsets.only(top: 6),
             child: Text(
-              'Vui lòng chọn ngày sinh',
+              'Please select your birthday',
               style: TextStyle(
                 color: Theme.of(context).colorScheme.error,
                 fontSize: 12,
@@ -368,12 +415,12 @@ class _OnboardingPageState extends State<OnboardingPage> {
       keyboardType: TextInputType.number,
       validator: (value) {
         final text = value?.trim() ?? '';
-        if (text.isEmpty) return 'Vui lòng nhập $label';
+        if (text.isEmpty) return 'Please enter $label';
         final number = int.tryParse(text);
-        if (number == null) return 'Giá trị không hợp lệ';
-        if (number < min) return 'Giá trị tối thiểu là $min';
+        if (number == null) return 'Invalid value';
+        if (number < min) return 'Minimum value is $min';
         if (max != null && number > max) {
-          return 'Giá trị tối đa là $max';
+          return 'Maximum value is $max';
         }
         return null;
       },
@@ -399,6 +446,15 @@ class _OnboardingPageState extends State<OnboardingPage> {
         _selectedBirthday = picked;
       });
     }
+  }
+
+  String _titleCase(String value) {
+    return value
+        .replaceAll('_', ' ')
+        .split(' ')
+        .where((part) => part.isNotEmpty)
+        .map((part) => part[0].toUpperCase() + part.substring(1))
+        .join(' ');
   }
 
   int _levelToNumeric(String level) {
@@ -450,13 +506,13 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Hoàn tất thông tin thành công!')),
+        const SnackBar(content: Text('Profile completed successfully!')),
       );
       Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Không thể lưu thông tin: $e')),
+        SnackBar(content: Text('Unable to save information: $e')),
       );
     } finally {
       if (mounted) {

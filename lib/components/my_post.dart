@@ -185,7 +185,7 @@ class _MyPostState extends State<MyPost> {
               Padding(
                 padding: const EdgeInsets.only(left: 12, right: 4),
                 child: Text(
-                  '${widget.likesCount} lượt thích',
+                  '${widget.likesCount} like${(widget.likesCount ?? 0) == 1 ? '' : 's'}',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -208,7 +208,7 @@ class _MyPostState extends State<MyPost> {
               Padding(
                 padding: const EdgeInsets.only(left: 12, right: 4),
                 child: Text(
-                  '${widget.commentsCount} bình luận',
+                  '${widget.commentsCount} comment${(widget.commentsCount ?? 0) == 1 ? '' : 's'}',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ),
@@ -263,16 +263,35 @@ class _MyPostState extends State<MyPost> {
 
   String _timeAgo(DateTime t) {
     final diff = DateTime.now().difference(t);
-    if (diff.inMinutes < 1) return 'VỪA XONG';
-    if (diff.inMinutes < 60) return '${diff.inMinutes} phút';
-    if (diff.inHours < 24) return '${diff.inHours} giờ';
-    if (diff.inDays < 7) return '${diff.inDays} ngày';
+    if (diff.inMinutes < 1) return 'Just now';
+
+    if (diff.inMinutes < 60) {
+      final minutes = diff.inMinutes;
+      return '$minutes minute${minutes == 1 ? '' : 's'}';
+    }
+
+    if (diff.inHours < 24) {
+      final hours = diff.inHours;
+      return '$hours hour${hours == 1 ? '' : 's'}';
+    }
+
+    if (diff.inDays < 7) {
+      final days = diff.inDays;
+      return '$days day${days == 1 ? '' : 's'}';
+    }
+
     final weeks = (diff.inDays / 7).floor();
-    if (weeks < 5) return '$weeks tuần';
+    if (weeks < 5) {
+      return '$weeks week${weeks == 1 ? '' : 's'}';
+    }
+
     final months = (diff.inDays / 30).floor();
-    if (months < 12) return '$months tháng';
+    if (months < 12) {
+      return '$months month${months == 1 ? '' : 's'}';
+    }
+
     final years = (diff.inDays / 365).floor();
-    return '$years năm';
+    return '$years year${years == 1 ? '' : 's'}';
   }
 }
 

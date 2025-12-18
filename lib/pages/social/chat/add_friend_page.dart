@@ -32,14 +32,14 @@ class _AddFriendPageState extends State<AddFriendPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6FB),
       appBar: AppBar(
-        title: const Text('Thêm bạn bè'),
+        title: const Text('Add friend'),
       ),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
           children: [
             Text(
-              'Tìm kiếm bạn bè',
+              'Find friends',
               style: theme.textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -51,7 +51,7 @@ class _AddFriendPageState extends State<AddFriendPage> {
               _buildSearchResults(context, friendManager, theme),
             const SizedBox(height: 24),
             Text(
-              'Gợi ý kết bạn',
+              'Friend suggestions',
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
@@ -82,7 +82,7 @@ class _AddFriendPageState extends State<AddFriendPage> {
             size: 24,
             color: Colors.grey.shade600,
           ),
-          hintText: 'Tìm kiếm bạn bè',
+          hintText: 'Search friends',
           hintStyle: TextStyle(
             fontSize: 18,
             color: Colors.grey.shade600,
@@ -127,7 +127,7 @@ class _AddFriendPageState extends State<AddFriendPage> {
 
     if (friendManager.searchResults.isEmpty) {
       return Text(
-        'Không tìm thấy người dùng phù hợp.',
+        'No matching users found.',
         style: theme.textTheme.bodyMedium,
       );
     }
@@ -136,7 +136,7 @@ class _AddFriendPageState extends State<AddFriendPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Kết quả tìm kiếm',
+          'Search results',
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w600,
           ),
@@ -186,7 +186,7 @@ class _AddFriendPageState extends State<AddFriendPage> {
           ),
           TextButton(
             onPressed: () => friendManager.loadFriendSuggestions(),
-            child: const Text('Thử lại'),
+            child: const Text('Retry'),
           ),
         ],
       );
@@ -194,7 +194,7 @@ class _AddFriendPageState extends State<AddFriendPage> {
 
     if (friendManager.friendSuggestions.isEmpty) {
       return Text(
-        'Hiện chưa có gợi ý kết bạn.',
+        'No friend suggestions right now.',
         style: theme.textTheme.bodyMedium,
       );
     }
@@ -231,7 +231,7 @@ class _AddFriendPageState extends State<AddFriendPage> {
             alignment: Alignment.centerLeft,
             child: TextButton(
               onPressed: friendManager.showMoreSuggestions,
-              child: const Text('Xem thêm'),
+              child: const Text('Show more'),
             ),
           ),
       ],
@@ -249,9 +249,9 @@ class _AddFriendPageState extends State<AddFriendPage> {
     if (isPending) {
       final confirmed = await _showConfirmDialog(
         context,
-        title: 'Huỷ lời mời kết bạn?',
+        title: 'Cancel friend request?',
         message:
-            'Bạn có chắc muốn huỷ lời mời kết bạn đã gửi cho ${result.displayName}?',
+            'Are you sure you want to cancel the request sent to ${result.displayName}?',
       );
       if (!confirmed) return;
     }
@@ -261,14 +261,14 @@ class _AddFriendPageState extends State<AddFriendPage> {
         await friendManager.cancelPendingRequest(result.user.id);
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Đã huỷ lời mời kết bạn.')),
+            const SnackBar(content: Text('Canceled the friend request.')),
           );
         }
       } else if (relation.type == FriendRelationType.none) {
         await friendManager.sendFriendRequest(result);
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Đã gửi lời mời kết bạn.')),
+            const SnackBar(content: Text('Friend request sent.')),
           );
         }
       }
@@ -294,11 +294,11 @@ class _AddFriendPageState extends State<AddFriendPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Quay lại'),
+            child: const Text('Back'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Xác nhận'),
+            child: const Text('Confirm'),
           ),
         ],
       ),
@@ -331,7 +331,7 @@ class _AddFriendPageState extends State<AddFriendPage> {
         actions.add(
           FilledButton.tonal(
             onPressed: null,
-            child: const Text('Bạn bè'),
+            child: const Text('Friends'),
           ),
         );
         break;
@@ -341,7 +341,7 @@ class _AddFriendPageState extends State<AddFriendPage> {
             onPressed: isProcessing
                 ? null
                 : () => _handleAcceptRequest(context, friendManager, result),
-            child: const Text('Đồng ý'),
+            child: const Text('Accept'),
           ),
           FilledButton.tonal(
             onPressed: isProcessing
@@ -351,13 +351,13 @@ class _AddFriendPageState extends State<AddFriendPage> {
               backgroundColor: cs.errorContainer,
               foregroundColor: cs.onErrorContainer,
             ),
-            child: const Text('Xóa'),
+            child: const Text('Remove'),
           ),
         ]);
         break;
       case FriendRelationType.outgoingRequest:
       case FriendRelationType.none:
-        final label = _primaryActionLabel(friendManager, result) ?? 'Kết bạn';
+        final label = _primaryActionLabel(friendManager, result) ?? 'Add friend';
         actions.add(
           isProcessing
               ? const SizedBox(
@@ -396,9 +396,9 @@ class _AddFriendPageState extends State<AddFriendPage> {
 
     switch (relation.type) {
       case FriendRelationType.none:
-        return 'Kết bạn';
+        return 'Add friend';
       case FriendRelationType.outgoingRequest:
-        return 'Huỷ lời mời';
+        return 'Cancel request';
       case FriendRelationType.incomingRequest:
       case FriendRelationType.friends:
         return null;
@@ -415,7 +415,7 @@ class _AddFriendPageState extends State<AddFriendPage> {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Bạn và ${result.displayName} đã là bạn bè.'),
+            content: Text('You and ${result.displayName} are now friends.'),
           ),
         );
       }
@@ -435,8 +435,8 @@ class _AddFriendPageState extends State<AddFriendPage> {
   ) async {
     final confirmed = await _showConfirmDialog(
       context,
-      title: 'Xóa lời mời kết bạn?',
-      message: 'Bạn có chắc muốn xóa lời mời kết bạn từ ${result.displayName}?',
+      title: 'Delete friend request?',
+      message: 'Are you sure you want to delete the request from ${result.displayName}?',
     );
 
     if (!confirmed) return;
@@ -445,7 +445,7 @@ class _AddFriendPageState extends State<AddFriendPage> {
       await friendManager.rejectIncomingRequest(result);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đã xóa lời mời kết bạn.')),
+          const SnackBar(content: Text('Deleted the friend request.')),
         );
       }
     } catch (err) {

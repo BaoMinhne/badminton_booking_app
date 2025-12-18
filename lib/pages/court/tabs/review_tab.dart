@@ -26,7 +26,7 @@ final List<Review> kSampleReviews = [
     userName: 'Hữu Minh',
     stars: 5,
     comment:
-        'Sân sạch, đèn sáng, vạch rõ. Chủ sân hỗ trợ nhiệt tình. Giờ cao điểm hơi đông nhưng đặt trước là ổn.',
+        'Clean courts, bright lights, clear lines. The owner is very supportive. Peak hours are a bit busy but booking ahead works.',
     createdAt: DateTime.now().subtract(const Duration(days: 1, hours: 3)),
     likes: 2,
   ),
@@ -35,7 +35,7 @@ final List<Review> kSampleReviews = [
     userName: 'Ngọc Anh',
     stars: 4,
     comment:
-        'Giá hợp lý. Nếu có thêm quạt ở sân số 3 thì tuyệt. Nói chung đáng quay lại.',
+        'Reasonable prices. Would be perfect with more fans at court #3. Overall worth returning.',
     createdAt: DateTime.now().subtract(const Duration(days: 4)),
   ),
   Review(
@@ -43,7 +43,7 @@ final List<Review> kSampleReviews = [
     userName: 'Quốc Việt',
     stars: 3,
     comment:
-        'Hôm mưa sàn hơi trơn, hy vọng sân cải thiện thoát nước. Nhân viên ok.',
+        'The floor was a bit slippery on a rainy day—hope drainage improves. Staff were fine.',
     createdAt: DateTime.now().subtract(const Duration(days: 9)),
     likes: 1,
   ),
@@ -151,7 +151,7 @@ class _ReviewTabState extends State<ReviewTab> {
                 const SizedBox(height: 4),
                 StarRow(rating: _avg, size: 20),
                 const SizedBox(height: 4),
-                Text('${_reviews.length} đánh giá',
+                Text('${_reviews.length} reviews',
                     style: TextStyle(color: cs.onSurface.withOpacity(0.7))),
               ],
             ),
@@ -197,36 +197,36 @@ class _ReviewTabState extends State<ReviewTab> {
       child: Row(
         children: [
           PopupMenuButton<int>(
-            tooltip: 'Lọc theo số sao',
+            tooltip: 'Filter by star rating',
             position: PopupMenuPosition.under,
             onSelected: (v) => setState(() => _filterStars = v),
             itemBuilder: (_) => [
-              const PopupMenuItem(value: 0, child: Text('Tất cả')),
+              const PopupMenuItem(value: 0, child: Text('All')),
               for (int s = 5; s >= 1; s--)
-                PopupMenuItem(value: s, child: Text('$s sao')),
+                PopupMenuItem(value: s, child: Text('$s stars')),
             ],
             child: _FilterChipLike(
-                label: _filterStars == 0 ? 'Tất cả' : '${_filterStars} sao'),
+                label: _filterStars == 0 ? 'All' : '${_filterStars} stars'),
           ),
           const SizedBox(width: 8),
           DropdownButton<_SortBy>(
             value: _sortBy,
             onChanged: (v) => setState(() => _sortBy = v ?? _SortBy.newest),
             items: const [
-              DropdownMenuItem(value: _SortBy.newest, child: Text('Mới nhất')),
+              DropdownMenuItem(value: _SortBy.newest, child: Text('Newest')),
               DropdownMenuItem(
-                  value: _SortBy.highest, child: Text('Sao cao nhất')),
+                  value: _SortBy.highest, child: Text('Highest rating')),
               DropdownMenuItem(
-                  value: _SortBy.lowest, child: Text('Sao thấp nhất')),
+                  value: _SortBy.lowest, child: Text('Lowest rating')),
               DropdownMenuItem(
-                  value: _SortBy.mostLiked, child: Text('Được thích nhiều')),
+                  value: _SortBy.mostLiked, child: Text('Most liked')),
             ],
           ),
           const Spacer(),
           TextButton.icon(
             onPressed: () => _openWriteReview(context),
             icon: const Icon(Icons.edit_outlined),
-            label: const Text('Viết đánh giá'),
+            label: const Text('Write a review'),
           ),
         ],
       ),
@@ -247,8 +247,8 @@ class _ReviewTabState extends State<ReviewTab> {
             hasScrollBody: false,
             child: _EmptyState(
               message: _reviews.isEmpty
-                  ? 'Chưa có đánh giá. Hãy là người đầu tiên!'
-                  : 'Không có mục nào khớp bộ lọc.',
+                  ? 'No reviews yet. Be the first!'
+                  : 'No items match the filter.',
             ),
           )
         else
@@ -301,21 +301,21 @@ class _ReviewTabState extends State<ReviewTab> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Báo cáo đánh giá'),
+        title: const Text('Report review'),
         content: Text(
-            'Bạn muốn báo cáo đánh giá của "${r.userName}"? Chúng tôi sẽ xem xét.'),
+            'Do you want to report the review from "${r.userName}"? We will review it.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Huỷ')),
+              child: const Text('Cancel')),
           FilledButton(
             onPressed: () {
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Đã gửi báo cáo.')),
+                const SnackBar(content: Text('Report submitted.')),
               );
             },
-            child: const Text('Gửi'),
+            child: const Text('Submit'),
           ),
         ],
       ),
@@ -494,7 +494,7 @@ class _ReviewCardState extends State<ReviewCard> {
               if (isLong)
                 TextButton(
                   onPressed: () => setState(() => _expanded = !_expanded),
-                  child: Text(_expanded ? 'Thu gọn' : 'Xem thêm'),
+                  child: Text(_expanded ? 'Collapse' : 'See more'),
                 ),
 
               // hành động
@@ -512,7 +512,7 @@ class _ReviewCardState extends State<ReviewCard> {
                   TextButton.icon(
                     onPressed: widget.onReport,
                     icon: const Icon(Icons.flag_outlined, size: 18),
-                    label: const Text('Báo cáo'),
+                    label: const Text('Report'),
                   ),
                 ],
               ),
@@ -560,12 +560,12 @@ class _WriteReviewSheetState extends State<_WriteReviewSheet> {
             ),
           ),
           const SizedBox(height: 12),
-          const Text('Viết đánh giá',
+          const Text('Write a review',
               style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
           const SizedBox(height: 12),
           Align(
               alignment: Alignment.centerLeft,
-              child: Text('Chấm sao', style: TextStyle(color: cs.onSurface))),
+              child: Text('Rate', style: TextStyle(color: cs.onSurface))),
           StarPicker(
             initial: 5,
             onChanged: (v) => _stars = v,
@@ -574,8 +574,8 @@ class _WriteReviewSheetState extends State<_WriteReviewSheet> {
           TextField(
             controller: _name,
             decoration: const InputDecoration(
-              labelText: 'Tên hiển thị',
-              hintText: 'VD: Minh Nguyễn',
+              labelText: 'Display name',
+              hintText: 'e.g., Minh Nguyen',
             ),
           ),
           const SizedBox(height: 8),
@@ -584,8 +584,8 @@ class _WriteReviewSheetState extends State<_WriteReviewSheet> {
             minLines: 3,
             maxLines: 6,
             decoration: const InputDecoration(
-              labelText: 'Nội dung đánh giá',
-              hintText: 'Chia sẻ trải nghiệm của bạn…',
+              labelText: 'Review content',
+              hintText: 'Share your experience…',
             ),
           ),
           const SizedBox(height: 12),
@@ -594,7 +594,7 @@ class _WriteReviewSheetState extends State<_WriteReviewSheet> {
               Expanded(
                 child: OutlinedButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Huỷ'),
+                  child: const Text('Cancel'),
                 ),
               ),
               const SizedBox(width: 12),
@@ -602,13 +602,13 @@ class _WriteReviewSheetState extends State<_WriteReviewSheet> {
                 child: FilledButton(
                   onPressed: () {
                     final name = _name.text.trim().isEmpty
-                        ? 'Người dùng'
+                        ? 'User'
                         : _name.text.trim();
                     final cmt = _comment.text.trim();
                     if (cmt.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                            content: Text('Vui lòng nhập nội dung đánh giá.')),
+                            content: Text('Please enter your review content.')),
                       );
                       return;
                     }
@@ -621,7 +621,7 @@ class _WriteReviewSheetState extends State<_WriteReviewSheet> {
                     );
                     Navigator.pop(context, r);
                   },
-                  child: const Text('Gửi đánh giá'),
+                  child: const Text('Submit review'),
                 ),
               ),
             ],
@@ -661,11 +661,11 @@ class _FilterChipLike extends StatelessWidget {
 String timeAgo(DateTime dt) {
   final now = DateTime.now();
   final diff = now.difference(dt);
-  if (diff.inMinutes < 1) return 'vừa xong';
-  if (diff.inMinutes < 60) return '${diff.inMinutes} phút trước';
-  if (diff.inHours < 24) return '${diff.inHours} giờ trước';
-  if (diff.inDays < 7) return '${diff.inDays} ngày trước';
+  if (diff.inMinutes < 1) return 'just now';
+  if (diff.inMinutes < 60) return '${diff.inMinutes} minutes ago';
+  if (diff.inHours < 24) return '${diff.inHours} hours ago';
+  if (diff.inDays < 7) return '${diff.inDays} days ago';
   final weeks = (diff.inDays / 7).floor();
-  if (weeks < 5) return '$weeks tuần trước';
+  if (weeks < 5) return '$weeks weeks ago';
   return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
 }

@@ -40,7 +40,7 @@ class FriendRequestManager extends ChangeNotifier {
       final pb = await getPocketbaseInstance();
       _currentUserId = pb.authStore.record?.id;
     } catch (err) {
-      _error = 'Không thể tải lời mời kết bạn. Vui lòng thử lại.';
+      _error = 'Unable to load friend requests. Please try again.';
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -120,7 +120,7 @@ class FriendRequestManager extends ChangeNotifier {
       await _service.acceptFriendRequest(request);
       _incoming = _incoming.where((e) => e.id != requestId).toList();
     } catch (err) {
-      _error = 'Không thể chấp nhận lời mời. Vui lòng thử lại.';
+      _error = 'Unable to accept the request. Please try again.';
       rethrow;
     } finally {
       _setProcessing(requestId, false);
@@ -134,7 +134,7 @@ class FriendRequestManager extends ChangeNotifier {
       await _service.rejectFriendRequest(requestId);
       _incoming = _incoming.where((e) => e.id != requestId).toList();
     } catch (err) {
-      _error = 'Không thể từ chối lời mời. Vui lòng thử lại.';
+      _error = 'Unable to decline the request. Please try again.';
       rethrow;
     } finally {
       _setProcessing(requestId, false);

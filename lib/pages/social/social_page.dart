@@ -162,7 +162,7 @@ class SocialPageState extends State<SocialPage> {
         _ReasonDetail(
           icon: Icons.style_rounded,
           iconColor: cs.primary,
-          text: 'Cùng phong cách ${sharedStyles.join(' / ')}',
+          text: 'Shared play style: ${sharedStyles.join(' / ')}',
         ),
       );
     } else if (friendStyles.isNotEmpty) {
@@ -170,7 +170,7 @@ class SocialPageState extends State<SocialPage> {
         _ReasonDetail(
           icon: Icons.auto_awesome_rounded,
           iconColor: cs.primary,
-          text: 'Phong cách bổ trợ: ${friendStyles.take(2).join(' / ')}',
+          text: 'Complementary play style: ${friendStyles.take(2).join(' / ')}',
         ),
       );
     }
@@ -183,8 +183,8 @@ class SocialPageState extends State<SocialPage> {
           icon: Icons.local_fire_department_rounded,
           iconColor: cs.tertiary,
           text: intensity == myDetails?.intensity
-              ? 'Cùng cường độ thi đấu $intensityLabel'
-              : 'Cường độ thi đấu phù hợp: $intensityLabel',
+              ? 'Same play intensity $intensityLabel'
+              : 'Compatible play intensity: $intensityLabel',
         ),
       );
     }
@@ -194,7 +194,7 @@ class SocialPageState extends State<SocialPage> {
         _ReasonDetail(
           icon: Icons.sports_tennis,
           iconColor: cs.secondary,
-          text: 'Ưu tiên kiểu trận: ${sharedMatchTypes.join(' / ')}',
+          text: 'Preferred match types: ${sharedMatchTypes.join(' / ')}',
         ),
       );
     }
@@ -203,7 +203,7 @@ class SocialPageState extends State<SocialPage> {
       _ReasonDetail(
         icon: Icons.stars_rounded,
         iconColor: cs.primary,
-        text: 'Mức độ phù hợp dự đoán: ${suggestion.matchScore.round()}%',
+        text: 'Predicted match score: ${suggestion.matchScore.round()}%',
       ),
     );
 
@@ -263,7 +263,7 @@ class SocialPageState extends State<SocialPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Vì sao gợi ý ${suggestion.friend.displayName}?',
+                            'Why recommend ${suggestion.friend.displayName}?',
                             style: tt.titleMedium?.copyWith(
                               fontWeight: FontWeight.w800,
                               letterSpacing: -0.2,
@@ -271,7 +271,7 @@ class SocialPageState extends State<SocialPage> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Được cá nhân hóa dựa trên hồ sơ thi đấu của bạn',
+                            'Personalized based on your play profile',
                             style: tt.bodySmall?.copyWith(
                               color: cs.onSurfaceVariant.withOpacity(0.8),
                             ),
@@ -361,7 +361,7 @@ class SocialPageState extends State<SocialPage> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text('Đóng'),
+                    child: const Text('Close'),
                   ),
                 ),
               ],
@@ -401,7 +401,7 @@ class SocialPageState extends State<SocialPage> {
             backgroundColor: cs.surfaceVariant.withOpacity(0.1),
             appBar: AppBar(
               title: const Text(
-                'Cộng đồng cầu lông',
+                'Badminton Community',
                 style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w700,
@@ -410,7 +410,7 @@ class SocialPageState extends State<SocialPage> {
               actions: [
                 IconButton(
                   icon: const Icon(Icons.add_circle_outline_rounded, size: 26),
-                  tooltip: 'Đăng bài',
+                  tooltip: 'Create post',
                   onPressed: () => _openCreatePost(context),
                   style: IconButton.styleFrom(
                     foregroundColor: cs.onPrimary,
@@ -422,7 +422,7 @@ class SocialPageState extends State<SocialPage> {
                 const SizedBox(width: 8),
                 IconButton(
                   icon: const Icon(Icons.group_rounded, size: 28),
-                  tooltip: 'Tin nhắn',
+                  tooltip: 'Messages',
                   onPressed: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
@@ -498,7 +498,7 @@ class SocialPageState extends State<SocialPage> {
                     ),
                   ),
                 ],
-                // các phần còn lại giữ nguyên
+                // other parts remain unchanged
                 labelStyle: tt.titleMedium?.copyWith(
                   fontWeight: FontWeight.w700,
                   fontSize: 16,
@@ -565,10 +565,10 @@ class SocialPageState extends State<SocialPage> {
             ),
           ),
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Text(
-                'Bảng tin cộng đồng',
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Text(
+                'Community feed',
                 style: Theme.of(context)
                     .textTheme
                     .titleLarge
@@ -592,16 +592,16 @@ class SocialPageState extends State<SocialPage> {
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildWelcomeCard(context),
-                  const SizedBox(height: 24),
-                  Text(
-                    'Bài tuyển thành viên',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleLarge
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildWelcomeCard(context),
+                      const SizedBox(height: 24),
+                      Text(
+                    'Member recruitment posts',
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleLarge
                         ?.copyWith(fontWeight: FontWeight.bold),
                   ),
                 ],
@@ -659,14 +659,14 @@ class SocialPageState extends State<SocialPage> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Gợi ý bạn chơi phù hợp',
+                                  'Recommended partners',
                                   style: tt.titleLarge?.copyWith(
                                     fontWeight: FontWeight.w800,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Khám phá những partner hợp gu, match score được chuẩn hoá từ 0 - 100%.',
+                                  'Discover well-matched partners with normalized match scores from 0 - 100%.',
                                   style: tt.bodyMedium?.copyWith(
                                     color: cs.onSurfaceVariant,
                                   ),
@@ -697,7 +697,7 @@ class SocialPageState extends State<SocialPage> {
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  'Gửi lời mời kết bạn hoặc mời vào sân trực tiếp từ danh sách gợi ý.',
+                                  'Send friend requests or court invites directly from the suggestions list.',
                                   style: tt.bodyMedium?.copyWith(
                                     color: cs.onPrimaryContainer,
                                     fontWeight: FontWeight.w600,
@@ -729,7 +729,7 @@ class SocialPageState extends State<SocialPage> {
                 const SliverFillRemaining(
                   hasScrollBody: false,
                   child: Center(
-                    child: Text('Không có gợi ý phù hợp với bộ lọc hiện tại.'),
+                    child: Text('No suggestions match the current filters.'),
                   ),
                 )
               else
@@ -744,7 +744,7 @@ class SocialPageState extends State<SocialPage> {
                         final level = details?.level ??
                             'Level ${details?.levelNumeric ?? 3}';
                         final intensityLabel =
-                            _humanize(details?.intensity) ?? 'Chưa cập nhật';
+                            _humanize(details?.intensity) ?? 'Not updated yet';
 
                         return PlayerSuggestionCard(
                           name: displayName,
@@ -788,7 +788,7 @@ class SocialPageState extends State<SocialPage> {
                             );
                           });
                         },
-                        child: const Text('Xem thêm'),
+                        child: const Text('Load more'),
                       ),
                     ),
                   ),
@@ -826,7 +826,7 @@ class SocialPageState extends State<SocialPage> {
                 Row(
                   children: [
                     Text(
-                      'Lọc nâng cao',
+                      'Advanced filters',
                       style:
                           tt.titleLarge?.copyWith(fontWeight: FontWeight.w700),
                     ),
@@ -840,11 +840,11 @@ class SocialPageState extends State<SocialPage> {
                 const SizedBox(height: 12),
                 SwitchListTile.adaptive(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Chỉ hiện người cùng sân nhà'),
+                  title: const Text('Show only players sharing my home court'),
                   subtitle: Text(
                     manager.homeCourtId == null
-                        ? 'Bạn chưa chọn sân nhà trong hồ sơ.'
-                        : 'Ưu tiên các partner có home court trùng với bạn.',
+                        ? 'You have not set a home court in your profile.'
+                        : 'Prioritize partners whose home court matches yours.',
                   ),
                   value: manager.homeCourtId != null && manager.onlyHomeCourt,
                   onChanged: manager.homeCourtId == null
@@ -853,7 +853,7 @@ class SocialPageState extends State<SocialPage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Match score tối thiểu: ${manager.minMatchScore.round()}%',
+                  'Minimum match score: ${manager.minMatchScore.round()}%',
                   style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 Slider(
@@ -868,9 +868,9 @@ class SocialPageState extends State<SocialPage> {
                 const SizedBox(height: 4),
                 CheckboxListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Ẩn người đã gửi lời mời hoặc đã là bạn'),
+                  title: const Text('Hide people already invited or friended'),
                   subtitle: const Text(
-                    'Loại bỏ các profile bạn đã gửi/nhận lời mời hoặc đã trở thành bạn bè.',
+                    "Exclude profiles you've sent/received invites to or are already friends with.",
                   ),
                   value: manager.hideExistingRelations,
                   onChanged: (value) {
@@ -932,14 +932,14 @@ class SocialPageState extends State<SocialPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Lời mời vào sân',
+                              'Court invitations',
                               style: tt.titleLarge?.copyWith(
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'Theo dõi các lời mời chơi gần đây và phản hồi nhanh chóng.',
+                              'Keep up with recent invitations and respond quickly.',
                               style: tt.bodyMedium?.copyWith(
                                 color: cs.onSurfaceVariant,
                               ),
@@ -968,7 +968,7 @@ class SocialPageState extends State<SocialPage> {
                 const SliverFillRemaining(
                   hasScrollBody: false,
                   child: Center(
-                    child: Text('Chưa có lời mời nào.'),
+                    child: Text('No invitations yet.'),
                   ),
                 )
               else
@@ -1070,11 +1070,11 @@ class SocialPageState extends State<SocialPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header: Tiêu đề + nút Viết bài (được làm gọn và tinh tế hơn)
+            // Header: title + Write post button with streamlined styling
             Row(
               children: [
                 Text(
-                  'Chia sẻ điều mới mẻ',
+                  'Share something new',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w600,
                         fontSize: 18,
@@ -1082,11 +1082,11 @@ class SocialPageState extends State<SocialPage> {
                       ),
                 ),
                 const Spacer(),
-                // Nút "Viết bài" được làm kiểu chip hiện đại, có hiệu ứng ripple đẹp
+                // "Write post" chip-style button with ripple effect
                 FilledButton.tonalIcon(
                   onPressed: () => _openCreatePost(context),
                   icon: const Icon(Icons.edit_outlined, size: 18),
-                  label: const Text('Viết bài'),
+                  label: const Text('Write post'),
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 10),
@@ -1100,9 +1100,9 @@ class SocialPageState extends State<SocialPage> {
               ],
             ),
 
-            const SizedBox(height: 16), // Tăng khoảng cách cho thoáng
+            const SizedBox(height: 16), // Extra spacing for breathing room
 
-            // CreatePostBar được tối ưu giao diện (dùng bản mình đã cải thiện trước đó)
+            // Optimized CreatePostBar layout
             CreatePostBar(
               onCreatePost: () => _openCreatePost(context),
               onPickPhoto: () => _openCreatePost(context),
@@ -1116,10 +1116,10 @@ class SocialPageState extends State<SocialPage> {
               avatarImageProvider: (avatarUrl != null && avatarUrl!.isNotEmpty)
                   ? NetworkImage(avatarUrl!)
                   : null,
-              hintText: 'Bạn đang nghĩ gì thế?',
-              elevation: 4, // bật lại elevation nhẹ để nổi
+              hintText: 'What\'s on your mind?',
+              elevation: 4, // subtle elevation for emphasis
               compact: false,
-              // Tùy chọn: thêm chút màu chủ đạo nếu muốn nổi bật hơn
+              // Optional: add primaryColor to highlight further
               // primaryColor: Colors.blue,
             ),
           ],
@@ -1151,7 +1151,7 @@ class SocialPageState extends State<SocialPage> {
       return const SliverToBoxAdapter(
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-          child: Text('Chưa có bài tuyển nào. Hãy là người đầu tiên đăng bài!'),
+          child: Text('No recruitment posts yet. Be the first to post!'),
         ),
       );
     }
@@ -1175,7 +1175,7 @@ class SocialPageState extends State<SocialPage> {
             onJoin: () async {
               if (!post.isActive) return;
 
-              // Nếu đã có status (pending/accepted/rejected) thì không join lại
+              // If status already exists (pending/accepted/rejected), skip joining again
               if (post.currentUserStatus != null &&
                   post.currentUserStatus != 'cancelled') {
                 return;
@@ -1234,7 +1234,7 @@ class SocialPageState extends State<SocialPage> {
       return const SliverToBoxAdapter(
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-          child: Text('Bảng tin đang trống. Đăng bài đầu tiên ngay nào!'),
+          child: Text('The feed is empty. Be the first to post!'),
         ),
       );
     }
@@ -1288,13 +1288,13 @@ class SocialPageState extends State<SocialPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Chào mừng bạn!',
+                  'Welcome!',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       color: cs.onPrimary, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'Tạo bài tuyển thành viên và kết nối người chơi xung quanh bạn ngay hôm nay.',
+                  'Create a recruitment post and connect with nearby players today.',
                   style: Theme.of(context)
                       .textTheme
                       .bodyMedium
@@ -1310,7 +1310,7 @@ class SocialPageState extends State<SocialPage> {
                     );
                   },
                   icon: Icon(Icons.flash_on_rounded, color: cs.primary),
-                  label: const Text('Tạo bài tuyển ngay'),
+                  label: const Text('Create a recruitment now'),
                   style: FilledButton.styleFrom(
                     backgroundColor: cs.onPrimary,
                     foregroundColor: cs.primary,
@@ -1399,7 +1399,7 @@ class _InviteCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      invite.courtName ?? 'Slot đang chờ xác nhận',
+                      invite.courtName ?? 'Slot pending confirmation',
                       style: tt.titleMedium?.copyWith(
                         fontWeight: FontWeight.w800,
                       ),
@@ -1460,7 +1460,7 @@ class _InviteCard extends StatelessWidget {
                   child: FilledButton.tonalIcon(
                     onPressed: onAccept,
                     icon: const Icon(Icons.event_available_rounded, size: 18),
-                    label: const Text('Chấp nhận'),
+                    label: const Text('Accept'),
                     style: FilledButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       backgroundColor: cs.primary,
@@ -1476,7 +1476,7 @@ class _InviteCard extends StatelessWidget {
                   child: OutlinedButton.icon(
                     onPressed: onReject,
                     icon: const Icon(Icons.reply_rounded, size: 18),
-                    label: const Text('Từ chối'),
+                    label: const Text('Decline'),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       side: BorderSide(color: cs.primary.withOpacity(0.35)),
@@ -1498,25 +1498,25 @@ class _InviteCard extends StatelessWidget {
 
   String _subtitle(Invitation invite, bool isOutgoing) {
     final host = isOutgoing
-        ? 'Bạn đã mời ${invite.toUserName ?? 'người chơi'}'
-        : invite.fromUserName ?? 'Người chơi';
+        ? 'You invited ${invite.toUserName ?? 'player'}'
+        : invite.fromUserName ?? 'Player';
     final slot = _formatTime(invite);
-    return '$host • ${slot ?? 'Slot đang chờ cập nhật'}';
+    return '$host • ${slot ?? 'Slot awaiting update'}';
   }
 
   String _typeLabel(InvitationType type) {
     switch (type) {
       case InvitationType.booking:
-        return 'Booking có sẵn';
+        return 'Existing booking';
       case InvitationType.proposed:
-        return 'Lời mời dự kiến';
+        return 'Proposed invitation';
       case InvitationType.recruitment:
-        return 'Theo bài tuyển';
+        return 'From recruitment';
     }
   }
 
   String _formatTime(Invitation invite) {
-    if (invite.startTime == null) return 'Thời gian đang đề xuất';
+    if (invite.startTime == null) return 'Time to be proposed';
     final start = invite.startTime!;
     final end = invite.endTime;
     final timeString =
@@ -1555,33 +1555,37 @@ class _StatusLabel extends StatelessWidget {
         fg = Colors.green.shade700;
         bg = Colors.green.withOpacity(0.12);
         icon = Icons.check_circle_rounded;
-        title =
-            isOutgoing ? 'Đã được chấp nhận' : 'Bạn đã chấp nhận lời mời này';
-        subtitle = 'Đã khoá lịch hẹn, hãy liên hệ để xác nhận chi tiết.';
+        title = isOutgoing
+            ? 'Accepted'
+            : 'You have accepted this invitation';
+        subtitle = 'Schedule locked—reach out to confirm details.';
         break;
       case 'rejected':
         fg = Colors.red.shade600;
         bg = Colors.red.withOpacity(0.1);
         icon = Icons.cancel_rounded;
-        title = isOutgoing ? 'Đã bị từ chối' : 'Bạn đã từ chối lời mời này';
-        subtitle = 'Bạn có thể gửi lời mời khác hoặc chọn slot khác.';
+        title = isOutgoing ? 'Declined' : 'You declined this invitation';
+        subtitle = 'You can send another invite or choose a different slot.';
         break;
       case 'cancelled':
         fg = cs.onSurfaceVariant;
         bg = cs.surfaceVariant.withOpacity(0.3);
         icon = Icons.block_rounded;
-        title = isOutgoing ? 'Bạn đã huỷ lời mời này' : 'Lời mời đã bị huỷ';
-        subtitle = 'Nếu cần, hãy gửi lại lời mời mới với thông tin cập nhật.';
+        title = isOutgoing
+            ? 'You cancelled this invitation'
+            : 'The invitation was cancelled';
+        subtitle = 'If needed, send a new invite with updated details.';
         break;
       default:
         fg = cs.primary;
         bg = cs.primary.withOpacity(0.08);
         icon = Icons.hourglass_top_rounded;
-        title =
-            isOutgoing ? 'Đã gửi • Chờ phản hồi' : 'Đang chờ phản hồi của bạn';
+        title = isOutgoing
+            ? 'Sent • Awaiting response'
+            : 'Waiting for your response';
         subtitle = isOutgoing
-            ? 'Người nhận sẽ xem và phản hồi sớm.'
-            : 'Chấp nhận để chốt lịch, hoặc từ chối nếu chưa phù hợp.';
+            ? 'The recipient will review and respond soon.'
+            : 'Accept to confirm the schedule or decline if it does not fit.';
     }
 
     return Container(
@@ -1648,7 +1652,7 @@ class _PartnerErrorState extends StatelessWidget {
           const SizedBox(height: 12),
           FilledButton(
             onPressed: onRetry,
-            child: const Text('Thử lại'),
+            child: const Text('Retry'),
           ),
         ],
       ),
@@ -1704,16 +1708,16 @@ class _QuickFilterPanel extends StatelessWidget {
     final tt = Theme.of(context).textTheme;
 
     const matchTypeOptions = [
-      (label: 'Tất cả', value: null as String?),
-      (label: 'Đánh đơn', value: 'singles'),
-      (label: 'Đánh đôi', value: 'doubles'),
-      (label: 'Đôi nam nữ', value: 'mixed'),
+      (label: 'All', value: null as String?),
+      (label: 'Singles', value: 'singles'),
+      (label: 'Doubles', value: 'doubles'),
+      (label: 'Mixed doubles', value: 'mixed'),
     ];
 
     const intensityOptions = [
-      (label: 'Chơi vui', value: 'casual'),
-      (label: 'Vừa phải', value: 'semi_competitive'),
-      (label: 'Đánh giải', value: 'competitive'),
+      (label: 'Casual', value: 'casual'),
+      (label: 'Semi-competitive', value: 'semi_competitive'),
+      (label: 'Competitive', value: 'competitive'),
     ];
 
     return Container(
@@ -1753,7 +1757,7 @@ class _QuickFilterPanel extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Bộ lọc nhanh',
+                        'Quick filters',
                         style: tt.titleMedium
                             ?.copyWith(fontWeight: FontWeight.w800),
                       ),
@@ -1764,7 +1768,7 @@ class _QuickFilterPanel extends StatelessWidget {
               TextButton.icon(
                 onPressed: onAdvancedTap,
                 icon: const Icon(Icons.expand_more_rounded),
-                label: const Text('Lọc nâng cao'),
+                label: const Text('Advanced filters'),
                 style: TextButton.styleFrom(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -1779,7 +1783,7 @@ class _QuickFilterPanel extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            'Loại kèo',
+            'Match type',
             style: tt.labelLarge?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 10),
@@ -1808,7 +1812,7 @@ class _QuickFilterPanel extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'Độ "máu"',
+            'Intensity',
             style: tt.labelLarge?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 10),

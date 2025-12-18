@@ -27,16 +27,16 @@ class ServicePrice {
     if ((from?.isNotEmpty ?? false) && (to?.isNotEmpty ?? false)) {
       name = '$from - $to';
     } else if (from?.isNotEmpty ?? false) {
-      name = 'Từ $from';
+      name = 'From $from';
     } else if (to?.isNotEmpty ?? false) {
-      name = 'Đến $to';
+      name = 'To $to';
     } else {
-      name = 'Giá theo giờ';
+      name = 'Hourly pricing';
     }
 
     return ServicePrice(
       name: name,
-      unit: 'giờ',
+      unit: 'hour',
       price: pricing.pricePerHour,
       priceLabel: pricing.priceLabel,
     );
@@ -71,17 +71,17 @@ class PricingTableMini extends StatefulWidget {
 
   const PricingTableMini({
     super.key,
-    this.title = "Bảng giá dịch vụ",
+    this.title = "Service pricing",
     required this.items,
     this.isLoading = false,
     this.errorMessage,
     this.onRetry,
-    this.emptyLabel = 'Chưa có dữ liệu giá cho sân này.',
+    this.emptyLabel = 'No pricing data for this court yet.',
     this.padding,
     this.shrinkWrap = false,
     this.physics,
     this.hintText =
-        'Giờ cao điểm ví dụ: 17:00–21:00 các ngày trong tuần.\nGiá đã bao gồm VAT (nếu có). Vui lòng đặt trước để giữ sân.',
+        'Example peak time: 17:00–21:00 on weekdays.\nPrices include VAT (if any). Please book in advance to hold a court.',
     this.initialVisibleCount,
   });
 
@@ -94,7 +94,7 @@ class PricingTableMini extends StatefulWidget {
     required Color color,
     required String message,
     VoidCallback? action,
-    String actionLabel = 'Thử lại',
+    String actionLabel = 'Retry',
   }) {
     return Center(
       child: Padding(
@@ -168,9 +168,9 @@ class _PricingTableMiniState extends State<PricingTableMini> {
         context,
         icon: Icons.error_outline,
         color: Colors.redAccent,
-        message: 'Không thể tải bảng giá.\n${widget.errorMessage}',
+        message: 'Unable to load pricing table.\n${widget.errorMessage}',
         action: widget.onRetry,
-        actionLabel: 'Thử lại',
+        actionLabel: 'Retry',
       );
     }
 
@@ -191,7 +191,7 @@ class _PricingTableMiniState extends State<PricingTableMini> {
         color: cs.primary,
         message: widget.emptyLabel,
         action: widget.onRetry,
-        actionLabel: 'Tải lại',
+        actionLabel: 'Reload',
       );
     }
 
@@ -240,7 +240,7 @@ class _PricingTableMiniState extends State<PricingTableMini> {
                         _isExpanded = !_isExpanded;
                       });
                     },
-                    child: Text(_isExpanded ? 'Thu gọn' : 'Xem thêm'),
+                    child: Text(_isExpanded ? 'Collapse' : 'See more'),
                   ),
                 ),
             ],
@@ -268,10 +268,10 @@ class _PricingTableMiniState extends State<PricingTableMini> {
         children: const [
           Expanded(
             child:
-                Text("Dịch vụ", style: TextStyle(fontWeight: FontWeight.w600)),
+                Text("Service", style: TextStyle(fontWeight: FontWeight.w600)),
           ),
           SizedBox(width: 12),
-          Text("Giá", style: TextStyle(fontWeight: FontWeight.w600)),
+          Text("Price", style: TextStyle(fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -283,7 +283,7 @@ class _PricingTableMiniState extends State<PricingTableMini> {
         ? formatVND(sp.price!)
         : (sp.priceLabel != null && sp.priceLabel!.trim().isNotEmpty
             ? sp.priceLabel!
-            : 'Liên hệ');
+            : 'Contact');
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -309,7 +309,7 @@ class _PricingTableMiniState extends State<PricingTableMini> {
                         style: const TextStyle(fontSize: 15, height: 1.2),
                       ),
                     ),
-                    if (sp.isPeak) _badge(cs, "Cao điểm"),
+                    if (sp.isPeak) _badge(cs, "Peak"),
                   ],
                 ),
                 // Ghi chú (nếu có)
@@ -416,9 +416,9 @@ class CourtServicesTab extends StatelessWidget {
         context,
         icon: Icons.error_outline,
         color: Colors.redAccent,
-        message: 'Không thể tải thông tin dịch vụ.\n$errorMessage',
+        message: 'Unable to load service information.\n$errorMessage',
         action: onRetry,
-        actionLabel: 'Thử lại',
+        actionLabel: 'Retry',
       );
     }
 
@@ -441,9 +441,9 @@ class CourtServicesTab extends StatelessWidget {
         context,
         icon: Icons.info_outline,
         color: Theme.of(context).colorScheme.primary,
-        message: 'Sân chưa cập nhật bảng giá hoặc dịch vụ.',
+        message: 'This court has not updated pricing or services.',
         action: onRetry,
-        actionLabel: 'Tải lại',
+        actionLabel: 'Reload',
       );
     }
 
@@ -452,7 +452,7 @@ class CourtServicesTab extends StatelessWidget {
       children: [
         if (pricingItems.isNotEmpty)
           PricingTableMini(
-            title: 'Bảng giá theo khung giờ',
+            title: 'Time-based pricing',
             items: pricingItems,
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -463,14 +463,14 @@ class CourtServicesTab extends StatelessWidget {
           const SizedBox(height: 24),
         if (serviceItems.isNotEmpty)
           PricingTableMini(
-            title: 'Dịch vụ tại sân',
+            title: 'Services at this court',
             items: serviceItems,
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             padding: EdgeInsets.zero,
-            emptyLabel: 'Sân chưa cập nhật dịch vụ.',
+            emptyLabel: 'This court has not updated services.',
             hintText:
-                'Giá dịch vụ có thể thay đổi tùy thời điểm. Vui lòng liên hệ quầy lễ tân để biết thêm chi tiết.',
+                'Service prices may change depending on time. Please contact the front desk for details.',
             initialVisibleCount: 3,
           ),
       ],

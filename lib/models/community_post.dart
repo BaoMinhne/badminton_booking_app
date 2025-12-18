@@ -36,7 +36,7 @@ class CommunityPost {
     final isOwner =
         authorId.isNotEmpty && authorId == pocketBase.authStore.record?.id;
     final displayName = isOwner
-        ? 'Bạn'
+        ? 'You'
         : sanitizeDisplayName(
             (authorData?['username'] as String?) ??
                 (authorData?['email'] as String?) ??

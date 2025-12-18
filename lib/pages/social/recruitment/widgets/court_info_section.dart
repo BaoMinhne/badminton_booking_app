@@ -56,19 +56,22 @@ class CourtInfoSection extends StatelessWidget {
                 child: Icon(Icons.sports_tennis, color: cs.primary),
               ),
               const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Thông tin sân đã đặt',
-                    style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Chọn sân bạn đã đặt và thời gian phù hợp.',
-                    style: textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-                  ),
-                ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Booked court information',
+                      style:
+                          textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Choose your booked court and the matching time slot.',
+                      style: textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -85,7 +88,7 @@ class CourtInfoSection extends StatelessWidget {
               child: DropdownButtonFormField<String>(
                 value: selectedCourtId,
                 isExpanded: true,
-                decoration: _inputDecoration(cs, 'Chọn sân đã đặt'),
+                decoration: _inputDecoration(cs, 'Select booked court'),
                 items: availableCourts
                     .map<DropdownMenuItem<String>>(
                       (court) => DropdownMenuItem<String>(
@@ -136,7 +139,7 @@ class _EmptyCourtMessage extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final resolvedMessage = message ??
-        'Bạn chưa có sân trong ngày đã chọn. Vui lòng kiểm tra lại lịch đặt sân.';
+        'You have no booked courts on the selected date. Please check your bookings.';
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),

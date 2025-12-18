@@ -12,14 +12,14 @@ class NoteField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Ghi chú cho thành viên', style: textTheme.titleMedium),
+        Text('Note for members', style: textTheme.titleMedium),
         const SizedBox(height: 12),
         TextField(
           controller: controller,
           maxLines: 4,
           decoration: InputDecoration(
             hintText:
-                'Ví dụ: Mang theo vợt cá nhân, đến sớm 10 phút để khởi động...',
+                'Example: Bring your own racket and arrive 10 minutes early to warm up.',
             filled: true,
             fillColor: cs.surfaceVariant.withOpacity(0.6),
             border: OutlineInputBorder(

@@ -205,10 +205,10 @@ class FriendManager extends ChangeNotifier {
 
     try {
       final results = await _userDetailsService.searchUsers(term);
-      if (_currentQuery.trim() != term) {
-        // đã có query mới, bỏ qua kết quả cũ
-        return;
-      }
+        if (_currentQuery.trim() != term) {
+          // Ignore stale results if a new query is in progress
+          return;
+        }
       _searchResults = results;
       _loadRelationsForResults(
         results,
@@ -217,7 +217,7 @@ class FriendManager extends ChangeNotifier {
       );
     } catch (_) {
       if (_currentQuery.trim() != term) return;
-      _error = 'Không thể tìm kiếm. Vui lòng thử lại.';
+        _error = 'Unable to search right now. Please try again.';
     } finally {
       if (_currentQuery.trim() == term) {
         _isSearching = false;
@@ -268,7 +268,7 @@ class FriendManager extends ChangeNotifier {
           results.isEmpty ? 0 : math.min(5, _friendSuggestions.length);
       _loadRelationsForResults(results);
     } catch (_) {
-      _suggestionsError = 'Không thể tải gợi ý kết bạn. Vui lòng thử lại.';
+      _suggestionsError = 'Unable to load friend suggestions. Please try again.';
     } finally {
       _isLoadingSuggestions = false;
       notifyListeners();

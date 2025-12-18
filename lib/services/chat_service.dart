@@ -127,7 +127,7 @@ class ChatService {
       record,
       pb: pb,
       currentUserId: currentUserId,
-      authorName: 'Bạn',
+      authorName: 'You',
     );
   }
 

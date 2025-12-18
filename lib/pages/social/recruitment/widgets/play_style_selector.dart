@@ -20,7 +20,7 @@ class PlayStyleSelector extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Lối chơi muốn tuyển', style: textTheme.titleMedium),
+        Text('Preferred play style', style: textTheme.titleMedium),
         const SizedBox(height: 12),
         Wrap(
           spacing: 12,

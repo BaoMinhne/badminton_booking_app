@@ -23,7 +23,7 @@ class SubmitButton extends StatelessWidget {
               child: CircularProgressIndicator(strokeWidth: 2.5),
             )
           : const Icon(Icons.send_rounded),
-      label: Text(isLoading ? 'Đang đăng...' : 'Đăng bài tuyển thành viên'),
+      label: Text(isLoading ? 'Posting...' : 'Post recruitment'),
       style: FilledButton.styleFrom(
         minimumSize: const Size.fromHeight(54),
         textStyle: textTheme.titleMedium?.copyWith(

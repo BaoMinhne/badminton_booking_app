@@ -59,13 +59,13 @@ class MemberInputSection extends StatelessWidget {
               icon: const Icon(Icons.add_circle_outline),
             ),
             const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Nhập số lượng thành viên bạn muốn tuyển.',
-                style:
-                    textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+              Expanded(
+                child: Text(
+                  'Enter the number of members you want to recruit.',
+                  style:
+                      textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                ),
               ),
-            ),
           ],
         ),
         const SizedBox(height: 12),
@@ -86,7 +86,7 @@ class MemberInputSection extends StatelessWidget {
               const SizedBox(width: 16),
               Expanded(
                 child: Text(
-                  'Cần tuyển thêm $memberCount thành viên',
+                  'Need $memberCount more member${memberCount > 1 ? 's' : ''}',
                   style: textTheme.titleMedium
                       ?.copyWith(fontWeight: FontWeight.bold),
                 ),

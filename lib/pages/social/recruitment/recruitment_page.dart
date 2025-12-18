@@ -81,7 +81,7 @@ class RecruitmentFormPage extends StatelessWidget {
           final textTheme = Theme.of(context).textTheme;
 
           return Scaffold(
-            appBar: AppBar(title: const Text('Tạo bài tuyển thành viên')),
+            appBar: AppBar(title: const Text('Create recruitment post')),
             body: SafeArea(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(20),
@@ -92,22 +92,22 @@ class RecruitmentFormPage extends StatelessWidget {
                     const SizedBox(height: 24),
 
                     _DateTimeField(
-                      label: 'Giờ đánh dự kiến',
+                      label: 'Expected play time',
                       value: manager.selectedDateTime,
                       onTap: () => _pickDateTime(context),
                     ),
                     const SizedBox(height: 12),
                     _DateTimeField(
-                      label: 'Thời gian đóng bài',
+                      label: 'Post closing time',
                       value: manager.expiresAt,
-                      helperText: 'Đến giờ này bài sẽ tự động đóng.',
+                      helperText: 'The post will automatically close at this time.',
                       onTap: () => _pickCloseDateTime(context),
                     ),
                     const SizedBox(height: 24),
 
                     SwitchListTile.adaptive(
                       contentPadding: EdgeInsets.zero,
-                      title: const Text('Tôi đã đặt sân trước'),
+                      title: const Text('I have pre-booked a court'),
                       value: manager.hasBookedCourt,
                       onChanged: (value) =>
                           manager.toggleHasBookedCourt(value),

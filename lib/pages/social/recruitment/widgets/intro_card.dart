@@ -31,7 +31,7 @@ class IntroCard extends StatelessWidget {
           const SizedBox(width: 16),
           Expanded(
             child: Text(
-              'Tạo bài đăng để tuyển thành viên phù hợp.',
+              'Create a post to recruit the right members.',
               style:
                   textTheme.bodyMedium?.copyWith(color: cs.onPrimaryContainer),
             ),

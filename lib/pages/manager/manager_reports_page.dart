@@ -1,6 +1,9 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:pocketbase/pocketbase.dart';
+
+import '../../services/manager_reports_service.dart';
 
 class ManagerReportsPage extends StatefulWidget {
   const ManagerReportsPage({super.key});
@@ -16,157 +19,75 @@ class _ManagerReportsPageState extends State<ManagerReportsPage> {
     decimalDigits: 0,
   );
 
-  final Map<_ReportRange, _ReportSnapshot> _dataByRange = {
-    _ReportRange.today: _ReportSnapshot(
-      todayRevenueMinor: 12450000,
-      todayRevenueChange: 0.08,
-      weekRevenueMinor: 86200000,
-      weekRevenueChange: 0.12,
-      monthRevenueMinor: 302500000,
-      monthRevenueChange: 0.05,
-      occupancyRate: 0.82,
-      occupancyChange: 0.04,
-      revenueTrend: [
-        _ChartPoint('T2', 12.4),
-        _ChartPoint('T3', 11.8),
-        _ChartPoint('T4', 12.9),
-        _ChartPoint('T5', 13.2),
-        _ChartPoint('T6', 14.1),
-        _ChartPoint('T7', 15.3),
-        _ChartPoint('CN', 13.7),
-      ],
-      occupancyByCourt: [
-        _CourtOccupancy('Sân 1', 0.88),
-        _CourtOccupancy('Sân 2', 0.93),
-        _CourtOccupancy('Sân 3', 0.76),
-      ],
-      channelBreakdown: [
-        _ChannelStat('Online', 58),
-        _ChannelStat('Offline', 42),
-      ],
-      bookings: [
-        _BookingReportRow(
-            customer: 'Nguyễn Minh',
-            court: 'Sân 1',
-            time: '06:00 - 07:30',
-            channel: 'Online'),
-        _BookingReportRow(
-            customer: 'CLB Z',
-            court: 'Sân 2',
-            time: '18:00 - 20:00',
-            channel: 'Offline'),
-        _BookingReportRow(
-            customer: 'Trần Thảo',
-            court: 'Sân 3',
-            time: '08:00 - 10:00',
-            channel: 'Online'),
-      ],
-    ),
-    _ReportRange.week: _ReportSnapshot(
-      todayRevenueMinor: 93400000,
-      todayRevenueChange: 0.11,
-      weekRevenueMinor: 93400000,
-      weekRevenueChange: 0.11,
-      monthRevenueMinor: 294800000,
-      monthRevenueChange: 0.03,
-      occupancyRate: 0.78,
-      occupancyChange: 0.02,
-      revenueTrend: [
-        _ChartPoint('Tuần 1', 76),
-        _ChartPoint('Tuần 2', 82),
-        _ChartPoint('Tuần 3', 91),
-        _ChartPoint('Tuần 4', 94),
-      ],
-      occupancyByCourt: [
-        _CourtOccupancy('Sân 1', 0.8),
-        _CourtOccupancy('Sân 2', 0.86),
-        _CourtOccupancy('Sân 3', 0.69),
-      ],
-      channelBreakdown: [
-        _ChannelStat('Online', 61),
-        _ChannelStat('Offline', 39),
-      ],
-      bookings: [
-        _BookingReportRow(
-            customer: 'Thanh Tùng',
-            court: 'Sân 1',
-            time: '07:00 - 09:00',
-            channel: 'Online'),
-        _BookingReportRow(
-            customer: 'CLB Mây',
-            court: 'Sân 2',
-            time: '19:00 - 21:00',
-            channel: 'Offline'),
-        _BookingReportRow(
-            customer: 'Ngọc Anh',
-            court: 'Sân 3',
-            time: '17:00 - 19:00',
-            channel: 'Online'),
-        _BookingReportRow(
-            customer: 'Anh Dũng',
-            court: 'Sân 1',
-            time: '15:00 - 17:00',
-            channel: 'Online'),
-      ],
-    ),
-    _ReportRange.month: _ReportSnapshot(
-      todayRevenueMinor: 312000000,
-      todayRevenueChange: 0.06,
-      weekRevenueMinor: 99800000,
-      weekRevenueChange: 0.08,
-      monthRevenueMinor: 312000000,
-      monthRevenueChange: 0.06,
-      occupancyRate: 0.79,
-      occupancyChange: 0.01,
-      revenueTrend: [
-        _ChartPoint('Tuần 1', 71),
-        _ChartPoint('Tuần 2', 75),
-        _ChartPoint('Tuần 3', 81),
-        _ChartPoint('Tuần 4', 85),
-      ],
-      occupancyByCourt: [
-        _CourtOccupancy('Sân 1', 0.77),
-        _CourtOccupancy('Sân 2', 0.83),
-        _CourtOccupancy('Sân 3', 0.74),
-      ],
-      channelBreakdown: [
-        _ChannelStat('Online', 57),
-        _ChannelStat('Offline', 43),
-      ],
-      bookings: [
-        _BookingReportRow(
-            customer: 'Hoàng Gia',
-            court: 'Sân 1',
-            time: '10:00 - 12:00',
-            channel: 'Offline'),
-        _BookingReportRow(
-            customer: 'CLB Sức Trẻ',
-            court: 'Sân 2',
-            time: '18:00 - 20:00',
-            channel: 'Online'),
-        _BookingReportRow(
-            customer: 'Mai Linh',
-            court: 'Sân 3',
-            time: '06:00 - 07:30',
-            channel: 'Online'),
-        _BookingReportRow(
-            customer: 'Quang Vũ',
-            court: 'Sân 1',
-            time: '20:00 - 22:00',
-            channel: 'Offline'),
-      ],
-    ),
-  };
+  final _service = ManagerReportsService();
 
-  _ReportRange _selectedRange = _ReportRange.today;
+  ReportRange _selectedRange = ReportRange.today;
+  _ReportSnapshot? _snapshot;
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRange(_selectedRange);
+  }
+
+  Future<void> _loadRange(ReportRange range) async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      final data = await _service.fetchReport(range);
+      setState(() {
+        _selectedRange = range;
+        _snapshot = _ReportSnapshot.fromService(data);
+        _loading = false;
+      });
+    } catch (error) {
+      setState(() {
+        _loading = false;
+        _error = _extractErrorMessage(error);
+      });
+    }
+  }
+
+  String _extractErrorMessage(Object error) {
+    if (error is ClientException) {
+      final message = error.response['message'];
+      if (message is String && message.isNotEmpty) return message;
+    }
+    return 'Không thể tải dữ liệu báo cáo. Vui lòng thử lại sau.';
+  }
 
   @override
   Widget build(BuildContext context) {
-    final snapshot = _dataByRange[_selectedRange]!;
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(_error!, textAlign: TextAlign.center),
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: () => _loadRange(_selectedRange),
+              child: const Text('Thử lại'),
+            )
+          ],
+        ),
+      );
+    }
+
+    final snapshot = _snapshot ?? _ReportSnapshot.empty();
     final isWide = MediaQuery.of(context).size.width > 900;
     final crossAxisCount = isWide ? 4 : 2;
     final horizontalSpacing = 2.0;
-    final cardHeight = isWide ? 190.0 : 220.0;
+    final cardHeight = isWide ? 210.0 : 230.0;
 
     final kpiCards = [
       _ReportCard(
@@ -205,14 +126,12 @@ class _ManagerReportsPageState extends State<ManagerReportsPage> {
           children: [
             Wrap(
               spacing: 8,
-              children: _ReportRange.values
+              children: ReportRange.values
                   .map(
                     (range) => ChoiceChip(
                       label: Text(range.label),
                       selected: _selectedRange == range,
-                      onSelected: (_) {
-                        setState(() => _selectedRange = range);
-                      },
+                      onSelected: (_) => _loadRange(range),
                     ),
                   )
                   .toList(),
@@ -281,44 +200,7 @@ class _ManagerReportsPageState extends State<ManagerReportsPage> {
           },
         ),
         const SizedBox(height: 16),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final isRow = constraints.maxWidth > 900;
-            if (isRow) {
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    flex: 2,
-                    child: _ChartCard(
-                      title: 'Kênh đặt sân',
-                      subtitle: 'Tỷ trọng giữa online và offline',
-                      child: _ChannelPieChart(stats: snapshot.channelBreakdown),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    flex: 3,
-                    child: _BookingsCard(bookings: snapshot.bookings),
-                  ),
-                ],
-              );
-            }
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _ChartCard(
-                  title: 'Kênh đặt sân',
-                  subtitle: 'Tỷ trọng giữa online và offline',
-                  child: _ChannelPieChart(stats: snapshot.channelBreakdown),
-                ),
-                const SizedBox(height: 16),
-                _BookingsCard(bookings: snapshot.bookings),
-              ],
-            );
-          },
-        ),
+        _BookingsCard(bookings: snapshot.bookings),
       ],
     );
   }
@@ -638,67 +520,6 @@ class _OccupancyBarChart extends StatelessWidget {
   }
 }
 
-class _ChannelPieChart extends StatelessWidget {
-  final List<_ChannelStat> stats;
-
-  const _ChannelPieChart({required this.stats});
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final total = stats.fold<int>(0, (sum, e) => sum + e.count);
-    final sections = stats.asMap().entries.map((entry) {
-      final color =
-          entry.key == 0 ? colorScheme.primary : colorScheme.secondary;
-      final percentage = total == 0 ? 0 : (entry.value.count / total * 100);
-      return PieChartSectionData(
-        color: color,
-        value: entry.value.count.toDouble(),
-        title: '${percentage.toStringAsFixed(0)}%',
-        radius: 70,
-        titleStyle:
-            const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-      );
-    }).toList();
-
-    return Column(
-      children: [
-        Expanded(
-          child: PieChart(
-            PieChartData(
-              sections: sections,
-              sectionsSpace: 2,
-              centerSpaceRadius: 32,
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: stats.asMap().entries.map((entry) {
-            final color =
-                entry.key == 0 ? colorScheme.primary : colorScheme.secondary;
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Row(
-                children: [
-                  Container(
-                      width: 12,
-                      height: 12,
-                      decoration:
-                          BoxDecoration(color: color, shape: BoxShape.circle)),
-                  const SizedBox(width: 6),
-                  Text('${entry.value.label} (${entry.value.count})'),
-                ],
-              ),
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-}
-
 class _ChartPoint {
   final String label;
   final double value;
@@ -711,13 +532,6 @@ class _CourtOccupancy {
   final double rate;
 
   const _CourtOccupancy(this.label, this.rate);
-}
-
-class _ChannelStat {
-  final String label;
-  final int count;
-
-  const _ChannelStat(this.label, this.count);
 }
 
 class _BookingReportRow {
@@ -745,7 +559,6 @@ class _ReportSnapshot {
   final double occupancyChange;
   final List<_ChartPoint> revenueTrend;
   final List<_CourtOccupancy> occupancyByCourt;
-  final List<_ChannelStat> channelBreakdown;
   final List<_BookingReportRow> bookings;
 
   const _ReportSnapshot({
@@ -759,21 +572,59 @@ class _ReportSnapshot {
     required this.occupancyChange,
     required this.revenueTrend,
     required this.occupancyByCourt,
-    required this.channelBreakdown,
     required this.bookings,
   });
+
+  factory _ReportSnapshot.fromService(ManagerReportSnapshot data) {
+    return _ReportSnapshot(
+      todayRevenueMinor: data.todayRevenueMinor,
+      todayRevenueChange: data.todayRevenueChange,
+      weekRevenueMinor: data.weekRevenueMinor,
+      weekRevenueChange: data.weekRevenueChange,
+      monthRevenueMinor: data.monthRevenueMinor,
+      monthRevenueChange: data.monthRevenueChange,
+      occupancyRate: data.occupancyRate,
+      occupancyChange: data.occupancyChange,
+      revenueTrend:
+          data.revenueTrend.map((p) => _ChartPoint(p.label, p.value)).toList(),
+      occupancyByCourt: data.occupancyByCourt
+          .map((o) => _CourtOccupancy(o.label, o.rate))
+          .toList(),
+      bookings: data.bookings
+          .map(
+            (b) => _BookingReportRow(
+              customer: b.customer,
+              court: b.court,
+              time: b.time,
+              channel: b.channel,
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  const _ReportSnapshot.empty()
+      : todayRevenueMinor = 0,
+        todayRevenueChange = 0,
+        weekRevenueMinor = 0,
+        weekRevenueChange = 0,
+        monthRevenueMinor = 0,
+        monthRevenueChange = 0,
+        occupancyRate = 0,
+        occupancyChange = 0,
+        revenueTrend = const [],
+        occupancyByCourt = const [],
+        bookings = const [];
 }
 
-enum _ReportRange { today, week, month }
-
-extension on _ReportRange {
+extension on ReportRange {
   String get label {
     switch (this) {
-      case _ReportRange.today:
+      case ReportRange.today:
         return 'Hôm nay';
-      case _ReportRange.week:
+      case ReportRange.week:
         return '7 ngày';
-      case _ReportRange.month:
+      case ReportRange.month:
         return '30 ngày';
     }
   }

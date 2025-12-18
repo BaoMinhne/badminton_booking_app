@@ -81,7 +81,7 @@ class RecruitmentPostCard extends StatelessWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Đã có $joinedPlayers / $requiredPlayers thành viên',
+                      'Joined $joinedPlayers / $requiredPlayers members',
                       style: textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: cs.onSurface,
@@ -110,21 +110,21 @@ class RecruitmentPostCard extends StatelessWidget {
                   if (skillLevel != null && skillLevel!.isNotEmpty)
                     _InfoChip(
                       icon: Icons.stars_rounded,
-                      label: 'Trình độ: $skillLevel',
+                      label: 'Skill level: $skillLevel',
                       color: cs.primaryContainer.withOpacity(0.8),
                       iconColor: cs.primary,
                     ),
                   if (playStyle != null && playStyle!.isNotEmpty)
                     _InfoChip(
                       icon: Icons.sports_tennis_rounded,
-                      label: 'Lối chơi: $playStyle',
+                      label: 'Play style: $playStyle',
                       color: cs.secondaryContainer.withOpacity(0.8),
                       iconColor: cs.secondary,
                     ),
                   if (courtName != null && courtName!.isNotEmpty)
                     _InfoChip(
                       icon: Icons.location_on_rounded,
-                      label: 'Sân: $courtName',
+                      label: 'Court: $courtName',
                       color: cs.tertiaryContainer.withOpacity(0.8),
                       iconColor: cs.tertiary,
                     ),
@@ -132,7 +132,7 @@ class RecruitmentPostCard extends StatelessWidget {
                     _InfoChip(
                       icon: Icons.access_time_rounded,
                       label:
-                          'Giờ đánh: ${DateFormat('HH:mm - dd/MM').format(playTime!)}',
+                          'Play time: ${DateFormat('HH:mm - dd/MM').format(playTime!)}',
                       color: cs.surfaceVariant.withOpacity(0.8),
                       iconColor: cs.primary,
                     ),
@@ -151,7 +151,7 @@ class RecruitmentPostCard extends StatelessWidget {
                       child: OutlinedButton.icon(
                         onPressed: onManage,
                         icon: Icon(Icons.assignment_ind_rounded, size: 20),
-                        label: const Text('Quản lý yêu cầu'),
+                        label: const Text('Manage requests'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: cs.primary,
                           side: BorderSide(color: cs.primary.withOpacity(0.5)),
@@ -236,7 +236,7 @@ class RecruitmentPostCard extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               Text(
-                isActive ? 'Đang tuyển' : 'Đã đóng',
+                isActive ? 'Open' : 'Closed',
                 style: textTheme.labelMedium?.copyWith(
                   color: isActive ? cs.primary : cs.onSurfaceVariant,
                   fontWeight: FontWeight.w700,
@@ -290,16 +290,16 @@ class RecruitmentPostCard extends StatelessWidget {
             ),
       label: Text(
         isOwner
-            ? 'Bài của bạn'
+            ? 'Your post'
             : !isActive
-                ? 'Đã đóng'
+                ? 'Closed'
                 : currentUserStatus == 'pending'
-                    ? 'Chờ duyệt'
+                    ? 'Pending'
                     : currentUserStatus == 'accepted' || isJoined
-                        ? 'Đã tham gia'
+                        ? 'Joined'
                         : currentUserStatus == 'rejected'
-                            ? 'Từ chối'
-                            : 'Tham gia',
+                            ? 'Declined'
+                            : 'Join',
         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
       ),
     );

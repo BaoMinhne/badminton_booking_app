@@ -34,6 +34,12 @@ class _OnboardingPageState extends State<OnboardingPage> {
     'mixed',
   ];
 
+  static const Map<String, String> _matchTypeLabels = <String, String>{
+    'singles': 'Singles',
+    'doubles': 'Doubles',
+    'mixed': 'Mixed',
+  };
+
   static const List<String> _playStyleTagOptions = <String>[
     'attack',
     'defense',
@@ -44,11 +50,27 @@ class _OnboardingPageState extends State<OnboardingPage> {
     'competitive',
   ];
 
+  static const Map<String, String> _playStyleLabels = <String, String>{
+    'attack': 'Attack',
+    'defense': 'Defense',
+    'net': 'Net',
+    'baseline': 'Baseline',
+    'all_round': 'All-round',
+    'fun': 'Fun',
+    'competitive': 'Competitive',
+  };
+
   static const List<String> _preferredRoleOptions = <String>[
     'front',
     'back',
     'flexible',
   ];
+
+  static const Map<String, String> _preferredRoleLabels = <String, String>{
+    'front': 'Front',
+    'back': 'Back',
+    'flexible': 'Flexible',
+  };
 
   static const List<String> _intensityOptions = <String>[
     'casual',
@@ -56,10 +78,21 @@ class _OnboardingPageState extends State<OnboardingPage> {
     'competitive',
   ];
 
+  static const Map<String, String> _intensityLabels = <String, String>{
+    'casual': 'Casual',
+    'semi_competitive': 'Semi-competitive',
+    'competitive': 'Competitive',
+  };
+
   static const List<String> _genderOptions = <String>[
     'male',
     'female',
   ];
+
+  static const Map<String, String> _genderLabels = <String, String>{
+    'male': 'Male',
+    'female': 'Female',
+  };
 
   bool _saving = false;
   String? _selectedLevel;
@@ -155,6 +188,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   selectedValues: _selectedMatchTypes,
                   onChanged: (newValues) =>
                       setState(() => _selectedMatchTypes = newValues),
+                  labelBuilder: (value) =>
+                      _matchTypeLabels[value] ?? _titleCase(value),
                 ),
                 const SizedBox(height: 12),
                 _buildChips(
@@ -163,6 +198,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   selectedValues: _selectedPlayStyleTags,
                   onChanged: (newValues) =>
                       setState(() => _selectedPlayStyleTags = newValues),
+                  labelBuilder: (value) =>
+                      _playStyleLabels[value] ?? _titleCase(value),
                   maxSelection: 4,
                 ),
                 const SizedBox(height: 12),
@@ -172,6 +209,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   options: _preferredRoleOptions,
                   onChanged: (value) =>
                       setState(() => _selectedPreferredRole = value),
+                  labelBuilder: (value) =>
+                      _preferredRoleLabels[value] ?? _titleCase(value),
                 ),
                 const SizedBox(height: 12),
                 _buildDropdown(
@@ -179,6 +218,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   value: _selectedIntensity,
                   options: _intensityOptions,
                   onChanged: (value) => setState(() => _selectedIntensity = value),
+                  labelBuilder: (value) =>
+                      _intensityLabels[value] ?? _titleCase(value),
                 ),
                 const SizedBox(height: 12),
                 _buildDropdown(
@@ -186,6 +227,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   value: _selectedGender,
                   options: _genderOptions,
                   onChanged: (value) => setState(() => _selectedGender = value),
+                  labelBuilder: (value) =>
+                      _genderLabels[value] ?? _titleCase(value),
                 ),
                 const SizedBox(height: 12),
                 _buildDatePicker(context),
@@ -245,7 +288,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
     required List<String> options,
     required String? value,
     required ValueChanged<String?> onChanged,
+    String Function(String value)? labelBuilder,
   }) {
+    final buildLabel = labelBuilder ?? (v) => v;
     return DropdownButtonFormField<String>(
       value: value,
       onChanged: onChanged,
@@ -258,7 +303,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
           .map(
             (opt) => DropdownMenuItem<String>(
               value: opt,
-              child: Text(opt),
+              child: Text(buildLabel(opt)),
             ),
           )
           .toList(),
@@ -271,7 +316,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
     required List<String> selectedValues,
     required ValueChanged<List<String>> onChanged,
     int? maxSelection,
+    String Function(String value)? labelBuilder,
   }) {
+    final buildLabel = labelBuilder ?? (v) => v;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -287,7 +334,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
           children: options.map((opt) {
             final isSelected = selectedValues.contains(opt);
             return FilterChip(
-              label: Text(opt),
+              label: Text(buildLabel(opt)),
               selected: isSelected,
               onSelected: (selected) {
                 final current = List<String>.from(selectedValues);
@@ -399,6 +446,15 @@ class _OnboardingPageState extends State<OnboardingPage> {
         _selectedBirthday = picked;
       });
     }
+  }
+
+  String _titleCase(String value) {
+    return value
+        .replaceAll('_', ' ')
+        .split(' ')
+        .where((part) => part.isNotEmpty)
+        .map((part) => part[0].toUpperCase() + part.substring(1))
+        .join(' ');
   }
 
   int _levelToNumeric(String level) {

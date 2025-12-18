@@ -17,7 +17,7 @@ class CourtImageGallery extends StatelessWidget {
     this.isLoading = false,
     this.errorMessage,
     this.onRetry,
-    this.emptyMessage = 'Chưa có hình ảnh',
+    this.emptyMessage = 'No images available',
   });
 
   @override
@@ -28,7 +28,7 @@ class CourtImageGallery extends StatelessWidget {
       return _MessageView(
         icon: Icons.error_outline,
         color: Colors.redAccent,
-        message: 'Không thể tải hình ảnh.\n$errorMessage',
+        message: 'Unable to load images.\n$errorMessage',
         action: onRetry,
       );
     }
@@ -43,7 +43,7 @@ class CourtImageGallery extends StatelessWidget {
         color: cs.primary,
         message: emptyMessage,
         action: onRetry,
-        actionLabel: 'Tải lại',
+        actionLabel: 'Reload',
       );
     }
 
@@ -94,7 +94,7 @@ class _MessageView extends StatelessWidget {
     required this.color,
     required this.message,
     this.action,
-    this.actionLabel = 'Thử lại',
+    this.actionLabel = 'Retry',
   });
 
   @override
@@ -233,7 +233,7 @@ class _FullscreenGalleryState extends State<_FullscreenGallery> {
                         border: Border.all(color: Colors.white24),
                       ),
                       child: Text(
-                        'Ảnh sân #${i + 1}',
+                        'Court photo #${i + 1}',
                         style: const TextStyle(color: Colors.white),
                         textAlign: TextAlign.center,
                       ),

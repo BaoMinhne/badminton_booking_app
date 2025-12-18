@@ -69,7 +69,7 @@ class _CourtPageState extends State<CourtPage> {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        title: const Text('Danh sách sân'),
+        title: const Text('Courts'),
         centerTitle: true,
       ),
       body: SafeArea(
@@ -148,15 +148,15 @@ class _CourtPageState extends State<CourtPage> {
       if (_needsOpeningHoursData || _needsAvailabilityData)
         _buildFilterStatus(context),
       const SizedBox(height: 16),
-      _buildCourtSection(context, 'Có Thể Bạn Sẽ Thích', recommended),
+      _buildCourtSection(context, 'Recommended for You', recommended),
     ];
 
     if (nearby.isNotEmpty) {
-      sections.add(_buildCourtSection(context, 'Sân Gần Bạn', nearby));
+      sections.add(_buildCourtSection(context, 'Courts Near You', nearby));
     }
 
     if (popular.isNotEmpty) {
-      sections.add(_buildCourtSection(context, 'Sân Phổ Biến', popular));
+      sections.add(_buildCourtSection(context, 'Popular Courts', popular));
     }
 
     if (_selectedFilter == CourtFilter.favorites && filteredCourts.isEmpty) {
@@ -251,7 +251,7 @@ class _CourtPageState extends State<CourtPage> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Khám phá & đặt sân ngay',
+                    'Discover & book courts now',
                     style: TextStyle(
                       color: colorScheme.onPrimary,
                       fontSize: 22,
@@ -264,14 +264,14 @@ class _CourtPageState extends State<CourtPage> {
                       _buildStatPill(
                         context,
                         icon: Icons.sports_tennis,
-                        label: '$courtCount sân khả dụng',
+                        label: '$courtCount courts available',
                       ),
                       const SizedBox(width: 8),
                       _buildStatPill(
                         context,
                         icon: Icons.favorite,
                         label:
-                            '${favoriteManager.favoriteCourtIds.length} yêu thích',
+                            '${favoriteManager.favoriteCourtIds.length} favorites',
                       ),
                     ],
                   )
@@ -330,8 +330,8 @@ class _CourtPageState extends State<CourtPage> {
     FavoriteCourtManager favoriteManager,
   ) {
     final filters = [
-      (CourtFilter.newest, 'Mới nhất', Icons.auto_awesome),
-      (CourtFilter.favorites, 'Yêu thích', Icons.favorite),
+    (CourtFilter.newest, 'Newest', Icons.auto_awesome),
+    (CourtFilter.favorites, 'Favorites', Icons.favorite),
     ];
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -456,7 +456,7 @@ class _CourtPageState extends State<CourtPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Bộ lọc nâng cao',
+            'Advanced filters',
             style: Theme.of(context)
                 .textTheme
                 .titleMedium
@@ -478,12 +478,12 @@ class _CourtPageState extends State<CourtPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: const [
                 Text(
-                  'Mở bộ lọc',
+                  'Open filters',
                   style: TextStyle(fontWeight: FontWeight.w800),
                 ),
                 SizedBox(height: 2),
                 Text(
-                  'Số sân, giờ mở cửa, slot trống',
+                  'Court count, opening hours, open slots',
                   style: TextStyle(fontSize: 12),
                 )
               ],
@@ -534,7 +534,7 @@ class _CourtPageState extends State<CourtPage> {
               Icon(Icons.filter_alt, size: 18, color: colorScheme.primary),
               const SizedBox(width: 8),
               Text(
-                'Bộ lọc nâng cao',
+                'Advanced filters',
                 style: Theme.of(context)
                     .textTheme
                     .titleMedium
@@ -547,7 +547,7 @@ class _CourtPageState extends State<CourtPage> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              _buildQuantityFilterChip('1–3 sân', () {
+              _buildQuantityFilterChip('1–3 courts', () {
                 _handleFilterChanged(() {
                   _minCourtQuantity = 1;
                   _quantityQuickUpperBound = 3;
@@ -555,7 +555,7 @@ class _CourtPageState extends State<CourtPage> {
               },
                   isSelected:
                       _minCourtQuantity == 1 && _quantityQuickUpperBound == 3),
-              _buildQuantityFilterChip('4–6 sân', () {
+              _buildQuantityFilterChip('4–6 courts', () {
                 _handleFilterChanged(() {
                   _minCourtQuantity = 4;
                   _quantityQuickUpperBound = 6;
@@ -563,7 +563,7 @@ class _CourtPageState extends State<CourtPage> {
               },
                   isSelected:
                       _minCourtQuantity == 4 && _quantityQuickUpperBound == 6),
-              _buildQuantityFilterChip('≥ 7 sân', () {
+              _buildQuantityFilterChip('≥ 7 courts', () {
                 _handleFilterChanged(() {
                   _minCourtQuantity = 7;
                   _quantityQuickUpperBound = null;
@@ -573,7 +573,7 @@ class _CourtPageState extends State<CourtPage> {
                       _minCourtQuantity == 7 && _quantityQuickUpperBound == null),
               _buildToggleChip(
                 context,
-                label: 'Đang mở cửa',
+                label: 'Open now',
                 icon: Icons.access_time,
                 value: _openNowOnly,
                 onChanged: (value) => _handleFilterChanged(() {
@@ -582,7 +582,7 @@ class _CourtPageState extends State<CourtPage> {
               ),
               _buildToggleChip(
                 context,
-                label: 'Sáng',
+                label: 'Morning',
                 icon: Icons.wb_sunny_outlined,
                 value: _dayPartFilter == _OpeningDayPart.morning,
                 onChanged: (value) => _handleFilterChanged(() {
@@ -591,7 +591,7 @@ class _CourtPageState extends State<CourtPage> {
               ),
               _buildToggleChip(
                 context,
-                label: 'Chiều',
+                label: 'Afternoon',
                 icon: Icons.wb_twilight,
                 value: _dayPartFilter == _OpeningDayPart.afternoon,
                 onChanged: (value) => _handleFilterChanged(() {
@@ -600,7 +600,7 @@ class _CourtPageState extends State<CourtPage> {
               ),
               _buildToggleChip(
                 context,
-                label: 'Tối',
+                label: 'Evening',
                 icon: Icons.nightlight_outlined,
                 value: _dayPartFilter == _OpeningDayPart.evening,
                 onChanged: (value) => _handleFilterChanged(() {
@@ -609,7 +609,7 @@ class _CourtPageState extends State<CourtPage> {
               ),
               _buildToggleChip(
                 context,
-                label: 'Còn trống',
+                label: 'Has openings',
                 icon: Icons.event_available,
                 value: _availabilityFilter == _AvailabilityFilter.openSlot,
                 onChanged: (value) => _handleFilterChanged(() {
@@ -619,7 +619,7 @@ class _CourtPageState extends State<CourtPage> {
               ),
               _buildToggleChip(
                 context,
-                label: 'Gần full',
+                label: 'Nearly full',
                 icon: Icons.speed,
                 value: _availabilityFilter == _AvailabilityFilter.nearlyFull,
                 onChanged: (value) => _handleFilterChanged(() {
@@ -648,7 +648,7 @@ class _CourtPageState extends State<CourtPage> {
             const Icon(Icons.error_outline, size: 48, color: Colors.redAccent),
             const SizedBox(height: 16),
             Text(
-              'Không thể tải danh sách sân',
+              'Unable to load courts',
               style: Theme.of(context).textTheme.titleMedium,
               textAlign: TextAlign.center,
             ),
@@ -662,7 +662,7 @@ class _CourtPageState extends State<CourtPage> {
             ElevatedButton.icon(
               onPressed: () => context.read<CourtManager>().refresh(),
               icon: const Icon(Icons.refresh),
-              label: const Text('Thử lại'),
+              label: const Text('Retry'),
             ),
           ],
         ),
@@ -684,12 +684,12 @@ class _CourtPageState extends State<CourtPage> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Hiện chưa có sân nào',
+              'No courts available right now',
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
             Text(
-              'Hãy quay lại sau nhé!',
+              'Please check back later!',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
           ],
@@ -712,12 +712,12 @@ class _CourtPageState extends State<CourtPage> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Chưa có sân yêu thích',
+              'No favorite courts yet',
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
             Text(
-              'Hãy thêm sân bạn thích để xem nhanh tại đây!',
+              'Add courts you like to see them here!',
               style: Theme.of(context).textTheme.bodyMedium,
               textAlign: TextAlign.center,
             ),
@@ -954,7 +954,7 @@ class _CourtPageState extends State<CourtPage> {
   }
 
   String get _slotRangeLabel {
-    if (_selectedSlotRange == null) return 'Chọn giờ';
+    if (_selectedSlotRange == null) return 'Select time';
     return '${_selectedSlotRange!.start.format(context)} – ${_selectedSlotRange!.end.format(context)}';
   }
 
@@ -1055,7 +1055,7 @@ class _CourtPageState extends State<CourtPage> {
                   const Icon(Icons.stacked_line_chart, size: 18),
                   const SizedBox(width: 6),
                   const Text(
-                    'Số sân tối thiểu',
+                    'Minimum court count',
                     style: TextStyle(fontWeight: FontWeight.w800),
                   ),
                 ],
@@ -1089,7 +1089,7 @@ class _CourtPageState extends State<CourtPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Khung giờ bạn muốn chơi',
+        Text('Time window you want to play',
             style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
         const SizedBox(height: 8),
         Row(
@@ -1099,7 +1099,7 @@ class _CourtPageState extends State<CourtPage> {
                 context,
                 icon: Icons.calendar_today,
                 label: _selectedDate == null
-                    ? 'Chọn ngày'
+                    ? 'Select date'
                     : _formatDate(_selectedDate!),
                 onTap: () async {
                   final now = DateTime.now();
@@ -1137,14 +1137,14 @@ class _CourtPageState extends State<CourtPage> {
           ],
         ),
         const SizedBox(height: 12),
-        Text('Giờ mở cửa mong muốn',
+        Text('Preferred opening hours',
             style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
         const SizedBox(height: 8),
         _buildFilledButton(
           context,
           icon: Icons.timelapse,
           label: _desiredPlayRange == null
-              ? 'Chọn khung giờ'
+              ? 'Select time range'
               : '${_desiredPlayRange!.start.format(context)} – ${_desiredPlayRange!.end.format(context)}',
           onTap: () async {
             final range = await _pickTimeRange(context, _desiredPlayRange);
@@ -1227,8 +1227,8 @@ class _CourtPageState extends State<CourtPage> {
               children: [
                 Text(
                   isLoading
-                      ? 'Đang tải dữ liệu mở cửa & slot trống...'
-                      : 'Bộ lọc thời gian & slot đã sẵn sàng',
+                      ? 'Loading opening hours & open slots...'
+                      : 'Time & slot filters are ready',
                   style: const TextStyle(fontWeight: FontWeight.w800),
                 ),
                 if (error != null) ...[

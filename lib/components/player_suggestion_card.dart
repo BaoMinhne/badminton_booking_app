@@ -170,7 +170,7 @@ class PlayerSuggestionCard extends StatelessWidget {
                             onPressed: onProfileTap,
                             icon: const Icon(Icons.remove_red_eye_outlined,
                                 size: 18),
-                            label: const Text('Xem hồ sơ'),
+                            label: const Text('View profile'),
                             style: FilledButton.styleFrom(
                               padding: const EdgeInsets.symmetric(
                                   vertical: 12, horizontal: 14),
@@ -188,7 +188,7 @@ class PlayerSuggestionCard extends StatelessWidget {
                           child: FilledButton.icon(
                             onPressed: onInviteTap,
                             icon: const Icon(Icons.handshake_rounded, size: 18),
-                            label: const Text('Gửi lời mời'),
+                            label: const Text('Send invite'),
                             style: FilledButton.styleFrom(
                               padding: const EdgeInsets.symmetric(
                                   vertical: 12, horizontal: 14),
@@ -301,7 +301,7 @@ class _DismissButton extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
 
     return Tooltip(
-      message: 'Ẩn gợi ý',
+      message: 'Hide suggestion',
       child: InkResponse(
         onTap: onPressed,
         radius: 20,

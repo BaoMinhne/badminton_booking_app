@@ -40,29 +40,32 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _bannerSlides = [
-      CarouselSlide(
-        image: 'assets/images/court_cover_2.jpg',
-        title: 'Ưu đãi giờ vàng / gói thành viên',
-        description: 'Chọn nhanh sân trống giờ đẹp hoặc săn giá tốt cho hội nhóm.',
-        ctaLabel: 'Đặt sân ngay',
-        onTap: _openSearchPage,
-      ),
-      CarouselSlide(
-        image: 'assets/images/court_cover_5.jpg',
-        title: 'Sự kiện • giải nội bộ',
-        description: 'Tham gia giải giao lưu, tuyển thành viên hay lập kèo trong CLB.',
-        ctaLabel: 'Xem sự kiện',
-        onTap: () => _openSocialTab(1),
-      ),
-      CarouselSlide(
-        image: 'assets/images/court_cover_3.jpg',
-        title: 'Tìm bạn đánh đôi',
-        description: 'Kết nối partner hợp lối chơi, set kèo đôi ngay trong cộng đồng.',
-        ctaLabel: 'Mở tab Social',
-        onTap: () => _openSocialTab(2),
-      ),
-    ];
+      _bannerSlides = [
+        CarouselSlide(
+          image: 'assets/images/court_cover_2.jpg',
+          title: 'Golden hour deals / memberships',
+          description:
+              'Quickly pick prime-time open courts or grab great group offers.',
+          ctaLabel: 'Book now',
+          onTap: _openSearchPage,
+        ),
+        CarouselSlide(
+          image: 'assets/images/court_cover_5.jpg',
+          title: 'Events • in-house tournaments',
+          description:
+              'Join friendlies, recruit members, or set up club matches.',
+          ctaLabel: 'Browse events',
+          onTap: () => _openSocialTab(1),
+        ),
+        CarouselSlide(
+          image: 'assets/images/court_cover_3.jpg',
+          title: 'Find a doubles partner',
+          description:
+              'Connect with a partner who matches your playstyle and set doubles games.',
+          ctaLabel: 'Open Social tab',
+          onTap: () => _openSocialTab(2),
+        ),
+      ];
     Future.microtask(() {
       if (!mounted) return;
       _reloadCourts();
@@ -98,7 +101,7 @@ class _HomePageState extends State<HomePage> {
                   children: [
                     _GreetingHeader(
                       onNotificationTap: () =>
-                          _toast(context, 'Thông báo sẽ sớm có mặt!'),
+                          _toast(context, 'Notifications coming soon!'),
                     ),
                     const SizedBox(height: 18),
                     MyTextfield(
@@ -107,7 +110,7 @@ class _HomePageState extends State<HomePage> {
                       prefixIcon: const Icon(Icons.search_rounded),
                       suffixIcon: IconButton(
                         onPressed: () => _toast(
-                            context, 'Bộ lọc nâng cao đang được hoàn thiện'),
+                            context, 'Advanced filters are being finalized'),
                         icon: const Icon(Icons.tune_rounded),
                       ),
                       isReadOnly: true,
@@ -131,7 +134,7 @@ class _HomePageState extends State<HomePage> {
                   children: [
                     _QuickAction(
                       icon: Icons.sports_tennis,
-                      label: 'Đặt sân',
+                      label: 'Book a court',
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(builder: (_) => const SearchPage()),
                       ),
@@ -139,7 +142,7 @@ class _HomePageState extends State<HomePage> {
                     const SizedBox(width: 12),
                     _QuickAction(
                       icon: Icons.history,
-                      label: 'Lịch sử',
+                      label: 'History',
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(
                             builder: (_) => const UserBookingHistoryPage()),
@@ -148,7 +151,7 @@ class _HomePageState extends State<HomePage> {
                     const SizedBox(width: 12),
                     _QuickAction(
                       icon: Icons.favorite_border,
-                      label: 'Yêu thích',
+                      label: 'Favorites',
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => CourtPage(
@@ -189,10 +192,10 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
 
-            // ===== Section: Gần bạn =====
+            // ===== Section: Near you =====
             _SectionHeaderSliver(
-              title: 'Gần bạn',
-              actionText: 'Xem tất cả',
+              title: 'Near you',
+              actionText: 'View all',
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const CourtPage()),
               ),
@@ -217,7 +220,7 @@ class _HomePageState extends State<HomePage> {
   void _openSocialTab(int tabIndex) {
     final int safeIndex = tabIndex.clamp(0, 3).toInt();
 
-    // Nếu đang ở trong NavBarPage thì chuyển tab thay vì push để tránh chồng UI
+    // If already inside NavBarPage, switch tabs instead of pushing to avoid stacked UI
     final navState = context.findAncestorStateOfType<NavBarPageState>();
     if (navState != null) {
       navState.openSocialTab(safeIndex);
@@ -276,7 +279,7 @@ class _HomePageState extends State<HomePage> {
 
     if (userId == null) {
       setState(() {
-        _upcomingError = 'Bạn cần đăng nhập để xem lịch đặt sân sắp tới.';
+        _upcomingError = 'Sign in to view your upcoming bookings.';
         _isUpcomingLoading = false;
       });
       return;
@@ -356,7 +359,7 @@ class _HomePageState extends State<HomePage> {
                 FilledButton.icon(
                   onPressed: _reloadCourts,
                   icon: const Icon(Icons.refresh),
-                  label: const Text('Thử lại'),
+                  label: const Text('Retry'),
                 ),
               ],
             ),
@@ -371,7 +374,7 @@ class _HomePageState extends State<HomePage> {
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Text(
-              'Chưa có sân nào gần bạn. Hãy thử tìm kiếm để đặt sân nhé!',
+              'No courts near you yet. Try searching to book a court!',
               textAlign: TextAlign.center,
               style: TextStyle(fontWeight: FontWeight.w600),
             ),
@@ -408,7 +411,7 @@ class _SearchBar extends StatelessWidget {
       controller: controller,
       onChanged: onChanged,
       decoration: InputDecoration(
-        hintText: 'Tìm sân, quận/huyện…',
+        hintText: 'Search courts, districts…',
         prefixIcon: const Icon(Icons.search),
         isDense: true,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(24)),
@@ -441,14 +444,14 @@ class _GreetingHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Xin chào!',
-                style: textTheme.labelLarge?.copyWith(
-                  color: cs.onSurface.withOpacity(0.7),
-                  fontWeight: FontWeight.w600,
+              children: [
+                Text(
+                  'Hello!',
+                  style: textTheme.labelLarge?.copyWith(
+                    color: cs.onSurface.withOpacity(0.7),
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
               const SizedBox(height: 2),
               Row(
                 children: [
@@ -457,7 +460,7 @@ class _GreetingHeader extends StatelessWidget {
                   const SizedBox(width: 6),
                   Flexible(
                     child: Text(
-                      'Cần Thơ, Việt Nam',
+                      'Can Tho, Vietnam',
                       style: textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                         color: cs.onSurface,
@@ -646,10 +649,10 @@ class _CourtCard extends StatelessWidget {
         .join(' • ');
     final nextSlot = court.nextSlotLabel?.trim();
     final nextSlotLabel =
-        nextSlot != null && nextSlot.isNotEmpty ? nextSlot : 'Khung giờ đang cập nhật';
+        nextSlot != null && nextSlot.isNotEmpty ? nextSlot : 'Time slots updating';
     final price = court.pricePerHour != null && court.pricePerHour! > 0
         ? formatVND(court.pricePerHour!)
-        : 'Giá đang cập nhật';
+        : 'Price updating';
 
     return Material(
       color: cs.surface,
@@ -699,7 +702,7 @@ class _CourtCard extends StatelessWidget {
                           child: Text(
                             primaryMeta.isNotEmpty
                                 ? primaryMeta
-                                : 'Chưa có đánh giá',
+                                : 'No ratings yet',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -714,7 +717,7 @@ class _CourtCard extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const Text('/giờ', style: TextStyle(fontSize: 12)),
+                        const Text('/hour', style: TextStyle(fontSize: 12)),
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -741,7 +744,7 @@ class _CourtCard extends StatelessWidget {
                               size: 16, color: cs.primary.withOpacity(0.85)),
                           const SizedBox(width: 6),
                           Text(
-                            '${court.bookingCount} lượt đặt',
+                            '${court.bookingCount} bookings',
                             style: TextStyle(
                               color: cs.onSurface.withOpacity(0.75),
                               fontWeight: FontWeight.w600,
@@ -791,7 +794,7 @@ class _UpcomingCard extends StatelessWidget {
           children: const [
             CircularProgressIndicator(),
             SizedBox(width: 12),
-            Text('Đang kiểm tra lịch sắp tới...'),
+            Text('Checking upcoming bookings...'),
           ],
         ),
       );
@@ -827,7 +830,7 @@ class _UpcomingCard extends StatelessWidget {
               FilledButton.icon(
                 onPressed: onRetry,
                 icon: const Icon(Icons.refresh),
-                label: const Text('Thử lại'),
+                label: const Text('Retry'),
               ),
             ],
           ],
@@ -867,7 +870,7 @@ class _UpcomingCard extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: const [
                       Text(
-                        'Chưa có lịch chơi',
+                        'No bookings yet',
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 15,
@@ -875,7 +878,7 @@ class _UpcomingCard extends StatelessWidget {
                       ),
                       SizedBox(height: 6),
                       Text(
-                        'Đặt sân ngay để không bỏ lỡ khung giờ đẹp.',
+                        'Book now so you don’t miss great times.',
                         style: TextStyle(height: 1.3),
                       ),
                     ],
@@ -894,7 +897,7 @@ class _UpcomingCard extends StatelessWidget {
     final textColor = cs.onPrimary;
     final subtitleColor = cs.onPrimary.withOpacity(0.8);
     final dateFormat = DateFormat('HH:mm, dd/MM');
-    final location = booking!.courtLocation ?? 'Địa điểm đang cập nhật';
+    final location = booking!.courtLocation ?? 'Location updating';
     final unitLabel = booking!.courtUnitLabel;
     final timeRange =
         '${dateFormat.format(booking!.startTime.toLocal())} – ${dateFormat.format(booking!.endTime.toLocal())}';
@@ -944,7 +947,7 @@ class _UpcomingCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      booking!.courtName ?? 'Lịch chơi sắp tới',
+                      booking!.courtName ?? 'Upcoming booking',
                       style: TextStyle(
                         color: textColor,
                         fontWeight: FontWeight.w700,

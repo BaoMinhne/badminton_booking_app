@@ -33,7 +33,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Không thể chọn ảnh: $error')),
+        SnackBar(content: Text('Unable to pick images: $error')),
       );
     }
   }
@@ -47,7 +47,8 @@ class _CreatePostPageState extends State<CreatePostPage> {
     final content = _contentController.text.trim();
     if (content.isEmpty && _selectedImages.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập nội dung hoặc chọn ảnh.')),
+        const SnackBar(
+            content: Text('Please enter content or select at least one image.')),
       );
       return;
     }
@@ -79,7 +80,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Đăng bài mới',
+          'Create post',
           style: textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.w700,
             letterSpacing: -0.5,
@@ -110,7 +111,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
                         minLines: 4,
                         keyboardType: TextInputType.multiline,
                         decoration: InputDecoration(
-                          hintText: 'Chia sẻ suy nghĩ của bạn...',
+                          hintText: 'Share your thoughts...',
                           hintStyle: textTheme.bodyLarge?.copyWith(
                             color: cs.onSurfaceVariant,
                           ),
@@ -126,7 +127,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
                     // Images section
                     if (_selectedImages.isNotEmpty || true) ...[
                       Text(
-                        'Ảnh đính kèm',
+                        'Attachments',
                         style: textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
@@ -168,7 +169,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
-                                    'Thêm ảnh',
+                                    'Add photos',
                                     style: textTheme.labelMedium?.copyWith(
                                       color: cs.primary,
                                       fontWeight: FontWeight.w600,
@@ -253,7 +254,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
                       )
                     : const Icon(Icons.send_rounded),
                 label: Text(
-                  _isSubmitting ? 'Đang đăng...' : 'Đăng bài',
+                  _isSubmitting ? 'Posting...' : 'Post',
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 16,

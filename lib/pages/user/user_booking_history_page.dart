@@ -28,7 +28,7 @@ class _UserBookingHistoryPageState extends State<UserBookingHistoryPage> {
     final userManager = context.read<UserManager>();
     final userId = await userManager.getCurrentUserId();
     if (userId == null || userId.isEmpty) {
-      throw BookingServiceException('Không tìm thấy thông tin người dùng.');
+      throw BookingServiceException('User information not found.');
     }
     return _bookingService.listUserBookings(userId: userId);
   }
@@ -45,7 +45,7 @@ class _UserBookingHistoryPageState extends State<UserBookingHistoryPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Lịch sử đặt sân'),
+        title: const Text('Booking history'),
       ),
       body: FutureBuilder<List<UserBookingView>>(
         future: _historyFuture,
@@ -90,7 +90,7 @@ class _UserBookingHistoryPageState extends State<UserBookingHistoryPage> {
           SizedBox(height: 12),
           Center(
             child: Text(
-              'Bạn chưa có lịch sử đặt sân.',
+              'You have no booking history yet.',
               style: TextStyle(fontSize: 16, color: Colors.black54),
             ),
           ),
@@ -119,7 +119,7 @@ class _UserBookingHistoryPageState extends State<UserBookingHistoryPage> {
           const SizedBox(height: 8),
           const Center(
             child: Text(
-              'Kéo xuống để thử tải lại.',
+              'Pull down to try again.',
               style: TextStyle(color: Colors.black45),
             ),
           ),

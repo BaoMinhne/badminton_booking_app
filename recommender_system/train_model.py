@@ -12,10 +12,13 @@ from sklearn.metrics import (
     confusion_matrix,
     roc_auc_score,
     average_precision_score,
+    roc_curve,
+    precision_recall_curve,
 )
 from sklearn.model_selection import StratifiedKFold, train_test_split, cross_val_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+import matplotlib.pyplot as plt
 
 # =========================
 # CONFIG
@@ -187,6 +190,39 @@ def log_metrics(metrics: dict) -> Path:
 
 
 # =========================
+# PLOTS
+# =========================
+def plot_roc_pr_curves(y_true: np.ndarray, y_score: np.ndarray) -> Path:
+    EXPERIMENTS_DIR.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    path = EXPERIMENTS_DIR / f"accept_predictor_curves_{timestamp}.png"
+
+    fpr, tpr, _ = roc_curve(y_true, y_score)
+    precision, recall, _ = precision_recall_curve(y_true, y_score)
+
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+
+    axes[0].plot(fpr, tpr, color="tab:blue", label="ROC")
+    axes[0].plot([0, 1], [0, 1], linestyle="--", color="gray", label="Random")
+    axes[0].set_xlabel("False Positive Rate")
+    axes[0].set_ylabel("True Positive Rate")
+    axes[0].set_title("ROC Curve")
+    axes[0].legend(loc="lower right")
+
+    axes[1].plot(recall, precision, color="tab:green", label="PR")
+    axes[1].set_xlabel("Recall")
+    axes[1].set_ylabel("Precision")
+    axes[1].set_title("Precision-Recall Curve")
+    axes[1].legend(loc="lower left")
+
+    fig.tight_layout()
+    fig.savefig(path, dpi=150)
+    plt.close(fig)
+    print(f"✅ Curves saved: {path}")
+    return path
+
+
+# =========================
 # TRAIN
 # =========================
 def train() -> None:
@@ -251,6 +287,8 @@ def train() -> None:
     print("✅ Confusion matrix:", cm)
     print("✅ Top-K:", topk)
     print(classification_report(y_test, y_pred, zero_division=0))
+
+    plot_roc_pr_curves(y_test_np, y_proba)
 
     # CV (ROC-AUC)
     min_class = int(y.value_counts().min())

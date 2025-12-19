@@ -1,0 +1,72 @@
+{
+  "seed": 42,
+  "clean_mode": true,
+  "data_path": "D:\\VSCode\\badminton_booking_app\\recommender_system\\data\\training_dataset.csv",
+  "label_col": "label_accepted",
+  "feature_order": [
+    "rule_score",
+    "rank_in_list",
+    "f_level",
+    "f_style",
+    "f_role",
+    "f_intensity",
+    "f_home_court",
+    "f_habit",
+    "f_court",
+    "is_top3"
+  ],
+  "class_distribution": {
+    "0": 29206,
+    "1": 390
+  },
+  "threshold": 0.5,
+  "roc_auc": 0.861389452154601,
+  "pr_auc": 0.0610309678976001,
+  "confusion_matrix": [
+    [
+      4313,
+      1529
+    ],
+    [
+      7,
+      71
+    ]
+  ],
+  "topk_metrics": {
+    "precision@5": 0.2,
+    "recall@5": 0.01282051282051282,
+    "precision@10": 0.1,
+    "recall@10": 0.01282051282051282,
+    "precision@20": 0.1,
+    "recall@20": 0.02564102564102564
+  },
+  "cv_roc_auc_mean": 0.8601957346903355,
+  "cv_roc_auc_std": 0.012656136642688064,
+  "classification_report": {
+    "0": {
+      "precision": 0.9983796296296297,
+      "recall": 0.7382745635056488,
+      "f1-score": 0.848848651840189,
+      "support": 5842.0
+    },
+    "1": {
+      "precision": 0.044375,
+      "recall": 0.9102564102564102,
+      "f1-score": 0.08462455303933254,
+      "support": 78.0
+    },
+    "accuracy": 0.7405405405405405,
+    "macro avg": {
+      "precision": 0.5213773148148149,
+      "recall": 0.8242654868810295,
+      "f1-score": 0.4667366024397608,
+      "support": 5920.0
+    },
+    "weighted avg": {
+      "precision": 0.9858099740365367,
+      "recall": 0.7405405405405405,
+      "f1-score": 0.8387794829708534,
+      "support": 5920.0
+    }
+  }
+}

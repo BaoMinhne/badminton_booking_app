@@ -271,11 +271,16 @@ class _ReviewTabState extends State<ReviewTab> {
   }
 
   void _openWriteReview(BuildContext context, ColorScheme cs) async {
-    final draft = await Navigator.of(context).push<_ReviewDraft>(
-      MaterialPageRoute(
-        builder: (_) => const _WriteReviewPage(),
-        fullscreenDialog: true,
-      ),
+    final draft = await showDialog<_ReviewDraft>(
+      context: context,
+      builder: (dialogContext) {
+        return Dialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: const _WriteReviewDialog(),
+        );
+      },
     );
 
     if (draft == null) return;
@@ -547,14 +552,14 @@ class _ReviewCardState extends State<ReviewCard> {
 }
 
 // ===================== WRITE REVIEW SHEET =====================
-class _WriteReviewPage extends StatefulWidget {
-  const _WriteReviewPage();
+class _WriteReviewDialog extends StatefulWidget {
+  const _WriteReviewDialog();
 
   @override
-  State<_WriteReviewPage> createState() => _WriteReviewPageState();
+  State<_WriteReviewDialog> createState() => _WriteReviewDialogState();
 }
 
-class _WriteReviewPageState extends State<_WriteReviewPage> {
+class _WriteReviewDialogState extends State<_WriteReviewDialog> {
   int _stars = 5;
   final _name = TextEditingController();
   final _comment = TextEditingController();
@@ -570,86 +575,96 @@ class _WriteReviewPageState extends State<_WriteReviewPage> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Write a review'),
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(
-            16,
-            16,
-            16,
-            16 + MediaQuery.of(context).viewInsets.bottom,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Rate', style: TextStyle(color: cs.onSurface)),
-              StarPicker(
-                initial: 5,
-                onChanged: (v) => _stars = v,
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _name,
-                decoration: const InputDecoration(
-                  labelText: 'Display name',
-                  hintText: 'e.g., Minh Nguyen',
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _comment,
-                minLines: 3,
-                maxLines: 6,
-                decoration: const InputDecoration(
-                  labelText: 'Review content',
-                  hintText: 'Share your experience…',
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Cancel'),
-                    ),
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          16,
+          20,
+          16 + MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Write a review',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: () {
-                        final name = _name.text.trim().isEmpty
-                            ? 'User'
-                            : _name.text.trim();
-                        final cmt = _comment.text.trim();
-                        if (cmt.isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content:
-                                  Text('Please enter your review content.'),
-                            ),
-                          );
-                          return;
-                        }
-                        Navigator.pop(
-                          context,
-                          _ReviewDraft(
-                            displayName: name,
-                            stars: _stars,
-                            comment: cmt,
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text('Rate', style: TextStyle(color: cs.onSurface)),
+            StarPicker(
+              initial: 5,
+              onChanged: (v) => _stars = v,
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _name,
+              decoration: const InputDecoration(
+                labelText: 'Display name',
+                hintText: 'e.g., Minh Nguyen',
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _comment,
+              minLines: 3,
+              maxLines: 6,
+              decoration: const InputDecoration(
+                labelText: 'Review content',
+                hintText: 'Share your experience…',
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () {
+                      final name = _name.text.trim().isEmpty
+                          ? 'User'
+                          : _name.text.trim();
+                      final cmt = _comment.text.trim();
+                      if (cmt.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Please enter your review content.'),
                           ),
                         );
-                      },
-                      child: const Text('Submit review'),
-                    ),
+                        return;
+                      }
+                      Navigator.pop(
+                        context,
+                        _ReviewDraft(
+                          displayName: name,
+                          stars: _stars,
+                          comment: cmt,
+                        ),
+                      );
+                    },
+                    child: const Text('Submit review'),
                   ),
-                ],
-              ),
-            ],
-          ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

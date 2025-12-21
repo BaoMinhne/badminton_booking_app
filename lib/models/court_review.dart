@@ -3,7 +3,7 @@ import 'package:pocketbase/pocketbase.dart';
 import '../utils/pocketbase_utils.dart';
 
 class CourtReview {
-  const CourtReview({
+  CourtReview({
     required this.id,
     required this.courtId,
     required this.userId,

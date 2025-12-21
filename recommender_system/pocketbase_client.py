@@ -39,6 +39,8 @@ async def create_record(collection: str, data: Dict[str, Any]) -> Dict[str, Any]
         json=data,
         headers=_auth_headers(),
     )
+    if resp.status_code >= 400:
+        print("PB ERROR:", resp.status_code, resp.text)  # <<< thêm dòng này
     resp.raise_for_status()
     return resp.json()
 

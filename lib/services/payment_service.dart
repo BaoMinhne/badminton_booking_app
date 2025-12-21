@@ -56,6 +56,29 @@ class PaymentService {
     }
   }
 
+  Future<String?> getLatestPaymentStatusForBooking({
+    required String bookingId,
+    required String provider,
+  }) async {
+    final pb = await getPocketbaseInstance();
+    try {
+      final result = await pb.collection('payment').getList(
+            page: 1,
+            perPage: 1,
+            filter: 'booking_id = "$bookingId" && provider = "$provider"',
+            sort: '-created',
+          );
+      if (result.items.isEmpty) {
+        return null;
+      }
+      return result.items.first.data['status'] as String?;
+    } on ClientException catch (error) {
+      throw PaymentServiceException(_mapClientException(error));
+    } catch (_) {
+      throw PaymentServiceException('Không thể kiểm tra trạng thái thanh toán.');
+    }
+  }
+
   String _mapClientException(ClientException error) {
     if (error.response != null) {
       final data = error.response!['data'];

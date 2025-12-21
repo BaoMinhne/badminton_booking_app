@@ -5,6 +5,7 @@ import 'package:badminton_booking_app/utils/booking_helpers.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class PaymentPage extends StatefulWidget {
   const PaymentPage({super.key});
@@ -32,7 +33,7 @@ class _PaymentPageState extends State<PaymentPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Payment'),
+        title: const Text('Thanh toán VNPAY'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -69,7 +70,7 @@ class _PaymentPageState extends State<PaymentPage> {
                         width: 22,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('Pay now'),
+                    : const Text('Thanh toán ngay'),
               ),
             ),
             const SizedBox(height: 16),
@@ -250,7 +251,10 @@ class _PaymentPageState extends State<PaymentPage> {
     setState(() => _isProcessingPayment = true);
 
     try {
-      await context.read<BookingManager>().confirmPaymentBookings();
+      final manager = context.read<BookingManager>();
+      final session = await manager.startVnpayPayment();
+      await _launchVnpay(session.paymentUrl);
+      await _waitForVnpayConfirmation(manager, session.bookingId);
       if (!mounted) return;
       await _showPaymentSuccess(context);
       if (!mounted) return;
@@ -264,6 +268,53 @@ class _PaymentPageState extends State<PaymentPage> {
       if (!mounted) return;
       setState(() => _isProcessingPayment = false);
     }
+  }
+
+  Future<void> _launchVnpay(String paymentUrl) async {
+    final uri = Uri.tryParse(paymentUrl);
+    if (uri == null) {
+      throw BookingManagerException('Đường dẫn thanh toán không hợp lệ.');
+    }
+    final canLaunch = await canLaunchUrl(uri);
+    if (!canLaunch) {
+      throw BookingManagerException(
+        'Không thể mở VNPAY. Vui lòng kiểm tra thiết bị.',
+      );
+    }
+    final launched = await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication,
+    );
+    if (!launched) {
+      throw BookingManagerException('Không thể mở trang thanh toán VNPAY.');
+    }
+  }
+
+  Future<void> _waitForVnpayConfirmation(
+    BookingManager manager,
+    String bookingId,
+  ) async {
+    const timeout = Duration(minutes: 3);
+    const interval = Duration(seconds: 3);
+    final deadline = DateTime.now().add(timeout);
+
+    while (DateTime.now().isBefore(deadline)) {
+      final status = await manager.checkVnpayPaymentStatus(bookingId);
+      if (status == PaymentCheckResult.succeeded) {
+        await manager.confirmVnpayBooking(bookingId);
+        return;
+      }
+      if (status == PaymentCheckResult.failed) {
+        throw BookingManagerException(
+          'Thanh toán không thành công hoặc đã bị huỷ.',
+        );
+      }
+      await Future<void>.delayed(interval);
+    }
+
+    throw BookingManagerException(
+      'Chưa nhận được xác nhận thanh toán. Vui lòng kiểm tra lại sau.',
+    );
   }
 
   Future<void> _showPaymentSuccess(BuildContext context) {

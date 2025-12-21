@@ -11,17 +11,20 @@ import 'package:badminton_booking_app/services/booking_realtime_service.dart';
 import 'package:badminton_booking_app/services/booking_service.dart';
 import 'package:badminton_booking_app/utils/booking_helpers.dart';
 import 'package:badminton_booking_app/services/payment_service.dart';
+import 'package:badminton_booking_app/services/vnpay_service.dart';
 
 class BookingManager extends ChangeNotifier {
   BookingManager({
     required this.detailData,
     BookingService? bookingService,
     PaymentService? paymentService,
+    VnpayService? vnpayService,
     this.slotDuration = const Duration(hours: 1),
     this.unitGroupSize = 5,
   })  : assert(unitGroupSize > 0, 'unitGroupSize must be positive'),
         _bookingService = bookingService ?? BookingService(),
-        _paymentService = paymentService ?? PaymentService() {
+        _paymentService = paymentService ?? PaymentService(),
+        _vnpayService = vnpayService ?? VnpayService() {
     _selectedDate = _normalizeDate(DateTime.now());
 
     Future.microtask(() => loadBookings());
@@ -32,6 +35,7 @@ class BookingManager extends ChangeNotifier {
   final int unitGroupSize;
   final BookingService _bookingService;
   final PaymentService _paymentService;
+  final VnpayService _vnpayService;
   final BookingRealtimeService _realtimeService = BookingRealtimeService();
 
   DateTime _selectedDate = DateTime.now();
@@ -445,6 +449,73 @@ class BookingManager extends ChangeNotifier {
     }
   }
 
+  Future<VnpayPaymentSession> startVnpayPayment() async {
+    final bookings = awaitingPaymentBookings.toList(growable: false);
+    if (bookings.isEmpty) {
+      throw BookingManagerException('Không có lượt đặt nào cần thanh toán.');
+    }
+    if (bookings.length > 1) {
+      throw BookingManagerException(
+        'Vui lòng thanh toán từng lượt đặt để dùng VNPAY.',
+      );
+    }
+
+    final booking = bookings.first;
+    final amountMinor = _calculateBookingAmount(booking);
+    final description =
+        'Thanh toán đặt sân ${detailData.court.name} (${booking.id})';
+
+    try {
+      return await _vnpayService.createPaymentSession(
+        bookingId: booking.id,
+        amountMinor: amountMinor,
+        currency: 'VND',
+        description: description,
+      );
+    } on VnpayServiceException catch (error) {
+      throw BookingManagerException(error.message);
+    }
+  }
+
+  Future<PaymentCheckResult> checkVnpayPaymentStatus(String bookingId) async {
+    final status = await _paymentService.getLatestPaymentStatusForBooking(
+      bookingId: bookingId,
+      provider: 'vnpay',
+    );
+    switch (status) {
+      case 'succeeded':
+        return PaymentCheckResult.succeeded;
+      case 'failed':
+      case 'refunded':
+        return PaymentCheckResult.failed;
+      case 'pending':
+      default:
+        return PaymentCheckResult.pending;
+    }
+  }
+
+  Future<void> confirmVnpayBooking(String bookingId) async {
+    _isConfirmingPayment = true;
+    notifyListeners();
+    try {
+      final updated = await _bookingService.markAsConfirmed(bookingId);
+      final updatedList = List<CourtBooking>.from(_loadedBookings);
+      final index = updatedList.indexWhere((item) => item.id == updated.id);
+      if (index >= 0) {
+        updatedList[index] = updated;
+      } else {
+        updatedList.add(updated);
+      }
+      _loadedBookings = updatedList;
+      _updateCache(_loadedBookings, _selectedDate);
+      notifyListeners();
+      await loadBookings(forceRefresh: true);
+    } finally {
+      _isConfirmingPayment = false;
+      notifyListeners();
+    }
+  }
+
   int _calculateBookingAmount(CourtBooking booking) {
     final slots = booking.splitToSlots(slotDuration);
     var total = 0.0;
@@ -595,3 +666,5 @@ class BookingManagerException implements Exception {
   @override
   String toString() => message;
 }
+
+enum PaymentCheckResult { pending, succeeded, failed }

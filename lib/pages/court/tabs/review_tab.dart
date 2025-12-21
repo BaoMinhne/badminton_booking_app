@@ -358,8 +358,15 @@ class StarRow extends StatelessWidget {
   final double rating; // 0..5 (đọc)
   final double size;
   final int maxStars;
+  final Color filledColor;
+  final Color emptyColor;
   const StarRow(
-      {super.key, required this.rating, this.size = 18, this.maxStars = 5});
+      {super.key,
+      required this.rating,
+      this.size = 18,
+      this.maxStars = 5,
+      this.filledColor = Colors.amber,
+      this.emptyColor = const Color(0xFFFFD54F)});
 
   @override
   Widget build(BuildContext context) {
@@ -377,7 +384,12 @@ class StarRow extends StatelessWidget {
         }
         return Padding(
           padding: const EdgeInsets.only(right: 2),
-          child: Icon(icon, size: size),
+          child: Icon(
+            icon,
+            size: size,
+            color:
+                i < full || (i == full && hasHalf) ? filledColor : emptyColor,
+          ),
         );
       }),
     );
@@ -387,7 +399,15 @@ class StarRow extends StatelessWidget {
 class StarPicker extends StatefulWidget {
   final int initial; // 1..5
   final void Function(int) onChanged;
-  const StarPicker({super.key, this.initial = 5, required this.onChanged});
+  final Color filledColor;
+  final Color emptyColor;
+  const StarPicker({
+    super.key,
+    this.initial = 5,
+    required this.onChanged,
+    this.filledColor = Colors.amber,
+    this.emptyColor = const Color(0xFFFFD54F),
+  });
 
   @override
   State<StarPicker> createState() => _StarPickerState();
@@ -412,7 +432,10 @@ class _StarPickerState extends State<StarPicker> {
             setState(() => _v = idx);
             widget.onChanged(_v);
           },
-          icon: Icon(filled ? Icons.star : Icons.star_outline),
+          icon: Icon(
+            filled ? Icons.star : Icons.star_outline,
+            color: filled ? widget.filledColor : widget.emptyColor,
+          ),
         );
       }),
     );

@@ -167,7 +167,7 @@ class _CourtDetailState extends State<CourtDetail>
                 emptyMessage: 'This court has no photos yet.',
               ),
               Rules(items: _buildDefaultRules()),
-              const ReviewTab(initialReviews: []),
+              ReviewTab(courtId: _detailData.court.id),
             ],
           ),
         ),

@@ -259,14 +259,15 @@ class _CourtPageState extends State<CourtPage> {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  Row(
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
                       _buildStatPill(
                         context,
                         icon: Icons.sports_tennis,
                         label: '$courtCount courts available',
                       ),
-                      const SizedBox(width: 8),
                       _buildStatPill(
                         context,
                         icon: Icons.favorite,
@@ -319,6 +320,8 @@ class _CourtPageState extends State<CourtPage> {
               color: colorScheme.onPrimary,
               fontWeight: FontWeight.w700,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           )
         ],
       ),

@@ -78,9 +78,11 @@ class CourtService {
             filter: filter,
           );
 
-      return result.items
+      final courts = result.items
           .map((record) => _mapRecordToCourt(pb, record))
           .toList(growable: false);
+      final withRatings = await _applyRatings(pb, courts);
+      return _applyPricing(pb, withRatings);
     } on ClientException catch (error) {
       throw CourtServiceException(
         _mapClientException(
@@ -117,9 +119,11 @@ class CourtService {
             filter: "owner='$escapedOwner'",
           );
 
-      return result.items
+      final courts = result.items
           .map((record) => _mapRecordToCourt(pb, record))
           .toList(growable: false);
+      final withRatings = await _applyRatings(pb, courts);
+      return _applyPricing(pb, withRatings);
     } on ClientException catch (error) {
       throw CourtServiceException(
         _mapClientException(
@@ -601,6 +605,99 @@ class CourtService {
     }
 
     return null;
+  }
+
+  Future<List<Court>> _applyRatings(
+    PocketBase pb,
+    List<Court> courts,
+  ) async {
+    if (courts.isEmpty) return courts;
+    final ratingByCourt = await _fetchAverageRatings(
+      pb,
+      courts.map((court) => court.id).toList(),
+    );
+    return courts
+        .map((court) => court.copyWith(rating: ratingByCourt[court.id]))
+        .toList(growable: false);
+  }
+
+  Future<Map<String, double>> _fetchAverageRatings(
+    PocketBase pb,
+    List<String> courtIds,
+  ) async {
+    if (courtIds.isEmpty) return {};
+    final filter = courtIds
+        .map((id) => "court_id='${_escapeFilterValue(id)}'")
+        .join(' || ');
+    final records = await pb.collection('court_ratings').getFullList(
+          filter: filter,
+          fields: 'court_id,rating',
+        );
+    final totals = <String, double>{};
+    final counts = <String, int>{};
+    for (final record in records) {
+      final data = record.data;
+      final courtId = data['court_id'] as String?;
+      if (courtId == null || courtId.isEmpty) continue;
+      final rating = data['rating'];
+      if (rating is! num) continue;
+      totals[courtId] = (totals[courtId] ?? 0) + rating.toDouble();
+      counts[courtId] = (counts[courtId] ?? 0) + 1;
+    }
+    final averages = <String, double>{};
+    totals.forEach((courtId, total) {
+      final count = counts[courtId] ?? 0;
+      if (count > 0) {
+        averages[courtId] = total / count;
+      }
+    });
+    return averages;
+  }
+
+  Future<List<Court>> _applyPricing(
+    PocketBase pb,
+    List<Court> courts,
+  ) async {
+    if (courts.isEmpty) return courts;
+    final priceByCourt = await _fetchMinPricePerHour(
+      pb,
+      courts.map((court) => court.id).toList(),
+    );
+    return courts
+        .map(
+          (court) => court.copyWith(
+            pricePerHour: priceByCourt[court.id] ?? court.pricePerHour,
+          ),
+        )
+        .toList(growable: false);
+  }
+
+  Future<Map<String, int>> _fetchMinPricePerHour(
+    PocketBase pb,
+    List<String> courtIds,
+  ) async {
+    if (courtIds.isEmpty) return {};
+    final filter = courtIds
+        .map((id) => "court_id='${_escapeFilterValue(id)}'")
+        .join(' || ');
+    final records = await pb.collection('court_pricing').getFullList(
+          filter: filter,
+          fields: 'court_id,price_per_hour',
+        );
+    final minPrice = <String, int>{};
+    for (final record in records) {
+      final data = record.data;
+      final courtId = data['court_id'] as String?;
+      if (courtId == null || courtId.isEmpty) continue;
+      final price = data['price_per_hour'];
+      if (price is! num) continue;
+      final value = price.toInt();
+      final current = minPrice[courtId];
+      if (current == null || value < current) {
+        minPrice[courtId] = value;
+      }
+    }
+    return minPrice;
   }
 
   Court _mapRecordToCourt(PocketBase pb, RecordModel record) {

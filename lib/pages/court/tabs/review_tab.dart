@@ -524,25 +524,7 @@ class _ReviewCardState extends State<ReviewCard> {
                   child: Text(_expanded ? 'Collapse' : 'See more'),
                 ),
 
-              // hành động
-              Row(
-                children: [
-                  IconButton(
-                    onPressed: widget.onLike,
-                    icon: Icon(
-                      r.likedByMe ? Icons.favorite : Icons.favorite_border,
-                      color: r.likedByMe ? cs.primary : null,
-                    ),
-                  ),
-                  Text('${r.likes}'),
-                  const SizedBox(width: 8),
-                  TextButton.icon(
-                    onPressed: widget.onReport,
-                    icon: const Icon(Icons.flag_outlined, size: 18),
-                    label: const Text('Report'),
-                  ),
-                ],
-              ),
+              // hành động đã ẩn theo yêu cầu
             ],
           ),
         ),

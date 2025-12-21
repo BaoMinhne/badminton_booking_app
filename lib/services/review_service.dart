@@ -4,7 +4,7 @@ import '../models/court_review.dart';
 import 'pocketbase_client.dart';
 
 class ReviewService {
-  static const String collection = 'court_reviews';
+  static const String collection = 'court_ratings';
 
   Future<List<CourtReview>> fetchReviews(String courtId) async {
     final pb = await getPocketbaseInstance();

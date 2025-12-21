@@ -1,57 +1,18 @@
 import 'package:flutter/material.dart';
 
-class Review {
-  final String id;
-  final String userName;
-  final double stars; // 1..5
-  final String comment;
-  final DateTime createdAt;
-  int likes;
-  bool likedByMe;
-
-  Review({
-    required this.id,
-    required this.userName,
-    required this.stars,
-    required this.comment,
-    required this.createdAt,
-    this.likes = 0,
-    this.likedByMe = false,
-  });
-}
-
-final List<Review> kSampleReviews = [
-  Review(
-    id: 'r1',
-    userName: 'Hữu Minh',
-    stars: 5,
-    comment:
-        'Clean courts, bright lights, clear lines. The owner is very supportive. Peak hours are a bit busy but booking ahead works.',
-    createdAt: DateTime.now().subtract(const Duration(days: 1, hours: 3)),
-    likes: 2,
-  ),
-  Review(
-    id: 'r2',
-    userName: 'Ngọc Anh',
-    stars: 4,
-    comment:
-        'Reasonable prices. Would be perfect with more fans at court #3. Overall worth returning.',
-    createdAt: DateTime.now().subtract(const Duration(days: 4)),
-  ),
-  Review(
-    id: 'r3',
-    userName: 'Quốc Việt',
-    stars: 3,
-    comment:
-        'The floor was a bit slippery on a rainy day—hope drainage improves. Staff were fine.',
-    createdAt: DateTime.now().subtract(const Duration(days: 9)),
-    likes: 1,
-  ),
-];
+import '../../../models/court_review.dart';
+import '../../../services/review_service.dart';
 
 class ReviewTab extends StatefulWidget {
-  final List<Review> initialReviews;
-  const ReviewTab({super.key, this.initialReviews = const []});
+  final String courtId;
+  final List<CourtReview> initialReviews;
+  final ReviewService? reviewService;
+  const ReviewTab({
+    super.key,
+    required this.courtId,
+    this.initialReviews = const [],
+    this.reviewService,
+  });
 
   @override
   State<ReviewTab> createState() => _ReviewTabState();
@@ -60,7 +21,10 @@ class ReviewTab extends StatefulWidget {
 enum _SortBy { newest, highest, lowest, mostLiked }
 
 class _ReviewTabState extends State<ReviewTab> {
-  late List<Review> _reviews;
+  late List<CourtReview> _reviews;
+  late final ReviewService _reviewService;
+  bool _isLoading = false;
+  String? _errorMessage;
   _SortBy _sortBy = _SortBy.newest;
   int _filterStars = 0; // 0: all, 1..5: filter by stars
 
@@ -68,9 +32,32 @@ class _ReviewTabState extends State<ReviewTab> {
   void initState() {
     super.initState();
     _reviews = [...widget.initialReviews];
+    _reviewService = widget.reviewService ?? ReviewService();
+    _loadReviews();
   }
 
-  void _addReview(Review r) {
+  Future<void> _loadReviews() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      final reviews = await _reviewService.fetchReviews(widget.courtId);
+      if (!mounted) return;
+      setState(() {
+        _reviews = reviews;
+        _isLoading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = error.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _addReview(CourtReview r) {
     setState(() => _reviews.insert(0, r));
   }
 
@@ -102,8 +89,8 @@ class _ReviewTabState extends State<ReviewTab> {
     return d;
   }
 
-  List<Review> get _visible {
-    List<Review> out = [..._reviews];
+  List<CourtReview> get _visible {
+    List<CourtReview> out = [..._reviews];
     if (_filterStars != 0) {
       out = out.where((e) => e.stars.round() == _filterStars).toList();
     }
@@ -224,7 +211,8 @@ class _ReviewTabState extends State<ReviewTab> {
           ),
           const Spacer(),
           TextButton.icon(
-            onPressed: () => _openWriteReview(context),
+            onPressed:
+                _isLoading ? null : () => _openWriteReview(context, cs),
             icon: const Icon(Icons.edit_outlined),
             label: const Text('Write a review'),
           ),
@@ -246,9 +234,13 @@ class _ReviewTabState extends State<ReviewTab> {
           SliverFillRemaining(
             hasScrollBody: false,
             child: _EmptyState(
-              message: _reviews.isEmpty
-                  ? 'No reviews yet. Be the first!'
-                  : 'No items match the filter.',
+              message: _isLoading
+                  ? 'Loading reviews...'
+                  : _errorMessage != null
+                      ? 'Unable to load reviews. Please try again.'
+                      : _reviews.isEmpty
+                          ? 'No reviews yet. Be the first!'
+                          : 'No items match the filter.',
             ),
           )
         else
@@ -278,8 +270,8 @@ class _ReviewTabState extends State<ReviewTab> {
     );
   }
 
-  void _openWriteReview(BuildContext context) async {
-    final r = await showModalBottomSheet<Review>(
+  void _openWriteReview(BuildContext context, ColorScheme cs) async {
+    final draft = await showModalBottomSheet<_ReviewDraft>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -294,10 +286,25 @@ class _ReviewTabState extends State<ReviewTab> {
       ),
     );
 
-    if (r != null) _addReview(r);
+    if (draft == null) return;
+    try {
+      final review = await _reviewService.submitReview(
+        courtId: widget.courtId,
+        stars: draft.stars,
+        comment: draft.comment,
+        displayName: draft.displayName,
+      );
+      if (!mounted) return;
+      _addReview(review);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    }
   }
 
-  void _report(Review r) {
+  void _report(CourtReview r) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -422,7 +429,7 @@ class _StarPickerState extends State<StarPicker> {
 
 // ===================== REVIEW CARD =====================
 class ReviewCard extends StatefulWidget {
-  final Review review;
+  final CourtReview review;
   final VoidCallback onLike;
   final VoidCallback onReport;
   const ReviewCard({
@@ -612,14 +619,14 @@ class _WriteReviewSheetState extends State<_WriteReviewSheet> {
                       );
                       return;
                     }
-                    final r = Review(
-                      id: DateTime.now().millisecondsSinceEpoch.toString(),
-                      userName: name,
-                      stars: _stars.toDouble(),
-                      comment: cmt,
-                      createdAt: DateTime.now(),
+                    Navigator.pop(
+                      context,
+                      _ReviewDraft(
+                        displayName: name,
+                        stars: _stars,
+                        comment: cmt,
+                      ),
                     );
-                    Navigator.pop(context, r);
                   },
                   child: const Text('Submit review'),
                 ),
@@ -656,6 +663,18 @@ class _FilterChipLike extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ReviewDraft {
+  final String displayName;
+  final int stars;
+  final String comment;
+
+  const _ReviewDraft({
+    required this.displayName,
+    required this.stars,
+    required this.comment,
+  });
 }
 
 String timeAgo(DateTime dt) {

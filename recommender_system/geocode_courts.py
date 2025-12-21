@@ -4,6 +4,7 @@ import os
 from typing import Any, Dict, Optional, Tuple
 
 import httpx
+from urllib.parse import quote
 
 from pocketbase_client import client as pb_client
 from pocketbase_client import get_list, update_record
@@ -29,14 +30,18 @@ async def _geocode_nominatim(
     address: str,
     *,
     user_agent: str,
+    country_code: Optional[str],
 ) -> Optional[Tuple[float, float]]:
+    params: Dict[str, Any] = {
+        "q": address,
+        "format": "json",
+        "limit": 1,
+    }
+    if country_code:
+        params["countrycodes"] = country_code
     response = await client.get(
         "https://nominatim.openstreetmap.org/search",
-        params={
-            "q": address,
-            "format": "json",
-            "limit": 1,
-        },
+        params=params,
         headers={"User-Agent": user_agent},
     )
     response.raise_for_status()
@@ -72,7 +77,7 @@ async def _geocode_mapbox(
     api_key: str,
 ) -> Optional[Tuple[float, float]]:
     response = await client.get(
-        f"https://api.mapbox.com/geocoding/v5/mapbox.places/{address}.json",
+        f"https://api.mapbox.com/geocoding/v5/mapbox.places/{quote(address)}.json",
         params={"access_token": api_key, "limit": 1},
     )
     response.raise_for_status()
@@ -93,7 +98,12 @@ async def geocode_address(
     api_key: Optional[str],
 ) -> Optional[Tuple[float, float]]:
     if provider == "nominatim":
-        return await _geocode_nominatim(client, address, user_agent=user_agent)
+        return await _geocode_nominatim(
+            client,
+            address,
+            user_agent=user_agent,
+            country_code=os.getenv("GEOCODE_COUNTRY_CODE"),
+        )
     if provider == "google":
         if not api_key:
             raise GeocodeError("Missing GOOGLE_MAPS_API_KEY for Google Geocoding.")
@@ -172,11 +182,21 @@ async def run_geocoding(args: argparse.Namespace) -> None:
                         f"{args.lng_field}={lng}",
                     )
                 else:
-                    await update_record(
-                        "courts",
-                        item["id"],
-                        {args.lat_field: lat, args.lng_field: lng},
-                    )
+                    try:
+                        await update_record(
+                            "courts",
+                            item["id"],
+                            {args.lat_field: lat, args.lng_field: lng},
+                        )
+                    except httpx.HTTPStatusError as exc:
+                        status = exc.response.status_code
+                        print(
+                            f"[ERROR] {item.get('id')} update failed ({status}).",
+                            exc.response.text,
+                        )
+                        skipped += 1
+                        await asyncio.sleep(args.rate_limit)
+                        continue
                     updated += 1
                     print(f"[UPDATE] {item.get('id')} -> {lat}, {lng}")
 

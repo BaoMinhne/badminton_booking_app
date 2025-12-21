@@ -14,6 +14,7 @@ DEFAULT_PROVIDER = "nominatim"
 DEFAULT_ADDRESS_FIELD = "location"
 DEFAULT_LAT_FIELD = "latitude"
 DEFAULT_LNG_FIELD = "longitud3"
+DEFAULT_COUNTRY_SUFFIX = "Việt Nam"
 
 
 class GeocodeError(RuntimeError):
@@ -115,6 +116,16 @@ async def geocode_address(
     raise GeocodeError(f"Unsupported provider: {provider}")
 
 
+def _normalize_address(address: str, *, country_suffix: str) -> str:
+    normalized = address.strip()
+    if not country_suffix:
+        return normalized
+    lowered = normalized.lower()
+    if "viet nam" in lowered or "việt nam" in lowered:
+        return normalized
+    return f"{normalized}, {country_suffix}"
+
+
 def _is_missing(value: Any, *, zero_is_missing: bool) -> bool:
     if value is None:
         return True
@@ -160,16 +171,28 @@ async def run_geocoding(args: argparse.Namespace) -> None:
                     print(f"[SKIP] {item.get('id')} already has coordinates.")
                     continue
 
+                geocode_address_text = _normalize_address(
+                    str(address),
+                    country_suffix=args.address_country_suffix,
+                )
+                print(
+                    "[GEOCODE]",
+                    f"id={item.get('id')}",
+                    f"address={geocode_address_text}",
+                )
                 coords = await geocode_address(
                     geocode_client,
                     args.provider,
-                    str(address),
+                    geocode_address_text,
                     user_agent=args.user_agent,
                     api_key=args.api_key,
                 )
                 if coords is None:
                     skipped += 1
-                    print(f"[MISS] {item.get('id')} no geocode match.")
+                    print(
+                        f"[MISS] {item.get('id')} no geocode match.",
+                        f"address={address}",
+                    )
                     await asyncio.sleep(args.rate_limit)
                     continue
 
@@ -269,6 +292,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=os.getenv("GEOCODE_ZERO_IS_MISSING", "true").lower() != "false",
         help="Treat 0 values as missing coordinates (default: true).",
     )
+    parser.add_argument(
+        "--address-country-suffix",
+        default=os.getenv("GEOCODE_ADDRESS_COUNTRY_SUFFIX", DEFAULT_COUNTRY_SUFFIX),
+        help="Append this suffix if the address lacks a country name.",
+    )
     return parser
 
 
@@ -287,6 +315,14 @@ async def main() -> None:
     args.user_agent = _env_or_default(
         "NOMINATIM_USER_AGENT",
         "badminton-booking-app-geocoder/1.0",
+    )
+    print(
+        "[CONFIG]",
+        f"provider={args.provider}",
+        f"address_field={args.address_field}",
+        f"lat_field={args.lat_field}",
+        f"lng_field={args.lng_field}",
+        f"country_suffix={args.address_country_suffix}",
     )
     if args.provider in {"google", "mapbox"} and not args.api_key:
         raise GeocodeError("Missing API key for selected provider.")

@@ -307,7 +307,6 @@ class _ReviewTabState extends State<ReviewTab> {
         courtId: widget.courtId,
         stars: draft.stars,
         comment: draft.comment,
-        displayName: draft.displayName,
       );
       if (!mounted) return;
       _addReview(review);
@@ -561,12 +560,10 @@ class _WriteReviewDialog extends StatefulWidget {
 
 class _WriteReviewDialogState extends State<_WriteReviewDialog> {
   int _stars = 5;
-  final _name = TextEditingController();
   final _comment = TextEditingController();
 
   @override
   void dispose() {
-    _name.dispose();
     _comment.dispose();
     super.dispose();
   }
@@ -609,14 +606,6 @@ class _WriteReviewDialogState extends State<_WriteReviewDialog> {
             ),
             const SizedBox(height: 8),
             TextField(
-              controller: _name,
-              decoration: const InputDecoration(
-                labelText: 'Display name',
-                hintText: 'e.g., Minh Nguyen',
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
               controller: _comment,
               minLines: 3,
               maxLines: 6,
@@ -636,30 +625,26 @@ class _WriteReviewDialogState extends State<_WriteReviewDialog> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: FilledButton(
-                    onPressed: () {
-                      final name = _name.text.trim().isEmpty
-                          ? 'User'
-                          : _name.text.trim();
-                      final cmt = _comment.text.trim();
-                      if (cmt.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Please enter your review content.'),
+                    child: FilledButton(
+                      onPressed: () {
+                        final cmt = _comment.text.trim();
+                        if (cmt.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Please enter your review content.'),
+                            ),
+                          );
+                          return;
+                        }
+                        Navigator.pop(
+                          context,
+                          _ReviewDraft(
+                            stars: _stars,
+                            comment: cmt,
                           ),
                         );
-                        return;
-                      }
-                      Navigator.pop(
-                        context,
-                        _ReviewDraft(
-                          displayName: name,
-                          stars: _stars,
-                          comment: cmt,
-                        ),
-                      );
-                    },
-                    child: const Text('Submit review'),
+                      },
+                      child: const Text('Submit review'),
                   ),
                 ),
               ],
@@ -697,12 +682,10 @@ class _FilterChipLike extends StatelessWidget {
 }
 
 class _ReviewDraft {
-  final String displayName;
   final int stars;
   final String comment;
 
   const _ReviewDraft({
-    required this.displayName,
     required this.stars,
     required this.comment,
   });

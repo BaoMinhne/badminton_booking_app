@@ -25,8 +25,7 @@ class CourtReview {
       courtId: _resolveRelationId(data['court_id']),
       userId: _resolveRelationId(data['user_id'], fallback: userRecord?.id),
       userName: sanitizeDisplayName(
-        (data['display_name'] as String?) ??
-            (userData?['username'] as String?) ??
+        (userData?['username'] as String?) ??
             (userData?['email'] as String?),
       ),
       stars: (data['rating'] as num?)?.toDouble() ?? 0,

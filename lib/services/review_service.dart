@@ -25,7 +25,6 @@ class ReviewService {
     required String courtId,
     required int stars,
     required String comment,
-    required String displayName,
   }) async {
     final pb = await getPocketbaseInstance();
     final userId = pb.authStore.record?.id;
@@ -37,7 +36,6 @@ class ReviewService {
       'user_id': userId,
       'rating': stars,
       'comment': comment,
-      'display_name': displayName,
     });
     return CourtReview.fromRecord(record, pb);
   }

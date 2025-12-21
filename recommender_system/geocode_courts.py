@@ -105,10 +105,12 @@ async def geocode_address(
     raise GeocodeError(f"Unsupported provider: {provider}")
 
 
-def _is_missing(value: Any) -> bool:
+def _is_missing(value: Any, *, zero_is_missing: bool) -> bool:
     if value is None:
         return True
     if isinstance(value, str) and not value.strip():
+        return True
+    if zero_is_missing and isinstance(value, (int, float)) and value == 0:
         return True
     return False
 
@@ -133,14 +135,17 @@ async def run_geocoding(args: argparse.Namespace) -> None:
 
                 processed += 1
                 address = item.get(args.address_field)
-                if _is_missing(address):
+                if _is_missing(address, zero_is_missing=False):
                     skipped += 1
                     print(f"[SKIP] {item.get('id')} missing address field.")
                     continue
 
                 lat_value = item.get(args.lat_field)
                 lng_value = item.get(args.lng_field)
-                if not _is_missing(lat_value) and not _is_missing(lng_value):
+                if (
+                    not _is_missing(lat_value, zero_is_missing=args.zero_is_missing)
+                    and not _is_missing(lng_value, zero_is_missing=args.zero_is_missing)
+                ):
                     skipped += 1
                     print(f"[SKIP] {item.get('id')} already has coordinates.")
                     continue
@@ -237,6 +242,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--dry-run",
         action="store_true",
         help="Print updates without writing to PocketBase.",
+    )
+    parser.add_argument(
+        "--zero-is-missing",
+        action=argparse.BooleanOptionalAction,
+        default=os.getenv("GEOCODE_ZERO_IS_MISSING", "true").lower() != "false",
+        help="Treat 0 values as missing coordinates (default: true).",
     )
     return parser
 

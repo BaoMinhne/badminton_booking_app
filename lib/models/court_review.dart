@@ -44,8 +44,8 @@ class CourtReview {
   final double stars;
   final String comment;
   final DateTime createdAt;
-  final int likes;
-  final bool likedByMe;
+  int likes;
+  bool likedByMe;
 
   static String _resolveRelationId(dynamic value, {String? fallback}) {
     if (value is String) {

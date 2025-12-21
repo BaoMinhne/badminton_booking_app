@@ -34,6 +34,13 @@ class _ReviewTabState extends State<ReviewTab> {
     _reviews = [...widget.initialReviews];
     _reviewService = widget.reviewService ?? ReviewService();
     _loadReviews();
+    _subscribeToReviews();
+  }
+
+  @override
+  void dispose() {
+    _reviewService.unsubscribe();
+    super.dispose();
   }
 
   Future<void> _loadReviews() async {
@@ -54,6 +61,17 @@ class _ReviewTabState extends State<ReviewTab> {
         _errorMessage = error.toString();
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _subscribeToReviews() async {
+    try {
+      await _reviewService.subscribeToReviews(
+        courtId: widget.courtId,
+        onChange: (_) => _loadReviews(),
+      );
+    } catch (_) {
+      // Ignore realtime errors to keep UI functional without socket.
     }
   }
 

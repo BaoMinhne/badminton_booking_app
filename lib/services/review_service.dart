@@ -5,6 +5,7 @@ import 'pocketbase_client.dart';
 
 class ReviewService {
   static const String collection = 'court_ratings';
+  UnsubscribeFunc? _unsubscribe;
 
   Future<List<CourtReview>> fetchReviews(String courtId) async {
     final pb = await getPocketbaseInstance();
@@ -39,5 +40,31 @@ class ReviewService {
       'display_name': displayName,
     });
     return CourtReview.fromRecord(record, pb);
+  }
+
+  Future<void> subscribeToReviews({
+    required String courtId,
+    required void Function(RecordSubscriptionEvent event) onChange,
+  }) async {
+    final pb = await getPocketbaseInstance();
+    await unsubscribe();
+    final escapedCourtId = courtId.replaceAll("'", "\\'");
+    _unsubscribe = await pb.collection(collection).subscribe(
+          '*',
+          onChange,
+          filter: "court_id='$escapedCourtId'",
+        );
+  }
+
+  Future<void> unsubscribe() async {
+    final unsub = _unsubscribe;
+    _unsubscribe = null;
+    if (unsub != null) {
+      await unsub();
+    }
+  }
+
+  Future<void> dispose() async {
+    await unsubscribe();
   }
 }

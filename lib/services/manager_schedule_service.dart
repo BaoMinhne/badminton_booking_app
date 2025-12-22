@@ -7,10 +7,12 @@ import 'pocketbase_client.dart';
 
 class ManagerScheduleData {
   const ManagerScheduleData({
+    required this.courtIds,
     required this.courts,
     required this.items,
   });
 
+  final List<String> courtIds;
   final List<ScheduleCourt> courts;
   final List<ScheduleItem> items;
 
@@ -91,7 +93,7 @@ class ManagerScheduleService {
         );
 
     if (courtsResult.items.isEmpty) {
-      return const ManagerScheduleData(courts: [], items: []);
+      return const ManagerScheduleData(courtIds: [], courts: [], items: []);
     }
 
     final courtIds = courtsResult.items.map((record) => record.id).toList();
@@ -149,7 +151,11 @@ class ManagerScheduleService {
       );
     }).toList(growable: false);
 
-    return ManagerScheduleData(courts: courts, items: bookings);
+    return ManagerScheduleData(
+      courtIds: courtIds,
+      courts: courts,
+      items: bookings,
+    );
   }
 
   ScheduleCourt _mapCourtOption(RecordModel record) {
@@ -222,4 +228,52 @@ class ManagerScheduleService {
     if (rawPhone == null || rawPhone.isEmpty) return null;
     return rawPhone;
   }
+}
+
+class ManagerScheduleRealtimeService {
+  UnsubscribeFunc? _unsubscribe;
+
+  Future<void> subscribe({
+    required DateTime date,
+    required List<String> courtIds,
+    required void Function() onChange,
+  }) async {
+    final pocketBase = await getPocketbaseInstance();
+
+    await unsubscribe();
+
+    if (courtIds.isEmpty) return;
+
+    final dayStartLocal = DateTime(date.year, date.month, date.day);
+    final dayStart = dayStartLocal.toUtc();
+    final dayEnd = dayStart.add(const Duration(days: 1));
+    final courtFilter = _buildOrFilter('court_id', courtIds);
+    final filter =
+        "$courtFilter && status != 'expired' && start_time < '${dayEnd.toIso8601String()}' && end_time > '${dayStart.toIso8601String()}'";
+
+    _unsubscribe = await pocketBase.collection(BookingService.collection).subscribe(
+          '*',
+          (_) => onChange(),
+          filter: filter,
+        );
+  }
+
+  Future<void> unsubscribe() async {
+    final unsub = _unsubscribe;
+    _unsubscribe = null;
+    if (unsub != null) {
+      await unsub();
+    }
+  }
+
+  Future<void> dispose() async {
+    await unsubscribe();
+  }
+
+  String _buildOrFilter(String field, List<String> values) {
+    final escaped = values.map(_escape).map((v) => "${field}='${v}'");
+    return escaped.join(' || ');
+  }
+
+  String _escape(String value) => value.replaceAll("'", "\\'");
 }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -14,11 +16,13 @@ class ManagerSchedulePage extends StatefulWidget {
 
 class _ManagerSchedulePageState extends State<ManagerSchedulePage> {
   final _service = ManagerScheduleService();
+  final _realtimeService = ManagerScheduleRealtimeService();
 
   late Future<ManagerScheduleData> _future;
   ManagerScheduleData? _latestData;
   bool _tableView = true;
   DateTime _selectedDate = DateTime.now();
+  bool _isRealtimeRefreshing = false;
   String _selectedCourt = 'all';
   Set<BookingStatus> _statusFilters = {
     BookingStatus.awaitingPayment,
@@ -38,6 +42,11 @@ class _ManagerSchedulePageState extends State<ManagerSchedulePage> {
       _selectedDate.day,
     );
     final data = await _service.fetchSchedule(normalized);
+    await _realtimeService.subscribe(
+      date: normalized,
+      courtIds: data.courtIds,
+      onChange: _handleRealtimeChange,
+    );
     _latestData = data;
     return data;
   }
@@ -139,6 +148,30 @@ class _ManagerSchedulePageState extends State<ManagerSchedulePage> {
     if (result != null) {
       setState(() => _statusFilters = result);
     }
+  }
+
+  void _handleRealtimeChange() {
+    if (!mounted || _isRealtimeRefreshing) return;
+    _isRealtimeRefreshing = true;
+    unawaited(
+      _loadAndCacheSchedule().then((freshData) {
+        if (!mounted) return;
+        setState(() {
+          _latestData = freshData;
+          _future = Future.value(freshData);
+        });
+      }).whenComplete(() {
+        if (mounted) {
+          _isRealtimeRefreshing = false;
+        }
+      }),
+    );
+  }
+
+  @override
+  void dispose() {
+    unawaited(_realtimeService.dispose());
+    super.dispose();
   }
 
   @override
@@ -373,6 +406,7 @@ class _ManagerSchedulePageState extends State<ManagerSchedulePage> {
         .toList();
 
     final updatedData = ManagerScheduleData(
+      courtIds: cached.courtIds,
       courts: cached.courts,
       items: updatedItems,
     );

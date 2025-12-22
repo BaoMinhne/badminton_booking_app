@@ -274,7 +274,6 @@ class _ManagerSchedulePageState extends State<ManagerSchedulePage> {
                           formatRange: _formatRange,
                           statusColor: _statusColor,
                           statusText: _statusText,
-                          onAction: _showComingSoon,
                           onCancelBooking: _confirmCancelBooking,
                         ),
             ),
@@ -317,12 +316,6 @@ class _ManagerSchedulePageState extends State<ManagerSchedulePage> {
       case BookingStatus.expired:
         return 'Hết hạn';
     }
-  }
-
-  void _showComingSoon(String action) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$action đang được phát triển.')),
-    );
   }
 
   Future<void> _confirmCancelBooking(ScheduleItem item) async {
@@ -471,7 +464,6 @@ class _TimelineView extends StatelessWidget {
     required this.formatRange,
     required this.statusColor,
     required this.statusText,
-    required this.onAction,
     required this.onCancelBooking,
   });
 
@@ -479,7 +471,6 @@ class _TimelineView extends StatelessWidget {
   final String Function(DateTime start, DateTime end) formatRange;
   final Color Function(BookingStatus status) statusColor;
   final String Function(BookingStatus status) statusText;
-  final void Function(String action) onAction;
   final Future<void> Function(ScheduleItem item) onCancelBooking;
 
   @override
@@ -554,28 +545,17 @@ class _TimelineView extends StatelessWidget {
                       ),
                     ],
                     const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      children: [
-                        _ActionChip(
-                          icon: Icons.swap_horiz,
-                          label: 'Đổi giờ/sân',
-                          onPressed: () => onAction('Đổi giờ/sân'),
-                        ),
-                        _ActionChip(
-                          icon: Icons.cancel_outlined,
-                          label: 'Hủy booking',
-                          onPressed: item.status == BookingStatus.cancelled
-                              ? null
-                              : () => onCancelBooking(item),
-                        ),
-                        _ActionChip(
-                          icon: Icons.phone_forwarded_outlined,
-                          label: 'Liên hệ',
-                          onPressed: () => onAction('Liên hệ khách'),
-                        ),
-                      ],
-                    ),
+                    if (item.status == BookingStatus.awaitingPayment)
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          _ActionChip(
+                            icon: Icons.cancel_outlined,
+                            label: 'Hủy booking',
+                            onPressed: () => onCancelBooking(item),
+                          ),
+                        ],
+                      ),
                   ],
                 ),
               )

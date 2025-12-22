@@ -21,10 +21,8 @@ class _ManagerSchedulePageState extends State<ManagerSchedulePage> {
   DateTime _selectedDate = DateTime.now();
   String _selectedCourt = 'all';
   Set<BookingStatus> _statusFilters = {
-    BookingStatus.held,
     BookingStatus.awaitingPayment,
     BookingStatus.confirmed,
-    BookingStatus.cancelled,
   };
 
   @override
@@ -83,7 +81,13 @@ class _ManagerSchedulePageState extends State<ManagerSchedulePage> {
                   const SizedBox(height: 4),
                   const Text('Chọn những trạng thái muốn hiển thị trong lịch.'),
                   const SizedBox(height: 12),
-                  ...statuses.map((status) {
+                  ...statuses
+                      .where(
+                        (status) =>
+                            status == BookingStatus.awaitingPayment ||
+                            status == BookingStatus.confirmed,
+                      )
+                      .map((status) {
                     final checked = current.contains(status);
                     return CheckboxListTile(
                       value: checked,

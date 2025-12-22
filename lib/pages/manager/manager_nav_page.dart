@@ -5,7 +5,6 @@ import '../auth/auth_manager.dart';
 import '../../utils/dialog_utils.dart';
 import 'manager_dashboard_page.dart';
 import 'manager_schedule_page.dart';
-import 'manager_offline_booking_page.dart';
 import 'manager_court_page.dart';
 import 'manager_reports_page.dart';
 
@@ -53,11 +52,6 @@ class _ManagerNavPageState extends State<ManagerNavPage> {
         label: 'Lịch',
         icon: Icons.calendar_month_outlined,
         builder: (context) => const ManagerSchedulePage(),
-      ),
-      _ManagerTab(
-        label: 'Booking offline',
-        icon: Icons.phone_forwarded_outlined,
-        builder: (context) => const ManagerOfflineBookingPage(),
       ),
       _ManagerTab(
         label: 'Sân & dịch vụ',

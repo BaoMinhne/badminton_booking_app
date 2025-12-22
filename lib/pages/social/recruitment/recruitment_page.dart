@@ -91,12 +91,14 @@ class RecruitmentFormPage extends StatelessWidget {
                     IntroCard(cs: cs, textTheme: textTheme),
                     const SizedBox(height: 24),
 
-                    _DateTimeField(
-                      label: 'Expected play time',
-                      value: manager.selectedDateTime,
-                      onTap: () => _pickDateTime(context),
-                    ),
-                    const SizedBox(height: 12),
+                    if (!manager.hasBookedCourt) ...[
+                      _DateTimeField(
+                        label: 'Expected play time',
+                        value: manager.selectedDateTime,
+                        onTap: () => _pickDateTime(context),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
                     _DateTimeField(
                       label: 'Post closing time',
                       value: manager.expiresAt,

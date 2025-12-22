@@ -42,7 +42,7 @@ class ManagerReviewsService {
     if (authRecord == null) {
       throw ClientException(
         statusCode: 401,
-        response: {'message': 'Bạn cần đăng nhập để xem đánh giá.'},
+        response: {'message': 'You need to log in to view reviews.'},
       );
     }
 
@@ -63,7 +63,7 @@ class ManagerReviewsService {
             id: record.id,
             label: (record.data['name'] as String?)?.trim().isNotEmpty == true
                 ? record.data['name'] as String
-                : 'Sân',
+                : 'Court',
           ),
         )
         .toList();
@@ -84,7 +84,7 @@ class ManagerReviewsService {
 
     final reviews = reviewsResult.items.map((record) {
       final review = CourtReview.fromRecord(record, pb);
-      final courtLabel = courtLabelById[review.courtId] ?? 'Sân';
+      final courtLabel = courtLabelById[review.courtId] ?? 'Court';
       return ManagerReviewEntry(review: review, courtLabel: courtLabel);
     }).toList();
 

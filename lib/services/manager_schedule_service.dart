@@ -82,7 +82,7 @@ class ManagerScheduleService {
     if (authRecord == null) {
       throw ClientException(
         statusCode: 401,
-        response: {'message': 'Bạn cần đăng nhập để xem lịch.'},
+        response: {'message': 'You need to log in to view the schedule.'},
       );
     }
 
@@ -126,16 +126,16 @@ class ManagerScheduleService {
     final unitLabelMap = <String, String>{
       for (final unit in unitResult.items)
         unit.id: CourtUnit.fromRecord(unit).label.isEmpty
-            ? 'Sân'
+            ? 'Court'
             : CourtUnit.fromRecord(unit).label,
     };
 
     final bookings = bookingResult.items.map((record) {
       final booking = CourtBooking.fromRecord(record);
-      final courtLabel = unitLabelMap[booking.courtUnitId] ?? 'Sân';
+      final courtLabel = unitLabelMap[booking.courtUnitId] ?? 'Court';
 
       final expandedUser = _resolveExpandedRecord(record.expand?['user_id']);
-      final customerName = _extractUserName(expandedUser) ?? 'Khách lẻ';
+      final customerName = _extractUserName(expandedUser) ?? 'Walk-in';
       final customerPhone = _extractUserPhone(expandedUser);
 
       return ScheduleItem(
@@ -160,7 +160,7 @@ class ManagerScheduleService {
 
   ScheduleCourt _mapCourtOption(RecordModel record) {
     final unit = CourtUnit.fromRecord(record);
-    final label = unit.label.isEmpty ? 'Sân' : unit.label;
+    final label = unit.label.isEmpty ? 'Court' : unit.label;
     return ScheduleCourt(id: record.id, label: label);
   }
 
@@ -176,7 +176,7 @@ class ManagerScheduleService {
       throw BookingServiceException(_mapClientException(error));
     } catch (_) {
       throw BookingServiceException(
-        'Không thể huỷ booking. Vui lòng thử lại.',
+        'Unable to cancel the booking. Please try again.',
       );
     }
   }
@@ -201,7 +201,7 @@ class ManagerScheduleService {
         return error.response!['message'] as String;
       }
     }
-    return 'Đã xảy ra lỗi. Vui lòng thử lại.';
+    return 'An error occurred. Please try again.';
   }
 
   RecordModel? _resolveExpandedRecord(dynamic expanded) {

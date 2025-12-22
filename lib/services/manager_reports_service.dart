@@ -73,7 +73,7 @@ class ManagerReportsService {
     if (record == null) {
       throw ClientException(
         statusCode: 401,
-        response: {'message': 'Bạn cần đăng nhập để xem báo cáo.'},
+        response: {'message': 'You need to log in to view reports.'},
       );
     }
 
@@ -335,7 +335,7 @@ class ManagerReportsService {
     final unitCourt = <String, String>{};
     for (final record in courtUnitsResult.items) {
       final unit = CourtUnit.fromRecord(record);
-      unitLabels[record.id] = unit.label.isEmpty ? 'Sân' : unit.label;
+      unitLabels[record.id] = unit.label.isEmpty ? 'Court' : unit.label;
       unitCourt[record.id] = (record.data['court_id'] as String?) ?? '';
     }
 
@@ -374,8 +374,8 @@ class ManagerReportsService {
         orElse: () => const MapEntry('', ''),
       );
       final label = matchingUnit.key.isNotEmpty
-          ? (unitLabels[matchingUnit.key] ?? 'Sân')
-          : 'Sân';
+          ? (unitLabels[matchingUnit.key] ?? 'Court')
+          : 'Court';
       results.add(CourtOccupancy(label, rate));
     }
 
@@ -444,8 +444,8 @@ class ManagerReportsService {
           final booking = CourtBooking.fromRecord(record);
           final userRecord = _asRecordModel(record.expand?['user_id']);
           final courtUnit = _asRecordModel(record.expand?['court_unit_id']);
-          final name = _extractUserName(userRecord) ?? 'Khách lẻ';
-          final courtLabel = _extractCourtLabel(courtUnit) ?? 'Sân';
+          final name = _extractUserName(userRecord) ?? 'Walk-in';
+          final courtLabel = _extractCourtLabel(courtUnit) ?? 'Court';
           final startTime = booking.startTime.toLocal();
           final endTime = booking.endTime.toLocal();
           return ReportBookingRow(

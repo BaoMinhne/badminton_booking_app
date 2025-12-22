@@ -44,7 +44,7 @@ class _ManagerCourtPageState extends State<ManagerCourtPage> {
           onSaved: (updated) {
             Navigator.of(context).pop();
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Đã cập nhật thông tin sân.')),
+              const SnackBar(content: Text('Court information updated.')),
             );
             _refresh();
           },
@@ -96,7 +96,7 @@ class _ManagerCourtPageState extends State<ManagerCourtPage> {
                   FilledButton.icon(
                     onPressed: _refresh,
                     icon: const Icon(Icons.refresh_outlined),
-                    label: const Text('Thử lại'),
+                    label: const Text('Retry'),
                   ),
                 ],
               ),
@@ -113,14 +113,14 @@ class _ManagerCourtPageState extends State<ManagerCourtPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Bạn chưa có sân nào để quản lý.',
+                    'You do not have any courts to manage.',
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Tạo sân trong hệ thống trước, sau đó quay lại đây để cập nhật thông tin, hình ảnh và dịch vụ.',
+                    'Create a court first, then return here to update details, images, and services.',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
@@ -130,7 +130,7 @@ class _ManagerCourtPageState extends State<ManagerCourtPage> {
                   FilledButton.icon(
                     onPressed: _refresh,
                     icon: const Icon(Icons.refresh_outlined),
-                    label: const Text('Tải lại'),
+                    label: const Text('Reload'),
                   ),
                 ],
               ),
@@ -194,7 +194,7 @@ class _OverviewSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Tổng quan',
+          'Overview',
           style: theme.textTheme.titleMedium
               ?.copyWith(fontWeight: FontWeight.w900),
         ),
@@ -208,23 +208,23 @@ class _OverviewSection extends StatelessWidget {
           childAspectRatio: 2.0,
           children: [
             _StatTile(
-              title: 'Sân đang quản lý',
+              title: 'Courts managed',
               value: '$total',
               icon: Icons.home_work_outlined,
             ),
             _StatTile(
-              title: 'Đang hiển thị',
+              title: 'Visible',
               value: '$active',
               icon: Icons.visibility_outlined,
             ),
             _StatTile(
-              title: 'Tổng số sân con',
+              title: 'Total sub courts',
               value: '$totalSubCourts',
               icon: Icons.grid_view_outlined,
             ),
             _StatTile(
-              title: 'Việc cần làm',
-              value: 'Hình ảnh • Dịch vụ',
+              title: 'To do',
+              value: 'Images • Services',
               icon: Icons.checklist_outlined,
               isTextValue: true,
             ),
@@ -232,7 +232,7 @@ class _OverviewSection extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          'Mẹo: thêm ít nhất 5 ảnh và 3 dịch vụ để tăng độ tin cậy khi khách chọn sân.',
+          'Tip: add at least 5 images and 3 services to improve trust when customers choose a court.',
           style:
               theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
         ),
@@ -404,13 +404,13 @@ class _CourtCard extends StatelessWidget {
                     ),
                   ),
                   PopupMenuButton<int>(
-                    tooltip: 'Tác vụ',
+                    tooltip: 'Actions',
                     onSelected: (v) {
                       if (v == 0) onEdit();
                     },
                     itemBuilder: (_) => const [
                       PopupMenuItem(
-                          value: 0, child: Text('Chỉnh sửa thông tin')),
+                          value: 0, child: Text('Edit details')),
                     ],
                     child: const Padding(
                       padding: EdgeInsets.all(6),
@@ -434,12 +434,12 @@ class _CourtCard extends StatelessWidget {
                   children: [
                     _InfoPill(
                       icon: Icons.call_outlined,
-                      label: 'Liên hệ',
+                      label: 'Contact',
                       value: court.phonePretty,
                     ),
                     _InfoPill(
                       icon: Icons.grid_view_outlined,
-                      label: 'Số sân',
+                      label: 'Courts',
                       value: court.courtQuantity.toString(),
                     ),
                   ],
@@ -471,7 +471,7 @@ class _CourtCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 10),
                         Text(
-                          'Thông tin chi tiết',
+                          'Details',
                           style: theme.textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.w800,
                           ),
@@ -482,7 +482,7 @@ class _CourtCard extends StatelessWidget {
                     Text(
                       (court.description?.trim().isNotEmpty ?? false)
                           ? court.description!
-                          : 'Chưa cập nhật mô tả cho sân này.',
+                          : 'No description for this court yet.',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: cs.onSurfaceVariant,
                       ),
@@ -494,7 +494,7 @@ class _CourtCard extends StatelessWidget {
           ),
         ),
 
-        // ===== Modern Action Bar (3 nút) =====
+        // ===== Modern Action Bar (3 buttons) =====
         const SizedBox(height: 12),
         _ModernActionBar(
           onPricing: onManagePricing,
@@ -540,7 +540,7 @@ class _ModernActionBar extends StatelessWidget {
           Expanded(
             child: _ActionPillButton(
               icon: Icons.price_change_outlined,
-              label: 'Giá giờ chơi',
+              label: 'Hourly pricing',
               onTap: onPricing,
             ),
           ),
@@ -548,7 +548,7 @@ class _ModernActionBar extends StatelessWidget {
           Expanded(
             child: _ActionPillButton(
               icon: Icons.miscellaneous_services_outlined,
-              label: 'Dịch vụ',
+              label: 'Services',
               onTap: onServices,
             ),
           ),
@@ -556,7 +556,7 @@ class _ModernActionBar extends StatelessWidget {
           Expanded(
             child: _ActionPillButton(
               icon: Icons.photo_library_outlined,
-              label: 'Hình ảnh',
+              label: 'Images',
               onTap: onImages,
             ),
           ),
@@ -721,7 +721,7 @@ class _StatusChip extends StatelessWidget {
           ),
           const SizedBox(width: 6),
           Text(
-            isActive ? 'Đang hiển thị' : 'Đang ẩn',
+            isActive ? 'Visible' : 'Hidden',
             style: theme.textTheme.labelMedium?.copyWith(
               fontWeight: FontWeight.w900,
               color: color,
@@ -887,7 +887,7 @@ class _EditCourtSheetState extends State<_EditCourtSheet> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'Chỉnh sửa thông tin sân',
+                          'Edit court information',
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w900,
                           ),
@@ -896,7 +896,7 @@ class _EditCourtSheetState extends State<_EditCourtSheet> {
                       IconButton(
                         onPressed:
                             _submitting ? null : () => Navigator.pop(context),
-                        tooltip: 'Đóng',
+                        tooltip: 'Close',
                         icon: const Icon(Icons.close),
                       ),
                     ],
@@ -912,34 +912,34 @@ class _EditCourtSheetState extends State<_EditCourtSheet> {
                       child: Column(
                         children: [
                           _LabeledField(
-                            label: 'Tên sân',
+                            label: 'Court name',
                             child: TextFormField(
                               controller: _nameCtrl,
                               textInputAction: TextInputAction.next,
                               decoration: _decoration(
-                                hint: 'Ví dụ: Quang Sport',
+                                hint: 'Example: Quang Sport',
                                 icon: Icons.home_work_outlined,
                               ),
                               validator: (value) {
                                 if (value == null || value.trim().isEmpty) {
-                                  return 'Vui lòng nhập tên sân';
+                                  return 'Please enter a court name';
                                 }
                                 return null;
                               },
                             ),
                           ),
                           _LabeledField(
-                            label: 'Địa chỉ',
+                            label: 'Address',
                             child: TextFormField(
                               controller: _locationCtrl,
                               textInputAction: TextInputAction.next,
                               decoration: _decoration(
-                                hint: 'Số nhà, đường, quận/huyện...',
+                                hint: 'Street address, district...',
                                 icon: Icons.place_outlined,
                               ),
                               validator: (value) {
                                 if (value == null || value.trim().isEmpty) {
-                                  return 'Vui lòng nhập địa chỉ';
+                                  return 'Please enter an address';
                                 }
                                 return null;
                               },
@@ -949,7 +949,7 @@ class _EditCourtSheetState extends State<_EditCourtSheet> {
                             children: [
                               Expanded(
                                 child: _LabeledField(
-                                  label: 'Số điện thoại',
+                                  label: 'Phone number',
                                   child: TextFormField(
                                     controller: _phoneCtrl,
                                     textInputAction: TextInputAction.next,
@@ -961,10 +961,10 @@ class _EditCourtSheetState extends State<_EditCourtSheet> {
                                     validator: (value) {
                                       final phone = value?.trim() ?? '';
                                       if (phone.isEmpty) {
-                                        return 'Vui lòng nhập số điện thoại';
+                                        return 'Please enter a phone number';
                                       }
                                       if (!_phoneReg.hasMatch(phone)) {
-                                        return 'Sai định dạng 0xxxxxxxxx hoặc +84xxxxxxxxx';
+                                        return 'Invalid format: 0xxxxxxxxx or +84xxxxxxxxx';
                                       }
                                       return null;
                                     },
@@ -974,11 +974,11 @@ class _EditCourtSheetState extends State<_EditCourtSheet> {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: _LabeledField(
-                                  label: 'Số sân',
+                                  label: 'Court count',
                                   child: TextFormField(
                                     initialValue: _quantity.toString(),
                                     decoration: _decoration(
-                                      hint: 'Nhập số sân',
+                                      hint: 'Enter number of courts',
                                       icon: Icons.grid_view_outlined,
                                     ),
                                     keyboardType: TextInputType.number,
@@ -991,7 +991,7 @@ class _EditCourtSheetState extends State<_EditCourtSheet> {
                                     validator: (value) {
                                       final parsed = int.tryParse(value ?? '');
                                       if (parsed == null || parsed <= 0) {
-                                        return 'Số sân phải lớn hơn 0';
+                                        return 'Court count must be greater than 0';
                                       }
                                       return null;
                                     },
@@ -1001,12 +1001,12 @@ class _EditCourtSheetState extends State<_EditCourtSheet> {
                             ],
                           ),
                           _LabeledField(
-                            label: 'Giá sân/giờ (VND)',
+                            label: 'Court price/hour (VND)',
                             child: TextFormField(
                               controller: _priceCtrl,
                               textInputAction: TextInputAction.next,
                               decoration: _decoration(
-                                hint: 'Ví dụ: 180000',
+                                hint: 'Example: 180000',
                                 icon: Icons.price_change_outlined,
                               ),
                               keyboardType: TextInputType.number,
@@ -1016,19 +1016,19 @@ class _EditCourtSheetState extends State<_EditCourtSheet> {
                                   value.replaceAll(RegExp(r'[^0-9]'), ''),
                                 );
                                 if (parsed == null || parsed <= 0) {
-                                  return 'Giá phải là số dương';
+                                  return 'Price must be positive';
                                 }
                                 return null;
                               },
                             ),
                           ),
                           _LabeledField(
-                            label: 'Mô tả / nội quy',
+                            label: 'Description / rules',
                             child: TextFormField(
                               controller: _descCtrl,
                               decoration: _decoration(
                                 hint:
-                                    'Thông tin chi tiết giúp khách hiểu hơn...',
+                                    'Detailed information helps customers understand more...',
                                 icon: Icons.notes_outlined,
                               ),
                               maxLines: 4,
@@ -1053,11 +1053,11 @@ class _EditCourtSheetState extends State<_EditCourtSheet> {
                                   ? null
                                   : (v) => setState(() => _isActive = v),
                               title: const Text(
-                                  'Hiển thị sân cho người dùng đặt lịch'),
+                                  'Show court to customers for booking'),
                               subtitle: Text(
                                 _isActive
-                                    ? 'Sân sẽ xuất hiện trên danh sách đặt lịch.'
-                                    : 'Sân bị ẩn khỏi danh sách đặt lịch.',
+                                    ? 'The court will appear in the booking list.'
+                                    : 'The court is hidden from the booking list.',
                               ),
                               secondary: Icon(
                                 _isActive
@@ -1078,7 +1078,7 @@ class _EditCourtSheetState extends State<_EditCourtSheet> {
                                     padding: const EdgeInsets.symmetric(
                                         vertical: 14),
                                   ),
-                                  child: const Text('Hủy'),
+                                  child: const Text('Cancel'),
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -1094,7 +1094,7 @@ class _EditCourtSheetState extends State<_EditCourtSheet> {
                                           ),
                                         )
                                       : const Icon(Icons.save_outlined),
-                                  label: const Text('Lưu thay đổi'),
+                                  label: const Text('Save changes'),
                                   style: FilledButton.styleFrom(
                                     padding: const EdgeInsets.symmetric(
                                         vertical: 14),

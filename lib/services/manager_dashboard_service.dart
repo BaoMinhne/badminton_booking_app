@@ -66,7 +66,7 @@ class ManagerDashboardService {
     if (authRecord == null) {
       throw ClientException(
         statusCode: 401,
-        response: {'message': 'Bạn cần đăng nhập để xem dữ liệu.'},
+        response: {'message': 'You need to log in to view data.'},
       );
     }
 
@@ -148,7 +148,7 @@ class ManagerDashboardService {
       final unit = CourtUnit.fromRecord(unitRecord);
       final courtId = (unitRecord.data['court_id'] as String?) ?? '';
       unitCourtMap[unitRecord.id] = courtId;
-      unitLabels[unitRecord.id] = unit.label.isEmpty ? 'Sân' : unit.label;
+      unitLabels[unitRecord.id] = unit.label.isEmpty ? 'Court' : unit.label;
     }
 
     final openingDuration = _computeOpeningDurations(openingHoursResult.items);
@@ -158,9 +158,9 @@ class ManagerDashboardService {
 
     final scheduleItems = bookingResult.items.map((record) {
       final booking = CourtBooking.fromRecord(record);
-      final unitLabel = unitLabels[booking.courtUnitId] ?? 'Sân';
+      final unitLabel = unitLabels[booking.courtUnitId] ?? 'Court';
       final userRecord = record.expand?['user_id'];
-      final customerName = _extractUserName(userRecord) ?? 'Khách lẻ';
+      final customerName = _extractUserName(userRecord) ?? 'Walk-in';
       return ManagerScheduleItem(
         courtLabel: unitLabel,
         startTime: booking.startTime.toLocal(),
@@ -247,8 +247,8 @@ class ManagerDashboardService {
           );
     } on ClientException catch (err) {
       if (err.statusCode == 401 || err.statusCode == 403) {
-        // Một số tài khoản không có quyền truy cập bảng thanh toán. Trả về 0
-        // để tránh chặn toàn bộ dashboard.
+        // Some accounts do not have access to the payment collection. Return 0
+        // to avoid blocking the entire dashboard.
         return 0;
       }
       rethrow;

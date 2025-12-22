@@ -51,16 +51,16 @@ class _ManagerReviewsPageState extends State<ManagerReviewsPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Xóa đánh giá'),
-          content: const Text('Bạn có chắc muốn xóa đánh giá này?'),
+          title: const Text('Delete review'),
+          content: const Text('Are you sure you want to delete this review?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Đóng'),
+              child: const Text('Close'),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Xóa'),
+              child: const Text('Delete'),
             ),
           ],
         );
@@ -83,12 +83,12 @@ class _ManagerReviewsPageState extends State<ManagerReviewsPage> {
               );
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã xóa đánh giá.')),
+        const SnackBar(content: Text('Review deleted.')),
       );
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Không thể xóa đánh giá: $error')),
+        SnackBar(content: Text('Unable to delete review: $error')),
       );
     }
   }
@@ -108,7 +108,7 @@ class _ManagerReviewsPageState extends State<ManagerReviewsPage> {
             const SizedBox(height: 12),
             FilledButton(
               onPressed: _loadReviews,
-              child: const Text('Thử lại'),
+              child: const Text('Retry'),
             ),
           ],
         ),
@@ -117,7 +117,7 @@ class _ManagerReviewsPageState extends State<ManagerReviewsPage> {
 
     final data = _data ?? const ManagerReviewsData(courts: [], reviews: []);
     if (!data.hasCourts) {
-      return const Center(child: Text('Bạn chưa có sân nào để xem đánh giá.'));
+      return const Center(child: Text('You do not have any courts to view reviews.'));
     }
 
     final reviews = data.reviews;
@@ -128,7 +128,7 @@ class _ManagerReviewsPageState extends State<ManagerReviewsPage> {
         padding: const EdgeInsets.all(16),
         children: [
           if (reviews.isEmpty)
-            const Center(child: Text('Chưa có đánh giá nào.'))
+            const Center(child: Text('No reviews yet.'))
           else
             ...reviews.map((entry) => _ReviewCard(
                   entry: entry,
@@ -167,7 +167,7 @@ class _ReviewCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    review.userName.isEmpty ? 'Khách hàng' : review.userName,
+                    review.userName.isEmpty ? 'Customer' : review.userName,
                     style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
                 ),
@@ -177,7 +177,7 @@ class _ReviewCard extends StatelessWidget {
                 ),
                 IconButton(
                   icon: const Icon(Icons.delete_outline),
-                  tooltip: 'Xóa đánh giá',
+                  tooltip: 'Delete review',
                   onPressed: onDelete,
                 ),
               ],

@@ -75,7 +75,7 @@ class _CourtImagesPageState extends State<CourtImagesPage> {
       await _service.uploadCourtImages(courtId: widget.court.id, files: files);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đã thêm hình ảnh cho sân.')),
+          const SnackBar(content: Text('Court images added.')),
         );
         await _load();
       }
@@ -94,16 +94,16 @@ class _CourtImagesPageState extends State<CourtImagesPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Xóa hình ảnh'),
-        content: const Text('Bạn có chắc muốn xóa hình ảnh này khỏi sân?'),
+        title: const Text('Delete image'),
+        content: const Text('Are you sure you want to remove this image?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Hủy'),
+            child: const Text('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Xóa'),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -118,7 +118,7 @@ class _CourtImagesPageState extends State<CourtImagesPage> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đã xóa hình ảnh.')),
+          const SnackBar(content: Text('Image deleted.')),
         );
         await _load();
       }
@@ -140,7 +140,7 @@ class _CourtImagesPageState extends State<CourtImagesPage> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Hình ảnh sân'),
+            const Text('Court images'),
             Text(
               widget.court.name,
               style: Theme.of(context)
@@ -160,7 +160,7 @@ class _CourtImagesPageState extends State<CourtImagesPage> {
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
             : const Icon(Icons.add_photo_alternate_outlined),
-        label: Text(_uploading ? 'Đang tải lên...' : 'Thêm hình ảnh'),
+        label: Text(_uploading ? 'Uploading...' : 'Add images'),
       ),
       body: RefreshIndicator(
         onRefresh: _load,
@@ -196,7 +196,7 @@ class _CourtImagesPageState extends State<CourtImagesPage> {
                 FilledButton.icon(
                   onPressed: _load,
                   icon: const Icon(Icons.refresh_outlined),
-                  label: const Text('Thử lại'),
+                  label: const Text('Retry'),
                 ),
               ],
             ),
@@ -216,7 +216,7 @@ class _CourtImagesPageState extends State<CourtImagesPage> {
                 Icon(Icons.photo_library_outlined, size: 52, color: cs.primary),
                 const SizedBox(height: 12),
                 Text(
-                  'Chưa có hình ảnh nào cho sân này.',
+                  'No images for this court yet.',
                   style: Theme.of(context).textTheme.bodyMedium,
                   textAlign: TextAlign.center,
                 ),
@@ -224,7 +224,7 @@ class _CourtImagesPageState extends State<CourtImagesPage> {
                 FilledButton.icon(
                   onPressed: _uploading ? null : _pickAndUpload,
                   icon: const Icon(Icons.add_photo_alternate_outlined),
-                  label: const Text('Thêm hình ảnh'),
+                  label: const Text('Add images'),
                 ),
               ],
             ),
@@ -279,7 +279,7 @@ class _ImageTile extends StatelessWidget {
               child: IconButton(
                 onPressed: onDelete,
                 icon: const Icon(Icons.delete_outline, color: Colors.white),
-                tooltip: 'Xóa hình ảnh',
+                tooltip: 'Delete image',
               ),
             ),
           ),

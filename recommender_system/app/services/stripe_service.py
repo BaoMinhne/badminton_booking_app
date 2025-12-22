@@ -1,5 +1,7 @@
 import os
 
+import json
+
 import stripe
 
 
@@ -18,22 +20,39 @@ class StripeService:
 
     def create_payment_intent(
         self,
-        amount_minor: int,
         currency: str,
-        booking_ids: list[str],
+        bookings: list[dict],
     ) -> stripe.PaymentIntent:
-        if amount_minor <= 0:
-            raise StripeServiceError("Amount must be greater than 0.")
         if not currency:
             raise StripeServiceError("Currency is required.")
-        if not booking_ids:
-            raise StripeServiceError("booking_ids must not be empty.")
+        if not bookings:
+            raise StripeServiceError("bookings must not be empty.")
 
-        metadata = {"booking_ids": ",".join(booking_ids)}
+        booking_ids = []
+        booking_amounts = {}
+        total_amount = 0
+        for booking in bookings:
+            booking_id = booking.get("booking_id")
+            amount_minor = booking.get("amount_minor")
+            if not booking_id or not isinstance(booking_id, str):
+                raise StripeServiceError("booking_id is required.")
+            if not isinstance(amount_minor, int) or amount_minor <= 0:
+                raise StripeServiceError("amount_minor must be greater than 0.")
+            booking_ids.append(booking_id)
+            booking_amounts[booking_id] = amount_minor
+            total_amount += amount_minor
+
+        if total_amount <= 0:
+            raise StripeServiceError("Amount must be greater than 0.")
+
+        metadata = {
+            "booking_ids": ",".join(booking_ids),
+            "booking_amounts": json.dumps(booking_amounts),
+        }
 
         try:
             return stripe.PaymentIntent.create(
-                amount=amount_minor,
+                amount=total_amount,
                 currency=currency,
                 automatic_payment_methods={"enabled": True},
                 metadata=metadata,

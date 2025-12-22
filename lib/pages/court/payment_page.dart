@@ -261,9 +261,15 @@ class _PaymentPageState extends State<PaymentPage> {
       }
 
       final intent = await _stripePaymentService.createPaymentIntent(
-        amountMinor: amountMinor,
         currency: 'vnd',
-        bookingIds: bookings.map((booking) => booking.id).toList(),
+        bookings: bookings
+            .map(
+              (booking) => StripeBookingPayment(
+                bookingId: booking.id,
+                amountMinor: provider.calculateBookingAmount(booking),
+              ),
+            )
+            .toList(),
       );
 
       await Stripe.instance.initPaymentSheet(
@@ -274,11 +280,7 @@ class _PaymentPageState extends State<PaymentPage> {
       );
       await Stripe.instance.presentPaymentSheet();
 
-      await provider.confirmPaymentBookings(
-        provider: 'stripe',
-        status: 'succeeded',
-        transactionRef: intent.paymentIntentId,
-      );
+      await provider.loadBookings(forceRefresh: true);
       if (!mounted) return;
       await _showPaymentSuccess(context);
       if (!mounted) return;
@@ -308,9 +310,9 @@ class _PaymentPageState extends State<PaymentPage> {
     return showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Payment successful'),
+        title: const Text('Payment submitted'),
         content: const Text(
-          'We have recorded your transaction. Enjoy your game!',
+          'We are confirming your payment. Your booking will update shortly.',
         ),
         actions: [
           TextButton(

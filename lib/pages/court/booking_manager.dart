@@ -467,6 +467,10 @@ class BookingManager extends ChangeNotifier {
     return total;
   }
 
+  int calculateBookingAmount(CourtBooking booking) {
+    return _calculateBookingAmount(booking);
+  }
+
   Future<void> cancelHeldBookings() async {
     if (_heldBookingsBySlot.isEmpty) {
       _selectedSlots.clear();

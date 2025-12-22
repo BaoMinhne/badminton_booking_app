@@ -26,6 +26,10 @@ class PaymentIntentResponse(BaseModel):
     payment_intent_id: str
 
 
+class PaymentConfirmRequest(BaseModel):
+    payment_intent_id: str = Field(..., min_length=1)
+
+
 @router.post(
     "/intent",
     response_model=PaymentIntentResponse,
@@ -49,6 +53,20 @@ async def create_payment_intent(payload: PaymentIntentRequest) -> PaymentIntentR
             client_secret=intent.client_secret,
             payment_intent_id=intent.id,
         )
+    except StripeServiceError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=exc.message,
+        ) from exc
+
+
+@router.post("/confirm")
+async def confirm_payment(payload: PaymentConfirmRequest) -> dict:
+    try:
+        service = StripeService()
+        intent = service.retrieve_payment_intent(payload.payment_intent_id)
+        await _handle_intent_update(intent, status=intent.get("status", "unknown"))
+        return {"status": intent.get("status")}
     except StripeServiceError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

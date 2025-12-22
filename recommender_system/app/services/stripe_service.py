@@ -59,3 +59,12 @@ class StripeService:
             )
         except stripe.error.StripeError as exc:
             raise StripeServiceError(str(exc)) from exc
+
+    def retrieve_payment_intent(self, payment_intent_id: str) -> dict:
+        if not payment_intent_id:
+            raise StripeServiceError("payment_intent_id is required.")
+        try:
+            intent = stripe.PaymentIntent.retrieve(payment_intent_id)
+            return intent.to_dict() if hasattr(intent, "to_dict") else dict(intent)
+        except stripe.error.StripeError as exc:
+            raise StripeServiceError(str(exc)) from exc

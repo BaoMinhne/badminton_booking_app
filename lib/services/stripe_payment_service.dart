@@ -92,4 +92,36 @@ class StripePaymentService {
       );
     }
   }
+
+  Future<void> confirmPaymentIntent({
+    required String paymentIntentId,
+  }) async {
+    final endpoint = dotenv.env['STRIPE_PAYMENT_CONFIRM_URL'];
+    if (endpoint == null || endpoint.isEmpty) {
+      throw StripePaymentException(
+        'Missing STRIPE_PAYMENT_CONFIRM_URL in .env.',
+      );
+    }
+
+    final uri = Uri.parse(endpoint);
+    try {
+      final response = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'payment_intent_id': paymentIntentId}),
+      );
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw StripePaymentException(
+          'Stripe payment confirmation failed (${response.statusCode}).',
+        );
+      }
+    } catch (error) {
+      if (error is StripePaymentException) {
+        rethrow;
+      }
+      throw StripePaymentException(
+        'Unable to confirm Stripe payment.',
+      );
+    }
+  }
 }

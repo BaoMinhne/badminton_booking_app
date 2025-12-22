@@ -63,6 +63,10 @@ class _PaymentSheetPageState extends State<PaymentSheetPage> {
       );
       await Stripe.instance.presentPaymentSheet();
 
+      await _stripePaymentService.confirmPaymentIntent(
+        paymentIntentId: intent.paymentIntentId,
+      );
+
       await provider.loadBookings(forceRefresh: true);
       if (!mounted) return;
       Navigator.of(context).pop(true);

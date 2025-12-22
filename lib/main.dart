@@ -18,7 +18,10 @@ import 'package:badminton_booking_app/themes/main_theme.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await dotenv.load(fileName: ".env");
+  const env = String.fromEnvironment('ENV', defaultValue: 'emulator');
+  final envFile = env == 'device' ? '.env.device' : '.env.emulator';
+
+  await dotenv.load(fileName: envFile);
   await initializeDateFormatting('vi_VN');
   _configureStripe();
 
@@ -175,8 +178,10 @@ class _SplashScreenState extends State<SplashScreen> {
                               wasSynchronouslyLoaded,
                             ) {
                               if (frame != null && !_logoReady && mounted) {
-                                WidgetsBinding.instance.addPostFrameCallback((_) {
-                                  if (mounted) setState(() => _logoReady = true);
+                                WidgetsBinding.instance
+                                    .addPostFrameCallback((_) {
+                                  if (mounted)
+                                    setState(() => _logoReady = true);
                                 });
                               }
                               if (frame == null && !_logoReady) {
@@ -188,7 +193,8 @@ class _SplashScreenState extends State<SplashScreen> {
                               if (!_logoFailed && mounted) {
                                 WidgetsBinding.instance
                                     .addPostFrameCallback((_) {
-                                  if (mounted) setState(() => _logoFailed = true);
+                                  if (mounted)
+                                    setState(() => _logoFailed = true);
                                 });
                               }
                               return _LogoFallback(logoSize: logoSize);

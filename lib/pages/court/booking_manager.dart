@@ -13,7 +13,7 @@ import 'package:badminton_booking_app/utils/booking_helpers.dart';
 import 'package:badminton_booking_app/services/payment_service.dart';
 
 class BookingManager extends ChangeNotifier {
-  static const Duration _awaitingPaymentTimeout = Duration(minutes: 15);
+  static const Duration _awaitingPaymentTimeout = Duration(seconds: 15);
 
   BookingManager({
     required this.detailData,

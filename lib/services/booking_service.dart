@@ -98,7 +98,7 @@ class BookingService {
     required String userId,
     required DateTime startTime,
     required DateTime endTime,
-    Duration holdDuration = const Duration(minutes: 15),
+    Duration holdDuration = const Duration(seconds: 15),
   }) async {
     final pb = await getPocketbaseInstance();
 

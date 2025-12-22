@@ -457,7 +457,7 @@ class _BookingPageViewState extends State<_BookingPageView> {
               Expanded(
                 child: Text(
                   provider.selectedSlots.isEmpty
-                      ? 'Select time slots to hold them for up to 15 minutes.'
+                      ? 'Select time slots to hold them for up to 15 seconds.'
                       : 'Selected ${provider.selectedSlots.length} slot(s).',
                 ),
               ),

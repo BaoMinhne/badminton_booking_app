@@ -323,7 +323,9 @@ class _UserPublicProfilePageState extends State<UserPublicProfilePage> {
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          widget.result.user.email,
+                          widget.result.user.email.isNotEmpty
+                              ? widget.result.user.email
+                              : widget.result.user.phone,
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: cs.onSurfaceVariant,
                           ),

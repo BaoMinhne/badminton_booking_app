@@ -104,6 +104,10 @@ class _InvitationSheetState extends State<InvitationSheet> {
     final recruitments = data.recruitments;
     final bookings = data.bookings;
     final courts = data.courts;
+    final hasBooking = bookings.isNotEmpty;
+    final hasRecruitmentWithCourt = recruitments.any((post) => post.hasCourt);
+    final showProposedSlot =
+        !hasBooking && !hasRecruitmentWithCourt && _selectedRecruitment == null;
 
     return SingleChildScrollView(
       child: Column(
@@ -172,7 +176,7 @@ class _InvitationSheetState extends State<InvitationSheet> {
             ),
             const Divider(),
           ],
-          if (_selectedRecruitment == null) ...[
+          if (showProposedSlot) ...[
             Text('Đề xuất slot mới', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
@@ -244,6 +248,9 @@ class _InvitationSheetState extends State<InvitationSheet> {
   Future<void> _handleSubmit() async {
     if (_data == null) return;
     final toUserId = widget.toUser.user.id;
+    final hasBooking = _data!.bookings.isNotEmpty;
+    final hasRecruitmentWithCourt =
+        _data!.recruitments.any((post) => post.hasCourt);
 
     try {
       if (_selectedRecruitment != null) {
@@ -260,7 +267,7 @@ class _InvitationSheetState extends State<InvitationSheet> {
           booking: booking,
           message: _note,
         );
-      } else {
+      } else if (!hasBooking && !hasRecruitmentWithCourt) {
         await widget.manager.sendProposedInvite(
           toUserId: toUserId,
           startTime: _proposedStart,
@@ -268,6 +275,12 @@ class _InvitationSheetState extends State<InvitationSheet> {
           courtId: _selectedCourt,
           message: _note,
         );
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Vui lòng chọn một slot hiện có.')),
+        );
+        return;
       }
 
       if (mounted) Navigator.of(context).pop();

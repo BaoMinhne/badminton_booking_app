@@ -50,6 +50,7 @@ class _BookingPageViewState extends State<_BookingPageView> {
   String? _lastUserId;
   Timer? _countdownTimer;
   DateTime? _lastNotifiedExpiryAt;
+  DateTime? _lastNotifiedHoldExpiryAt;
 
   @override
   void initState() {
@@ -58,6 +59,7 @@ class _BookingPageViewState extends State<_BookingPageView> {
       if (mounted) {
         final provider = context.read<BookingManager>();
         _maybeNotifyPaymentExpiry(provider);
+        _maybeNotifyHoldExpiry(provider);
       }
       if (mounted) {
         setState(() {});
@@ -447,6 +449,7 @@ class _BookingPageViewState extends State<_BookingPageView> {
     final totalPrice = provider.totalSelectedPrice;
 
     _syncExpiryNotificationState(awaitingExpires);
+    _syncHoldExpiryNotificationState(holdExpires);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -694,6 +697,17 @@ class _BookingPageViewState extends State<_BookingPageView> {
     }
   }
 
+  void _syncHoldExpiryNotificationState(DateTime? holdExpires) {
+    if (holdExpires == null) {
+      _lastNotifiedHoldExpiryAt = null;
+      return;
+    }
+    if (_lastNotifiedHoldExpiryAt != null &&
+        holdExpires.isAfter(_lastNotifiedHoldExpiryAt!)) {
+      _lastNotifiedHoldExpiryAt = null;
+    }
+  }
+
   Future<void> _maybeNotifyPaymentExpiry(BookingManager provider) async {
     final awaitingExpires = provider.awaitingPaymentExpiresAt;
     if (awaitingExpires == null) {
@@ -716,6 +730,40 @@ class _BookingPageViewState extends State<_BookingPageView> {
           content: const Text(
             'You did not complete payment within the required time. Your '
             'booking has been released.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  Future<void> _maybeNotifyHoldExpiry(BookingManager provider) async {
+    final holdExpires = provider.holdExpiresAt;
+    if (holdExpires == null) {
+      _lastNotifiedHoldExpiryAt = null;
+      return;
+    }
+    if (_lastNotifiedHoldExpiryAt != null &&
+        _lastNotifiedHoldExpiryAt!.isAtSameMomentAs(holdExpires)) {
+      return;
+    }
+    final remaining = holdExpires.difference(DateTime.now().toUtc());
+    if (remaining.isNegative || remaining == Duration.zero) {
+      _lastNotifiedHoldExpiryAt = holdExpires;
+      await provider.refreshBookings();
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Hold expired'),
+          content: const Text(
+            'Your held slots have expired because they were not confirmed '
+            'in time.',
           ),
           actions: [
             TextButton(

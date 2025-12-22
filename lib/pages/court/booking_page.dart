@@ -49,11 +49,16 @@ class _BookingPageView extends StatefulWidget {
 class _BookingPageViewState extends State<_BookingPageView> {
   String? _lastUserId;
   Timer? _countdownTimer;
+  DateTime? _lastNotifiedExpiryAt;
 
   @override
   void initState() {
     super.initState();
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) {
+        final provider = context.read<BookingManager>();
+        _maybeNotifyPaymentExpiry(provider);
+      }
       if (mounted) {
         setState(() {});
       }
@@ -441,6 +446,8 @@ class _BookingPageViewState extends State<_BookingPageView> {
     final awaitingExpires = provider.awaitingPaymentExpiresAt;
     final totalPrice = provider.totalSelectedPrice;
 
+    _syncExpiryNotificationState(awaitingExpires);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -674,6 +681,51 @@ class _BookingPageViewState extends State<_BookingPageView> {
     }
     final start = _resolveStartHour();
     return endHour <= start ? start + 1 : endHour;
+  }
+
+  void _syncExpiryNotificationState(DateTime? awaitingExpires) {
+    if (awaitingExpires == null) {
+      _lastNotifiedExpiryAt = null;
+      return;
+    }
+    if (_lastNotifiedExpiryAt != null &&
+        awaitingExpires.isAfter(_lastNotifiedExpiryAt!)) {
+      _lastNotifiedExpiryAt = null;
+    }
+  }
+
+  Future<void> _maybeNotifyPaymentExpiry(BookingManager provider) async {
+    final awaitingExpires = provider.awaitingPaymentExpiresAt;
+    if (awaitingExpires == null) {
+      _lastNotifiedExpiryAt = null;
+      return;
+    }
+    if (_lastNotifiedExpiryAt != null &&
+        _lastNotifiedExpiryAt!.isAtSameMomentAs(awaitingExpires)) {
+      return;
+    }
+    final remaining = awaitingExpires.difference(DateTime.now().toUtc());
+    if (remaining.isNegative || remaining == Duration.zero) {
+      _lastNotifiedExpiryAt = awaitingExpires;
+      await provider.refreshBookings();
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Payment expired'),
+          content: const Text(
+            'You did not complete payment within the required time. Your '
+            'booking has been released.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   String _formatCountdown(DateTime expiresAt) {

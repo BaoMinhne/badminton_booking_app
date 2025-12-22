@@ -254,7 +254,10 @@ class _PaymentPageState extends State<PaymentPage> {
       final bookings = provider.awaitingPaymentBookings.toList();
       final result = await Navigator.of(context).push<bool>(
         MaterialPageRoute(
-          builder: (_) => PaymentSheetPage(bookings: bookings),
+          builder: (_) => ChangeNotifierProvider.value(
+            value: provider,
+            child: PaymentSheetPage(bookings: bookings),
+          ),
         ),
       );
 

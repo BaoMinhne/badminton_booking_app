@@ -6,6 +6,7 @@ import '../../utils/dialog_utils.dart';
 import 'manager_dashboard_page.dart';
 import 'manager_schedule_page.dart';
 import 'manager_court_page.dart';
+import 'manager_reviews_page.dart';
 import 'manager_reports_page.dart';
 
 class ManagerNavPage extends StatefulWidget {
@@ -57,6 +58,11 @@ class _ManagerNavPageState extends State<ManagerNavPage> {
         label: 'Sân & dịch vụ',
         icon: Icons.sports_tennis_outlined,
         builder: (context) => const ManagerCourtPage(),
+      ),
+      _ManagerTab(
+        label: 'Đánh giá',
+        icon: Icons.rate_review_outlined,
+        builder: (context) => const ManagerReviewsPage(),
       ),
       _ManagerTab(
         label: 'Báo cáo',

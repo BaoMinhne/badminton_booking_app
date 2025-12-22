@@ -237,7 +237,7 @@ class ManagerDashboardService {
     if (bookingIds.isEmpty) return 0;
     final bookingFilter = _buildOrFilter('booking_id', bookingIds);
     final filter =
-        "status='succeeded' && created >= '${dayStart.toIso8601String()}' && created < '${dayEnd.toIso8601String()}' && ($bookingFilter)";
+        "status='succeeded' && ($bookingFilter)";
 
     ResultList<RecordModel> payments;
     try {
@@ -347,7 +347,7 @@ class ManagerDashboardRealtimeService {
     }
 
     final paymentFilter =
-        "status='succeeded' && created >= '${dayStart.toIso8601String()}' && created < '${dayEnd.toIso8601String()}' && (${_buildOrFilter('booking_id', bookingIds)})";
+        "status='succeeded' && (${_buildOrFilter('booking_id', bookingIds)})";
 
     try {
       _paymentUnsubscribe = await pb.collection('payment').subscribe(

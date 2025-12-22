@@ -29,6 +29,8 @@ class CourtBooking {
     required this.startTime,
     required this.endTime,
     required this.status,
+    required this.createdAt,
+    required this.updatedAt,
     this.lockedUntil,
     this.note,
   });
@@ -43,6 +45,8 @@ class CourtBooking {
       startTime: DateTime.parse(data['start_time'] as String),
       endTime: DateTime.parse(data['end_time'] as String),
       status: _parseBookingStatus(data['status']),
+      createdAt: DateTime.parse(record.created).toUtc(),
+      updatedAt: DateTime.parse(record.updated).toUtc(),
       lockedUntil: _tryParseDateTime(data['locked_until']),
       note: data['note'] as String?,
     );
@@ -55,6 +59,8 @@ class CourtBooking {
   final DateTime startTime;
   final DateTime endTime;
   final BookingStatus status;
+  final DateTime createdAt;
+  final DateTime updatedAt;
   final DateTime? lockedUntil;
   final String? note;
 
@@ -68,6 +74,7 @@ class CourtBooking {
     BookingStatus? status,
     DateTime? lockedUntil,
     String? note,
+    DateTime? updatedAt,
   }) {
     return CourtBooking(
       id: id,
@@ -77,6 +84,8 @@ class CourtBooking {
       startTime: startTime,
       endTime: endTime,
       status: status ?? this.status,
+      createdAt: createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
       lockedUntil: lockedUntil ?? this.lockedUntil,
       note: note ?? this.note,
     );

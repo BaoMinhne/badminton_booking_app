@@ -159,7 +159,9 @@ class RecruitmentFormManager with ChangeNotifier {
 
     try {
       final bookings = await _service.listMyBookingsForDate(_selectedDateTime);
+      final now = DateTime.now();
       _bookedCourts = bookings
+          .where((view) => view.endTime.isAfter(now))
           .map((view) => BookedCourtOption(bookingView: view))
           .toList(growable: false);
 
@@ -168,7 +170,9 @@ class RecruitmentFormManager with ChangeNotifier {
         _courtMessage =
             'You have no courts booked on ${_formatDate(_selectedDateTime)}';
       } else {
-        _selectedCourt ??= _bookedCourts.first;
+        final stillValid = _selectedCourt != null &&
+            _bookedCourts.any((court) => court.id == _selectedCourt!.id);
+        _selectedCourt = stillValid ? _selectedCourt : _bookedCourts.first;
       }
     } on RecruitmentServiceException catch (error) {
       _bookedCourts = const [];

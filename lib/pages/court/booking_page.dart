@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:badminton_booking_app/components/my_court_time.dart';
 import 'package:badminton_booking_app/models/booking.dart';
 import 'package:badminton_booking_app/models/court_detail.dart';
@@ -46,6 +48,30 @@ class _BookingPageView extends StatefulWidget {
 
 class _BookingPageViewState extends State<_BookingPageView> {
   String? _lastUserId;
+  Timer? _countdownTimer;
+  DateTime? _lastNotifiedExpiryAt;
+  DateTime? _lastNotifiedHoldExpiryAt;
+
+  @override
+  void initState() {
+    super.initState();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) {
+        final provider = context.read<BookingManager>();
+        _maybeNotifyPaymentExpiry(provider);
+        _maybeNotifyHoldExpiry(provider);
+      }
+      if (mounted) {
+        setState(() {});
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _countdownTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   void didChangeDependencies() {
@@ -419,7 +445,11 @@ class _BookingPageViewState extends State<_BookingPageView> {
 
   Widget _buildSummary(BookingManager provider, ColorScheme colorScheme) {
     final holdExpires = provider.holdExpiresAt;
+    final awaitingExpires = provider.awaitingPaymentExpiresAt;
     final totalPrice = provider.totalSelectedPrice;
+
+    _syncExpiryNotificationState(awaitingExpires);
+    _syncHoldExpiryNotificationState(holdExpires);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -437,7 +467,7 @@ class _BookingPageViewState extends State<_BookingPageView> {
               Expanded(
                 child: Text(
                   provider.selectedSlots.isEmpty
-                      ? 'Select time slots to hold them for up to 15 minutes.'
+                      ? 'Select time slots to hold them for up to 15 seconds.'
                       : 'Selected ${provider.selectedSlots.length} slot(s).',
                 ),
               ),
@@ -483,6 +513,20 @@ class _BookingPageViewState extends State<_BookingPageView> {
                 const SizedBox(width: 6),
                 Text(
                   '${provider.awaitingPaymentBookings.length} booking(s) awaiting payment.',
+                  style: TextStyle(color: colorScheme.primary),
+                ),
+              ],
+            ),
+          ],
+          if (awaitingExpires != null) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Icon(Icons.timer_outlined,
+                    size: 20, color: colorScheme.primary),
+                const SizedBox(width: 6),
+                Text(
+                  'Payment time remaining: ${_formatCountdown(awaitingExpires)}',
                   style: TextStyle(color: colorScheme.primary),
                 ),
               ],
@@ -548,13 +592,15 @@ class _BookingPageViewState extends State<_BookingPageView> {
           SizedBox(
             width: double.infinity,
             child: TextButton(
-              onPressed: provider.hasHeldBookings
+              onPressed: provider.hasAwaitingPaymentBookings
                   ? () async {
-                      await provider.cancelHeldBookings();
+                      await provider.cancelAwaitingPaymentBookings();
                       if (!mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                            content: Text('Current hold has been canceled.')),
+                          content:
+                              Text('Awaiting payment bookings have been canceled.'),
+                        ),
                       );
                     }
                   : null,
@@ -575,7 +621,8 @@ class _BookingPageViewState extends State<_BookingPageView> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Moved to awaiting payment status.')),
+          content: Text('Vui lòng thanh toán trong vòng 15 phút.'),
+        ),
       );
     } on BookingManagerException catch (error) {
       if (!mounted) return;
@@ -637,5 +684,107 @@ class _BookingPageViewState extends State<_BookingPageView> {
     }
     final start = _resolveStartHour();
     return endHour <= start ? start + 1 : endHour;
+  }
+
+  void _syncExpiryNotificationState(DateTime? awaitingExpires) {
+    if (awaitingExpires == null) {
+      _lastNotifiedExpiryAt = null;
+      return;
+    }
+    if (_lastNotifiedExpiryAt != null &&
+        awaitingExpires.isAfter(_lastNotifiedExpiryAt!)) {
+      _lastNotifiedExpiryAt = null;
+    }
+  }
+
+  void _syncHoldExpiryNotificationState(DateTime? holdExpires) {
+    if (holdExpires == null) {
+      _lastNotifiedHoldExpiryAt = null;
+      return;
+    }
+    if (_lastNotifiedHoldExpiryAt != null &&
+        holdExpires.isAfter(_lastNotifiedHoldExpiryAt!)) {
+      _lastNotifiedHoldExpiryAt = null;
+    }
+  }
+
+  Future<void> _maybeNotifyPaymentExpiry(BookingManager provider) async {
+    final awaitingExpires = provider.awaitingPaymentExpiresAt;
+    if (awaitingExpires == null) {
+      _lastNotifiedExpiryAt = null;
+      return;
+    }
+    if (_lastNotifiedExpiryAt != null &&
+        _lastNotifiedExpiryAt!.isAtSameMomentAs(awaitingExpires)) {
+      return;
+    }
+    final remaining = awaitingExpires.difference(DateTime.now().toUtc());
+    if (remaining.isNegative || remaining == Duration.zero) {
+      _lastNotifiedExpiryAt = awaitingExpires;
+      await provider.refreshBookings();
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Payment expired'),
+          content: const Text(
+            'You did not complete payment within the required time. Your '
+            'booking has been released.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  Future<void> _maybeNotifyHoldExpiry(BookingManager provider) async {
+    final holdExpires = provider.holdExpiresAt;
+    if (holdExpires == null) {
+      _lastNotifiedHoldExpiryAt = null;
+      return;
+    }
+    if (_lastNotifiedHoldExpiryAt != null &&
+        _lastNotifiedHoldExpiryAt!.isAtSameMomentAs(holdExpires)) {
+      return;
+    }
+    final remaining = holdExpires.difference(DateTime.now().toUtc());
+    if (remaining.isNegative || remaining == Duration.zero) {
+      _lastNotifiedHoldExpiryAt = holdExpires;
+      await provider.refreshBookings();
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Hold expired'),
+          content: const Text(
+            'Your held slots have expired because they were not confirmed '
+            'in time.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  String _formatCountdown(DateTime expiresAt) {
+    final remaining = expiresAt.difference(DateTime.now().toUtc());
+    final safe = remaining.isNegative ? Duration.zero : remaining;
+    final minutes = safe.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = safe.inSeconds.remainder(60).toString().padLeft(2, '0');
+    final hours = safe.inHours;
+    if (hours > 0) {
+      return '${hours.toString().padLeft(2, '0')}:$minutes:$seconds';
+    }
+    return '$minutes:$seconds';
   }
 }

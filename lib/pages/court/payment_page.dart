@@ -1,10 +1,9 @@
 import 'package:badminton_booking_app/models/booking.dart';
 import 'package:badminton_booking_app/models/court_detail.dart';
 import 'package:badminton_booking_app/pages/court/booking_manager.dart';
-import 'package:badminton_booking_app/services/stripe_payment_service.dart';
+import 'package:badminton_booking_app/pages/court/payment_sheet_page.dart';
 import 'package:badminton_booking_app/utils/booking_helpers.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -17,7 +16,6 @@ class PaymentPage extends StatefulWidget {
 
 class _PaymentPageState extends State<PaymentPage> {
   bool _isProcessingPayment = false;
-  final StripePaymentService _stripePaymentService = StripePaymentService();
 
   @override
   Widget build(BuildContext context) {
@@ -251,55 +249,21 @@ class _PaymentPageState extends State<PaymentPage> {
 
   Future<void> _handlePayment(BuildContext context) async {
     setState(() => _isProcessingPayment = true);
-
     try {
       final provider = context.read<BookingManager>();
       final bookings = provider.awaitingPaymentBookings.toList();
-      final amountMinor = provider.calculateTotalAmount(bookings);
-      if (bookings.isEmpty || amountMinor <= 0) {
-        throw BookingManagerException('No pending bookings to pay.');
-      }
-
-      final intent = await _stripePaymentService.createPaymentIntent(
-        currency: 'vnd',
-        bookings: bookings
-            .map(
-              (booking) => StripeBookingPayment(
-                bookingId: booking.id,
-                amountMinor: provider.calculateBookingAmount(booking),
-              ),
-            )
-            .toList(),
-      );
-
-      await Stripe.instance.initPaymentSheet(
-        paymentSheetParameters: SetupPaymentSheetParameters(
-          paymentIntentClientSecret: intent.clientSecret,
-          merchantDisplayName: 'Badminton Booking',
+      final result = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => PaymentSheetPage(bookings: bookings),
         ),
       );
-      await Stripe.instance.presentPaymentSheet();
 
-      await provider.loadBookings(forceRefresh: true);
       if (!mounted) return;
-      await _showPaymentSuccess(context);
-      if (!mounted) return;
-      Navigator.of(context).pop(true);
-    } on StripePaymentException catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
-    } on StripeException catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.error.localizedMessage ?? 'Payment failed')),
-      );
-    } on BookingManagerException catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      if (result == true) {
+        await _showPaymentSuccess(context);
+        if (!mounted) return;
+        Navigator.of(context).pop(true);
+      }
     } finally {
       if (!mounted) return;
       setState(() => _isProcessingPayment = false);

@@ -102,7 +102,8 @@ class ManagerScheduleService {
           filter: courtFilter,
         );
 
-    final dayStart = DateTime.utc(date.year, date.month, date.day);
+    final dayStartLocal = DateTime(date.year, date.month, date.day);
+    final dayStart = dayStartLocal.toUtc();
     final dayEnd = dayStart.add(const Duration(days: 1));
 
     final bookingsFuture = pocketBase.collection(BookingService.collection).getList(

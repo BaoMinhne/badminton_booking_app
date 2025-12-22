@@ -17,7 +17,6 @@ class _ManagerReviewsPageState extends State<ManagerReviewsPage> {
   ManagerReviewsData? _data;
   bool _loading = true;
   String? _error;
-  String _selectedCourt = 'all';
 
   @override
   void initState() {
@@ -71,7 +70,7 @@ class _ManagerReviewsPageState extends State<ManagerReviewsPage> {
     if (shouldDelete != true) return;
 
     try {
-      await _service.deleteReview(entry.review.id);
+    await _service.deleteReview(entry.review.id);
       if (!mounted) return;
       setState(() {
         _data = _data == null
@@ -108,9 +107,7 @@ class _ManagerReviewsPageState extends State<ManagerReviewsPage> {
             Text(_error!, textAlign: TextAlign.center),
             const SizedBox(height: 12),
             FilledButton(
-              onPressed: () => _loadReviews(
-                courtId: _selectedCourt == 'all' ? null : _selectedCourt,
-              ),
+              onPressed: _loadReviews,
               child: const Text('Thử lại'),
             ),
           ],
@@ -123,43 +120,13 @@ class _ManagerReviewsPageState extends State<ManagerReviewsPage> {
       return const Center(child: Text('Bạn chưa có sân nào để xem đánh giá.'));
     }
 
-    final courts = data.courts;
     final reviews = data.reviews;
 
     return RefreshIndicator(
-      onRefresh: () => _loadReviews(
-        courtId: _selectedCourt == 'all' ? null : _selectedCourt,
-      ),
+      onRefresh: _loadReviews,
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Row(
-            children: [
-              const Text('Sân:'),
-              const SizedBox(width: 12),
-              DropdownButton<String>(
-                value: _selectedCourt,
-                items: [
-                  const DropdownMenuItem(
-                    value: 'all',
-                    child: Text('Tất cả'),
-                  ),
-                  ...courts.map(
-                    (court) => DropdownMenuItem(
-                      value: court.id,
-                      child: Text(court.label),
-                    ),
-                  ),
-                ],
-                onChanged: (value) {
-                  if (value == null) return;
-                  setState(() => _selectedCourt = value);
-                  _loadReviews(courtId: value == 'all' ? null : value);
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
           if (reviews.isEmpty)
             const Center(child: Text('Chưa có đánh giá nào.'))
           else

@@ -1,14 +1,17 @@
 import json
+import logging
 import os
 
 import stripe
-from fastapi import APIRouter, HTTPException, Request, status
+import httpx
+from fastapi import APIRouter, HTTPException, Request, status as http_status
 from pydantic import BaseModel, Field
 
 from app.services.stripe_service import StripeService, StripeServiceError
 from pocketbase_client import create_record, get_list, update_record
 
 router = APIRouter(prefix="/payments", tags=["payments"])
+logger = logging.getLogger(__name__)
 
 
 class BookingPaymentRequest(BaseModel):
@@ -33,7 +36,7 @@ class PaymentConfirmRequest(BaseModel):
 @router.post(
     "/intent",
     response_model=PaymentIntentResponse,
-    status_code=status.HTTP_201_CREATED,
+    status_code=http_status.HTTP_201_CREATED,
 )
 async def create_payment_intent(payload: PaymentIntentRequest) -> PaymentIntentResponse:
     try:
@@ -55,7 +58,7 @@ async def create_payment_intent(payload: PaymentIntentRequest) -> PaymentIntentR
         )
     except StripeServiceError as exc:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail=exc.message,
         ) from exc
 
@@ -69,7 +72,7 @@ async def confirm_payment(payload: PaymentConfirmRequest) -> dict:
         return {"status": intent.get("status")}
     except StripeServiceError as exc:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail=exc.message,
         ) from exc
 
@@ -81,12 +84,12 @@ async def stripe_webhook(request: Request) -> dict:
     webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
     if not webhook_secret:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Missing STRIPE_WEBHOOK_SECRET.",
         )
     if not signature:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail="Missing stripe-signature header.",
         )
 
@@ -98,7 +101,7 @@ async def stripe_webhook(request: Request) -> dict:
         )
     except stripe.error.SignatureVerificationError as exc:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail="Invalid Stripe signature.",
         ) from exc
 
@@ -151,11 +154,23 @@ async def _handle_intent_update(intent: dict, *, status: str) -> None:
             currency=intent.get("currency"),
         )
         if status == "succeeded":
-            await update_record(
-                "court_bookings",
-                booking_id,
-                {"status": "confirmed"},
-            )
+            try:
+                await update_record(
+                    "court_bookings",
+                    booking_id,
+                    {"status": "confirmed"},
+                )
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code == http_status.HTTP_404_NOT_FOUND:
+                    logger.warning(
+                        "Court booking not found during payment confirmation.",
+                        extra={
+                            "booking_id": booking_id,
+                            "payment_intent_id": intent.get("id"),
+                        },
+                    )
+                    continue
+                raise
 
 
 async def _upsert_payment_record(

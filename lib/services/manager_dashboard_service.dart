@@ -231,7 +231,7 @@ class ManagerDashboardService {
     if (bookingIds.isEmpty) return 0;
     final bookingFilter = _buildOrFilter('booking_id', bookingIds);
     final filter =
-        "(status='succeeded' || status='success') && created >= '${dayStart.toIso8601String()}' && created < '${dayEnd.toIso8601String()}' && ($bookingFilter)";
+        "status='succeeded' && created >= '${dayStart.toIso8601String()}' && created < '${dayEnd.toIso8601String()}' && ($bookingFilter)";
 
     ResultList<RecordModel> payments;
     try {

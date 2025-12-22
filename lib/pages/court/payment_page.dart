@@ -1,6 +1,7 @@
 import 'package:badminton_booking_app/models/booking.dart';
 import 'package:badminton_booking_app/models/court_detail.dart';
 import 'package:badminton_booking_app/pages/court/booking_manager.dart';
+import 'package:badminton_booking_app/pages/court/payment_sheet_page.dart';
 import 'package:badminton_booking_app/utils/booking_helpers.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -248,18 +249,24 @@ class _PaymentPageState extends State<PaymentPage> {
 
   Future<void> _handlePayment(BuildContext context) async {
     setState(() => _isProcessingPayment = true);
-
     try {
-      await context.read<BookingManager>().confirmPaymentBookings();
-      if (!mounted) return;
-      await _showPaymentSuccess(context);
-      if (!mounted) return;
-      Navigator.of(context).pop(true);
-    } on BookingManagerException catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
+      final provider = context.read<BookingManager>();
+      final bookings = provider.awaitingPaymentBookings.toList();
+      final result = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => ChangeNotifierProvider.value(
+            value: provider,
+            child: PaymentSheetPage(bookings: bookings),
+          ),
+        ),
       );
+
+      if (!mounted) return;
+      if (result == true) {
+        await _showPaymentSuccess(context);
+        if (!mounted) return;
+        Navigator.of(context).pop(true);
+      }
     } finally {
       if (!mounted) return;
       setState(() => _isProcessingPayment = false);
@@ -270,9 +277,9 @@ class _PaymentPageState extends State<PaymentPage> {
     return showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Payment successful'),
+        title: const Text('Payment submitted'),
         content: const Text(
-          'We have recorded your transaction. Enjoy your game!',
+          'We are confirming your payment. Your booking will update shortly.',
         ),
         actions: [
           TextButton(

@@ -177,11 +177,23 @@ class _InvitationSheetState extends State<InvitationSheet> {
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
               value: _selectedCourt,
+              isExpanded: true,
               items: courts
                   .map(
                     (court) => DropdownMenuItem(
                       value: court.id,
-                      child: Text(court.name),
+                      child: Text(
+                        court.name,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  )
+                  .toList(),
+              selectedItemBuilder: (context) => courts
+                  .map(
+                    (court) => Text(
+                      court.name,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   )
                   .toList(),

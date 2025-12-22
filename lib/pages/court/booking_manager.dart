@@ -506,21 +506,15 @@ class BookingManager extends ChangeNotifier {
     return _calculateBookingAmount(booking);
   }
 
-  Future<void> cancelHeldBookings() async {
-    if (_heldBookingsBySlot.isEmpty) {
-      _selectedSlots.clear();
-      notifyListeners();
+  Future<void> cancelAwaitingPaymentBookings() async {
+    final bookingsToCancel = awaitingPaymentBookings.toList();
+    if (bookingsToCancel.isEmpty) {
       return;
     }
 
-    final bookingsToCancel = _heldBookingsBySlot.values.toList();
-    _heldBookingsBySlot.clear();
-    _selectedSlots.clear();
-    notifyListeners();
-
     for (final booking in bookingsToCancel) {
       try {
-        await _bookingService.releaseBooking(booking.id);
+        await _bookingService.cancelBooking(booking.id);
       } catch (_) {
         // swallow errors to avoid blocking cancellation
       }

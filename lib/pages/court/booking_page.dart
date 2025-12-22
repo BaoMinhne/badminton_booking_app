@@ -548,13 +548,15 @@ class _BookingPageViewState extends State<_BookingPageView> {
           SizedBox(
             width: double.infinity,
             child: TextButton(
-              onPressed: provider.hasHeldBookings
+              onPressed: provider.hasAwaitingPaymentBookings
                   ? () async {
-                      await provider.cancelHeldBookings();
+                      await provider.cancelAwaitingPaymentBookings();
                       if (!mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                            content: Text('Current hold has been canceled.')),
+                          content:
+                              Text('Awaiting payment bookings have been canceled.'),
+                        ),
                       );
                     }
                   : null,
@@ -575,7 +577,8 @@ class _BookingPageViewState extends State<_BookingPageView> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Moved to awaiting payment status.')),
+          content: Text('Vui lòng thanh toán trong vòng 15 phút.'),
+        ),
       );
     } on BookingManagerException catch (error) {
       if (!mounted) return;

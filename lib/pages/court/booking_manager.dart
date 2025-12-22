@@ -13,6 +13,8 @@ import 'package:badminton_booking_app/utils/booking_helpers.dart';
 import 'package:badminton_booking_app/services/payment_service.dart';
 
 class BookingManager extends ChangeNotifier {
+  static const Duration _awaitingPaymentTimeout = Duration(minutes: 15);
+
   BookingManager({
     required this.detailData,
     BookingService? bookingService,
@@ -198,8 +200,8 @@ class BookingManager extends ChangeNotifier {
         courtId: detailData.court.id,
         date: _selectedDate,
       );
-      _loadedBookings = bookings;
-      _updateCache(bookings, _selectedDate);
+      _loadedBookings = await _expireOverdueAwaitingPayments(bookings);
+      _updateCache(_loadedBookings, _selectedDate);
       _syncSelectedSlotsWithBookings();
       _isLoading = false;
       notifyListeners();
@@ -209,6 +211,39 @@ class BookingManager extends ChangeNotifier {
       _friendlyErrorMessage = _describeFriendlyError(error);
       notifyListeners();
     }
+  }
+
+  Future<List<CourtBooking>> _expireOverdueAwaitingPayments(
+    List<CourtBooking> bookings,
+  ) async {
+    if (_currentUserId == null || _currentUserId!.isEmpty) {
+      return bookings;
+    }
+    final now = DateTime.now().toUtc();
+    final expiryThreshold = now.subtract(_awaitingPaymentTimeout);
+    final overdue = bookings.where((booking) {
+      return booking.status == BookingStatus.awaitingPayment &&
+          booking.userId == _currentUserId &&
+          booking.updatedAt.isBefore(expiryThreshold);
+    }).toList(growable: false);
+
+    if (overdue.isEmpty) {
+      return bookings;
+    }
+
+    final updated = List<CourtBooking>.from(bookings);
+    for (final booking in overdue) {
+      try {
+        final expired = await _bookingService.markAsExpired(booking.id);
+        final index = updated.indexWhere((item) => item.id == booking.id);
+        if (index >= 0) {
+          updated[index] = expired;
+        }
+      } catch (_) {
+        // Ignore failures and keep existing status.
+      }
+    }
+    return updated;
   }
 
   Future<void> refreshBookings() => loadBookings(forceRefresh: true);

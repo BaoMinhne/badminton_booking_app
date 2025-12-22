@@ -18,6 +18,7 @@ class ManagerDashboardData {
 
 class ManagerDailyStats {
   final List<String> courtIds;
+  final List<String> bookingIds;
   final int revenueMinor;
   final double occupancyRate;
   final int confirmedBookingCount;
@@ -27,6 +28,7 @@ class ManagerDailyStats {
 
   const ManagerDailyStats({
     required this.courtIds,
+    required this.bookingIds,
     required this.revenueMinor,
     required this.occupancyRate,
     required this.confirmedBookingCount,
@@ -77,6 +79,7 @@ class ManagerDashboardService {
     if (courtsResult.items.isEmpty) {
       const emptyStats = ManagerDailyStats(
         courtIds: [],
+        bookingIds: [],
         revenueMinor: 0,
         occupancyRate: 0,
         confirmedBookingCount: 0,
@@ -150,6 +153,7 @@ class ManagerDashboardService {
     final openingDuration = _computeOpeningDurations(openingHoursResult.items);
 
     final bookings = bookingResult.items.map(CourtBooking.fromRecord).toList();
+    final bookingIds = bookings.map((booking) => booking.id).toList();
 
     final scheduleItems = bookingResult.items.map((record) {
       final booking = CourtBooking.fromRecord(record);
@@ -199,6 +203,7 @@ class ManagerDashboardService {
 
     return ManagerDailyStats(
       courtIds: courtIds,
+      bookingIds: bookingIds,
       revenueMinor: revenueMinor,
       occupancyRate: occupancyRate,
       confirmedBookingCount: confirmedCount,
@@ -303,4 +308,81 @@ class ManagerDashboardService {
     }
     return 0;
   }
+}
+
+class ManagerDashboardRealtimeService {
+  UnsubscribeFunc? _bookingUnsubscribe;
+  UnsubscribeFunc? _paymentUnsubscribe;
+
+  Future<void> subscribe({
+    required DateTime date,
+    required List<String> courtIds,
+    required List<String> bookingIds,
+    required void Function() onChange,
+  }) async {
+    final pb = await getPocketbaseInstance();
+
+    await unsubscribe();
+
+    if (courtIds.isEmpty) {
+      return;
+    }
+
+    final dayStart = DateTime.utc(date.year, date.month, date.day);
+    final dayEnd = dayStart.add(const Duration(days: 1));
+    final courtFilter = _buildOrFilter('court_id', courtIds);
+    final bookingFilter =
+        "$courtFilter && start_time < '${dayEnd.toIso8601String()}' && end_time > '${dayStart.toIso8601String()}'";
+
+    _bookingUnsubscribe = await pb.collection(BookingService.collection).subscribe(
+          '*',
+          (_) => onChange(),
+          filter: bookingFilter,
+        );
+
+    if (bookingIds.isEmpty) {
+      return;
+    }
+
+    final paymentFilter =
+        "status='succeeded' && created >= '${dayStart.toIso8601String()}' && created < '${dayEnd.toIso8601String()}' && (${_buildOrFilter('booking_id', bookingIds)})";
+
+    try {
+      _paymentUnsubscribe = await pb.collection('payment').subscribe(
+            '*',
+            (_) => onChange(),
+            filter: paymentFilter,
+          );
+    } on ClientException catch (err) {
+      if (err.statusCode == 401 || err.statusCode == 403) {
+        return;
+      }
+      rethrow;
+    }
+  }
+
+  Future<void> unsubscribe() async {
+    final bookingUnsub = _bookingUnsubscribe;
+    final paymentUnsub = _paymentUnsubscribe;
+    _bookingUnsubscribe = null;
+    _paymentUnsubscribe = null;
+
+    if (bookingUnsub != null) {
+      await bookingUnsub();
+    }
+    if (paymentUnsub != null) {
+      await paymentUnsub();
+    }
+  }
+
+  Future<void> dispose() async {
+    await unsubscribe();
+  }
+
+  String _buildOrFilter(String field, List<String> values) {
+    final escaped = values.map(_escape).map((v) => "${field}='${v}'");
+    return escaped.join(' || ');
+  }
+
+  String _escape(String value) => value.replaceAll("'", "\\'");
 }

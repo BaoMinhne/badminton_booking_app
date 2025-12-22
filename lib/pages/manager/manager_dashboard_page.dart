@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -13,8 +15,10 @@ class ManagerDashboardPage extends StatefulWidget {
 
 class _ManagerDashboardPageState extends State<ManagerDashboardPage> {
   final _service = ManagerDashboardService();
+  final _realtimeService = ManagerDashboardRealtimeService();
   late Future<ManagerDashboardData> _future;
   DateTime _selectedDate = DateTime.now();
+  bool _isRealtimeRefreshing = false;
 
   @override
   void initState() {
@@ -22,9 +26,16 @@ class _ManagerDashboardPageState extends State<ManagerDashboardPage> {
     _future = _load();
   }
 
-  Future<ManagerDashboardData> _load() {
+  Future<ManagerDashboardData> _load() async {
     final date = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
-    return _service.fetchDashboardData(date);
+    final data = await _service.fetchDashboardData(date);
+    await _realtimeService.subscribe(
+      date: date,
+      courtIds: data.today.courtIds,
+      bookingIds: data.today.bookingIds,
+      onChange: _handleRealtimeChange,
+    );
+    return data;
   }
 
   Future<void> _refresh() async {
@@ -33,6 +44,18 @@ class _ManagerDashboardPageState extends State<ManagerDashboardPage> {
       _future = future;
     });
     await future;
+  }
+
+  void _handleRealtimeChange() {
+    if (!mounted || _isRealtimeRefreshing) return;
+    _isRealtimeRefreshing = true;
+    unawaited(
+      _refresh().whenComplete(() {
+        if (mounted) {
+          _isRealtimeRefreshing = false;
+        }
+      }),
+    );
   }
 
   void _changeDay(int delta) {
@@ -57,6 +80,12 @@ class _ManagerDashboardPageState extends State<ManagerDashboardPage> {
         _future = _load();
       });
     }
+  }
+
+  @override
+  void dispose() {
+    unawaited(_realtimeService.dispose());
+    super.dispose();
   }
 
   @override

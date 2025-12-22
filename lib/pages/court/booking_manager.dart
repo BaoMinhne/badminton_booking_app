@@ -384,7 +384,11 @@ class BookingManager extends ChangeNotifier {
     }
   }
 
-  Future<void> confirmPaymentBookings() async {
+  Future<void> confirmPaymentBookings({
+    String provider = 'manual',
+    String status = 'succeeded',
+    String? transactionRef,
+  }) async {
     final bookingsToConfirm = awaitingPaymentBookings.toList();
     if (bookingsToConfirm.isEmpty) {
       return;
@@ -405,8 +409,9 @@ class BookingManager extends ChangeNotifier {
             bookingId: booking.id,
             amountMinor: amountMinor,
             currency: 'VND',
-            provider: 'manual',
-            status: 'succeeded',
+            provider: provider,
+            status: status,
+            transactionRef: transactionRef,
           );
           paymentId = payment.id;
 
@@ -452,6 +457,14 @@ class BookingManager extends ChangeNotifier {
       total += calculateSlotPrice(detailData, slot, slotDuration);
     }
     return total.round();
+  }
+
+  int calculateTotalAmount(List<CourtBooking> bookings) {
+    var total = 0;
+    for (final booking in bookings) {
+      total += _calculateBookingAmount(booking);
+    }
+    return total;
   }
 
   Future<void> cancelHeldBookings() async {

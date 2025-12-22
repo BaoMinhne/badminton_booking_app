@@ -7,6 +7,7 @@ import 'package:badminton_booking_app/pages/manager/manager_nav_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 
@@ -19,6 +20,7 @@ Future<void> main() async {
 
   await dotenv.load(fileName: ".env");
   await initializeDateFormatting('vi_VN');
+  _configureStripe();
 
   runApp(
     MultiProvider(
@@ -32,6 +34,19 @@ Future<void> main() async {
       child: const MyApp(),
     ),
   );
+}
+
+void _configureStripe() {
+  final publishableKey = dotenv.env['STRIPE_PUBLISHABLE_KEY'];
+  if (publishableKey == null || publishableKey.isEmpty) {
+    throw StateError('Missing STRIPE_PUBLISHABLE_KEY in .env');
+  }
+  Stripe.publishableKey = publishableKey;
+  final merchantIdentifier = dotenv.env['STRIPE_MERCHANT_IDENTIFIER'];
+  if (merchantIdentifier != null && merchantIdentifier.isNotEmpty) {
+    Stripe.merchantIdentifier = merchantIdentifier;
+  }
+  Stripe.instance.applySettings();
 }
 
 class MyApp extends StatelessWidget {

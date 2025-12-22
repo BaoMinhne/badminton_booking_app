@@ -113,6 +113,17 @@ class BookingManager extends ChangeNotifier {
   bool get hasHeldBookings => _heldBookingsBySlot.isNotEmpty;
   bool get hasAwaitingPaymentBookings => awaitingPaymentBookings.isNotEmpty;
 
+  DateTime? get awaitingPaymentExpiresAt {
+    DateTime? earliest;
+    for (final booking in awaitingPaymentBookings) {
+      final expiresAt = booking.updatedAt.add(_awaitingPaymentTimeout);
+      if (earliest == null || expiresAt.isBefore(earliest)) {
+        earliest = expiresAt;
+      }
+    }
+    return earliest;
+  }
+
   Duration get totalSelectedDuration {
     var totalMinutes = 0;
     for (final slot in _selectedSlots) {

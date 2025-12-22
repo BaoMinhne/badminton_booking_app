@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:badminton_booking_app/components/my_court_time.dart';
 import 'package:badminton_booking_app/models/booking.dart';
 import 'package:badminton_booking_app/models/court_detail.dart';
@@ -46,6 +48,23 @@ class _BookingPageView extends StatefulWidget {
 
 class _BookingPageViewState extends State<_BookingPageView> {
   String? _lastUserId;
+  Timer? _countdownTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _countdownTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   void didChangeDependencies() {
@@ -419,6 +438,7 @@ class _BookingPageViewState extends State<_BookingPageView> {
 
   Widget _buildSummary(BookingManager provider, ColorScheme colorScheme) {
     final holdExpires = provider.holdExpiresAt;
+    final awaitingExpires = provider.awaitingPaymentExpiresAt;
     final totalPrice = provider.totalSelectedPrice;
 
     return Container(
@@ -483,6 +503,20 @@ class _BookingPageViewState extends State<_BookingPageView> {
                 const SizedBox(width: 6),
                 Text(
                   '${provider.awaitingPaymentBookings.length} booking(s) awaiting payment.',
+                  style: TextStyle(color: colorScheme.primary),
+                ),
+              ],
+            ),
+          ],
+          if (awaitingExpires != null) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Icon(Icons.timer_outlined,
+                    size: 20, color: colorScheme.primary),
+                const SizedBox(width: 6),
+                Text(
+                  'Payment time remaining: ${_formatCountdown(awaitingExpires)}',
                   style: TextStyle(color: colorScheme.primary),
                 ),
               ],
@@ -640,5 +674,17 @@ class _BookingPageViewState extends State<_BookingPageView> {
     }
     final start = _resolveStartHour();
     return endHour <= start ? start + 1 : endHour;
+  }
+
+  String _formatCountdown(DateTime expiresAt) {
+    final remaining = expiresAt.difference(DateTime.now().toUtc());
+    final safe = remaining.isNegative ? Duration.zero : remaining;
+    final minutes = safe.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = safe.inSeconds.remainder(60).toString().padLeft(2, '0');
+    final hours = safe.inHours;
+    if (hours > 0) {
+      return '${hours.toString().padLeft(2, '0')}:$minutes:$seconds';
+    }
+    return '$minutes:$seconds';
   }
 }

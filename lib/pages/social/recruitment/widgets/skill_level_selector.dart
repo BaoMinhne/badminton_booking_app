@@ -20,7 +20,7 @@ class SkillLevelSelector extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Trình độ mong muốn', style: textTheme.titleMedium),
+        Text('Preferred skill level', style: textTheme.titleMedium),
         const SizedBox(height: 12),
         Wrap(
           spacing: 12,

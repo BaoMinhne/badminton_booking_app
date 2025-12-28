@@ -5,7 +5,7 @@ class Rules extends StatelessWidget {
   final List<String> items;
   const Rules({
     super.key,
-    this.title = "Điều khoản & Quy định",
+    this.title = "Terms & rules",
     required this.items,
   });
 

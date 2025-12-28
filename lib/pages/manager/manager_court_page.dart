@@ -1,0 +1,1149 @@
+import 'package:flutter/material.dart';
+
+import '../../models/court.dart';
+import '../../services/court_service.dart';
+import 'court_images_page.dart';
+import 'court_services_page.dart';
+import 'manager_pricing_page.dart';
+
+class ManagerCourtPage extends StatefulWidget {
+  const ManagerCourtPage({super.key});
+
+  @override
+  State<ManagerCourtPage> createState() => _ManagerCourtPageState();
+}
+
+class _ManagerCourtPageState extends State<ManagerCourtPage> {
+  final _courtService = CourtService();
+  late Future<List<Court>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _loadCourts();
+  }
+
+  Future<List<Court>> _loadCourts() {
+    return _courtService.listOwnerCourts(perPage: 100);
+  }
+
+  Future<void> _refresh() async {
+    final future = _loadCourts();
+    setState(() => _future = future);
+    await future;
+  }
+
+  void _showEditSheet(Court court) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return _EditCourtSheet(
+          court: court,
+          onSaved: (updated) {
+            Navigator.of(context).pop();
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Court information updated.')),
+            );
+            _refresh();
+          },
+        );
+      },
+    );
+  }
+
+  void _openImageManager(Court court) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => CourtImagesPage(court: court)),
+    );
+  }
+
+  void _openServiceManager(Court court) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => CourtServicesPage(court: court)),
+    );
+  }
+
+  void _openPricingManager(Court court) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => ManagerPricingPage(court: court)),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return FutureBuilder<List<Court>>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.error_outline, color: theme.colorScheme.error),
+                  const SizedBox(height: 8),
+                  Text(snapshot.error.toString(), textAlign: TextAlign.center),
+                  const SizedBox(height: 12),
+                  FilledButton.icon(
+                    onPressed: _refresh,
+                    icon: const Icon(Icons.refresh_outlined),
+                    label: const Text('Retry'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        final courts = snapshot.data ?? [];
+        if (courts.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'You do not have any courts to manage.',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Create a court first, then return here to update details, images, and services.',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  FilledButton.icon(
+                    onPressed: _refresh,
+                    icon: const Icon(Icons.refresh_outlined),
+                    label: const Text('Reload'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        const pageHPad = 12.0;
+
+        return RefreshIndicator(
+          onRefresh: _refresh,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(pageHPad, 0, pageHPad, 12),
+                sliver: SliverToBoxAdapter(
+                  child: _OverviewSection(courts: courts),
+                ),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(pageHPad, 6, pageHPad, 12),
+                sliver: SliverList.separated(
+                  itemCount: courts.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final court = courts[index];
+                    return _CourtCard(
+                      court: court,
+                      onEdit: () => _showEditSheet(court),
+                      onManageImages: () => _openImageManager(court),
+                      onManagePricing: () => _openPricingManager(court),
+                      onManageServices: () => _openServiceManager(court),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _OverviewSection extends StatelessWidget {
+  const _OverviewSection({required this.courts});
+  final List<Court> courts;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    final total = courts.length;
+    final active = courts.where((e) => e.isActive).length;
+    final totalSubCourts =
+        courts.fold<int>(0, (sum, c) => sum + c.courtQuantity);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Overview',
+          style: theme.textTheme.titleMedium
+              ?.copyWith(fontWeight: FontWeight.w900),
+        ),
+        const SizedBox(height: 10),
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 10,
+          childAspectRatio: 2.0,
+          children: [
+            _StatTile(
+              title: 'Courts managed',
+              value: '$total',
+              icon: Icons.home_work_outlined,
+            ),
+            _StatTile(
+              title: 'Visible',
+              value: '$active',
+              icon: Icons.visibility_outlined,
+            ),
+            _StatTile(
+              title: 'Total sub courts',
+              value: '$totalSubCourts',
+              icon: Icons.grid_view_outlined,
+            ),
+            _StatTile(
+              title: 'To do',
+              value: 'Images • Services',
+              icon: Icons.checklist_outlined,
+              isTextValue: true,
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Tip: add at least 5 images and 3 services to improve trust when customers choose a court.',
+          style:
+              theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatTile extends StatelessWidget {
+  const _StatTile({
+    required this.title,
+    required this.value,
+    required this.icon,
+    this.isTextValue = false,
+  });
+
+  final String title;
+  final String value;
+  final IconData icon;
+  final bool isTextValue;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withOpacity(0.55),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: cs.outlineVariant.withOpacity(0.6)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: cs.primary.withOpacity(0.10),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: cs.primary, size: 20),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w800,
+                    height: 1.1,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                if (isTextValue)
+                  Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      height: 1.0,
+                    ),
+                  )
+                else
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      value,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        height: 1.0,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CourtCard extends StatelessWidget {
+  const _CourtCard({
+    required this.court,
+    required this.onEdit,
+    required this.onManageImages,
+    required this.onManagePricing,
+    required this.onManageServices,
+  });
+
+  final Court court;
+  final VoidCallback onEdit;
+  final VoidCallback onManageImages;
+  final VoidCallback onManagePricing;
+  final VoidCallback onManageServices;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: cs.surfaceContainerHighest.withOpacity(0.45),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: cs.outlineVariant.withOpacity(0.6)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: cs.primary.withOpacity(0.10),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(Icons.home_work_outlined, color: cs.primary),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          court.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            _StatusChip(isActive: court.isActive),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                court.location,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: cs.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  PopupMenuButton<int>(
+                    tooltip: 'Actions',
+                    onSelected: (v) {
+                      if (v == 0) onEdit();
+                    },
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(
+                          value: 0, child: Text('Edit details')),
+                    ],
+                    child: const Padding(
+                      padding: EdgeInsets.all(6),
+                      child: Icon(Icons.more_horiz),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: cs.surface.withOpacity(0.65),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: cs.outlineVariant.withOpacity(0.6)),
+                ),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _InfoPill(
+                      icon: Icons.call_outlined,
+                      label: 'Contact',
+                      value: court.phonePretty,
+                    ),
+                    _InfoPill(
+                      icon: Icons.grid_view_outlined,
+                      label: 'Courts',
+                      value: court.courtQuantity.toString(),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: cs.surfaceContainerHighest.withOpacity(0.45),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: cs.outlineVariant.withOpacity(0.6)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: cs.primary.withOpacity(0.10),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(Icons.description_outlined,
+                              color: cs.primary),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Details',
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      (court.description?.trim().isNotEmpty ?? false)
+                          ? court.description!
+                          : 'No description for this court yet.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // ===== Modern Action Bar (3 buttons) =====
+        const SizedBox(height: 12),
+        _ModernActionBar(
+          onPricing: onManagePricing,
+          onServices: onManageServices,
+          onImages: onManageImages,
+        ),
+
+        const SizedBox(height: 10),
+        Divider(color: cs.outlineVariant.withOpacity(0.8)),
+      ],
+    );
+  }
+}
+
+class _ModernActionBar extends StatelessWidget {
+  const _ModernActionBar({
+    required this.onPricing,
+    required this.onServices,
+    required this.onImages,
+  });
+
+  final VoidCallback onPricing;
+  final VoidCallback onServices;
+  final VoidCallback onImages;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    final bg = cs.surfaceContainerHighest.withOpacity(0.55);
+    final border = cs.outlineVariant.withOpacity(0.7);
+
+    return Container(
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: border),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _ActionPillButton(
+              icon: Icons.price_change_outlined,
+              label: 'Hourly pricing',
+              onTap: onPricing,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: _ActionPillButton(
+              icon: Icons.miscellaneous_services_outlined,
+              label: 'Services',
+              onTap: onServices,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: _ActionPillButton(
+              icon: Icons.photo_library_outlined,
+              label: 'Images',
+              onTap: onImages,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActionPillButton extends StatefulWidget {
+  const _ActionPillButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  State<_ActionPillButton> createState() => _ActionPillButtonState();
+}
+
+class _ActionPillButtonState extends State<_ActionPillButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    final base = cs.surface;
+    final border = cs.outlineVariant.withOpacity(0.70);
+
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        duration: const Duration(milliseconds: 110),
+        scale: _pressed ? 0.985 : 1.0,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          decoration: BoxDecoration(
+            color: base.withOpacity(_pressed ? 0.92 : 0.98),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: border),
+            boxShadow: [
+              if (!_pressed)
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.06),
+                  blurRadius: 10,
+                  offset: const Offset(0, 6),
+                ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(widget.icon, size: 18, color: cs.primary),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  widget.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.1,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _InfoPill extends StatelessWidget {
+  const _InfoPill({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withOpacity(0.55),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: cs.outlineVariant.withOpacity(0.6)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: cs.primary),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            value,
+            style: theme.textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.w900,
+              color: cs.onSurface,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({required this.isActive});
+
+  final bool isActive;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    final color = isActive ? Colors.green : cs.outline;
+    final bg = color.withOpacity(0.12);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withOpacity(0.55)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isActive
+                ? Icons.check_circle_outline
+                : Icons.visibility_off_outlined,
+            size: 16,
+            color: color,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            isActive ? 'Visible' : 'Hidden',
+            style: theme.textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.w900,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EditCourtSheet extends StatefulWidget {
+  const _EditCourtSheet({required this.court, required this.onSaved});
+
+  final Court court;
+  final ValueChanged<Court> onSaved;
+
+  @override
+  State<_EditCourtSheet> createState() => _EditCourtSheetState();
+}
+
+class _EditCourtSheetState extends State<_EditCourtSheet> {
+  final _formKey = GlobalKey<FormState>();
+  final _phoneReg = RegExp(r'^(?:0|\+84)\d{9}$');
+
+  late final TextEditingController _nameCtrl;
+  late final TextEditingController _locationCtrl;
+  late final TextEditingController _phoneCtrl;
+  late final TextEditingController _descCtrl;
+  late final TextEditingController _priceCtrl;
+
+  late int _quantity;
+  late bool _isActive;
+
+  bool _submitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameCtrl = TextEditingController(text: widget.court.name);
+    _locationCtrl = TextEditingController(text: widget.court.location);
+    _phoneCtrl = TextEditingController(text: widget.court.phoneLocal);
+    _descCtrl = TextEditingController(text: widget.court.description ?? '');
+    _priceCtrl = TextEditingController(
+      text: widget.court.pricePerHour?.toString() ?? '',
+    );
+    _quantity = widget.court.courtQuantity;
+    _isActive = widget.court.isActive;
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _locationCtrl.dispose();
+    _phoneCtrl.dispose();
+    _descCtrl.dispose();
+    _priceCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _submitting = true);
+    final service = CourtService();
+
+    final price = int.tryParse(
+      _priceCtrl.text.replaceAll(RegExp(r'[^0-9]'), ''),
+    );
+    final normalizedPrice = price ?? widget.court.pricePerHour;
+
+    try {
+      final updated = await service.updateCourt(
+        courtId: widget.court.id,
+        name: _nameCtrl.text,
+        location: _locationCtrl.text,
+        phone: _phoneCtrl.text,
+        courtQuantity: _quantity,
+        pricePerHour: normalizedPrice,
+        isActive: _isActive,
+        description: _descCtrl.text,
+      );
+      widget.onSaved(updated);
+    } catch (err) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(err.toString())),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  InputDecoration _decoration({
+    required String hint,
+    required IconData icon,
+  }) {
+    return InputDecoration(
+      hintText: hint,
+      prefixIcon: Icon(icon),
+      filled: true,
+      isDense: true,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide.none,
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    return SafeArea(
+      top: false,
+      child: DraggableScrollableSheet(
+        initialChildSize: 0.78,
+        minChildSize: 0.55,
+        maxChildSize: 0.95,
+        builder: (context, scrollCtrl) {
+          return Container(
+            decoration: BoxDecoration(
+              color: cs.surface,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(26),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.12),
+                  blurRadius: 24,
+                  offset: const Offset(0, -8),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                const SizedBox(height: 10),
+                Container(
+                  width: 46,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: cs.outlineVariant,
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 4, 10, 10),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: cs.primary.withOpacity(0.10),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Icon(Icons.edit_outlined, color: cs.primary),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Edit court information',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed:
+                            _submitting ? null : () => Navigator.pop(context),
+                        tooltip: 'Close',
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: SingleChildScrollView(
+                    controller: scrollCtrl,
+                    padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        children: [
+                          _LabeledField(
+                            label: 'Court name',
+                            child: TextFormField(
+                              controller: _nameCtrl,
+                              textInputAction: TextInputAction.next,
+                              decoration: _decoration(
+                                hint: 'Example: Quang Sport',
+                                icon: Icons.home_work_outlined,
+                              ),
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Please enter a court name';
+                                }
+                                return null;
+                              },
+                            ),
+                          ),
+                          _LabeledField(
+                            label: 'Address',
+                            child: TextFormField(
+                              controller: _locationCtrl,
+                              textInputAction: TextInputAction.next,
+                              decoration: _decoration(
+                                hint: 'Street address, district...',
+                                icon: Icons.place_outlined,
+                              ),
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Please enter an address';
+                                }
+                                return null;
+                              },
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _LabeledField(
+                                  label: 'Phone number',
+                                  child: TextFormField(
+                                    controller: _phoneCtrl,
+                                    textInputAction: TextInputAction.next,
+                                    decoration: _decoration(
+                                      hint: '0xxxxxxxxx / +84xxxxxxxxx',
+                                      icon: Icons.call_outlined,
+                                    ),
+                                    keyboardType: TextInputType.phone,
+                                    validator: (value) {
+                                      final phone = value?.trim() ?? '';
+                                      if (phone.isEmpty) {
+                                        return 'Please enter a phone number';
+                                      }
+                                      if (!_phoneReg.hasMatch(phone)) {
+                                        return 'Invalid format: 0xxxxxxxxx or +84xxxxxxxxx';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _LabeledField(
+                                  label: 'Court count',
+                                  child: TextFormField(
+                                    initialValue: _quantity.toString(),
+                                    decoration: _decoration(
+                                      hint: 'Enter number of courts',
+                                      icon: Icons.grid_view_outlined,
+                                    ),
+                                    keyboardType: TextInputType.number,
+                                    onChanged: (value) {
+                                      final parsed = int.tryParse(value);
+                                      if (parsed != null && parsed > 0) {
+                                        _quantity = parsed;
+                                      }
+                                    },
+                                    validator: (value) {
+                                      final parsed = int.tryParse(value ?? '');
+                                      if (parsed == null || parsed <= 0) {
+                                        return 'Court count must be greater than 0';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          _LabeledField(
+                            label: 'Court price/hour (VND)',
+                            child: TextFormField(
+                              controller: _priceCtrl,
+                              textInputAction: TextInputAction.next,
+                              decoration: _decoration(
+                                hint: 'Example: 180000',
+                                icon: Icons.price_change_outlined,
+                              ),
+                              keyboardType: TextInputType.number,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) return null;
+                                final parsed = int.tryParse(
+                                  value.replaceAll(RegExp(r'[^0-9]'), ''),
+                                );
+                                if (parsed == null || parsed <= 0) {
+                                  return 'Price must be positive';
+                                }
+                                return null;
+                              },
+                            ),
+                          ),
+                          _LabeledField(
+                            label: 'Description / rules',
+                            child: TextFormField(
+                              controller: _descCtrl,
+                              decoration: _decoration(
+                                hint:
+                                    'Detailed information helps customers understand more...',
+                                icon: Icons.notes_outlined,
+                              ),
+                              maxLines: 4,
+                            ),
+                          ),
+                          Container(
+                            decoration: BoxDecoration(
+                              color:
+                                  cs.surfaceContainerHighest.withOpacity(0.55),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: cs.outlineVariant.withOpacity(0.6),
+                              ),
+                            ),
+                            child: SwitchListTile.adaptive(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              value: _isActive,
+                              onChanged: _submitting
+                                  ? null
+                                  : (v) => setState(() => _isActive = v),
+                              title: const Text(
+                                  'Show court to customers for booking'),
+                              subtitle: Text(
+                                _isActive
+                                    ? 'The court will appear in the booking list.'
+                                    : 'The court is hidden from the booking list.',
+                              ),
+                              secondary: Icon(
+                                _isActive
+                                    ? Icons.visibility_outlined
+                                    : Icons.visibility_off_outlined,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: _submitting
+                                      ? null
+                                      : () => Navigator.pop(context),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 14),
+                                  ),
+                                  child: const Text('Cancel'),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: FilledButton.icon(
+                                  onPressed: _submitting ? null : _submit,
+                                  icon: _submitting
+                                      ? const SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
+                                        )
+                                      : const Icon(Icons.save_outlined),
+                                  label: const Text('Save changes'),
+                                  style: FilledButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 14),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _LabeledField extends StatelessWidget {
+  const _LabeledField({required this.label, required this.child});
+
+  final String label;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Text(
+              label,
+              style: theme.textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+                color: theme.colorScheme.onSurface.withOpacity(0.85),
+              ),
+            ),
+          ),
+          child,
+        ],
+      ),
+    );
+  }
+}

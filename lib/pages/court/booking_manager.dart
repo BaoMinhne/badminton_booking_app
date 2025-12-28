@@ -10,15 +10,20 @@ import 'package:badminton_booking_app/models/court_detail.dart';
 import 'package:badminton_booking_app/services/booking_realtime_service.dart';
 import 'package:badminton_booking_app/services/booking_service.dart';
 import 'package:badminton_booking_app/utils/booking_helpers.dart';
+import 'package:badminton_booking_app/services/payment_service.dart';
 
 class BookingManager extends ChangeNotifier {
+  static const Duration _awaitingPaymentTimeout = Duration(seconds: 15);
+
   BookingManager({
     required this.detailData,
     BookingService? bookingService,
+    PaymentService? paymentService,
     this.slotDuration = const Duration(hours: 1),
     this.unitGroupSize = 5,
   })  : assert(unitGroupSize > 0, 'unitGroupSize must be positive'),
-        _bookingService = bookingService ?? BookingService() {
+        _bookingService = bookingService ?? BookingService(),
+        _paymentService = paymentService ?? PaymentService() {
     _selectedDate = _normalizeDate(DateTime.now());
 
     Future.microtask(() => loadBookings());
@@ -28,6 +33,7 @@ class BookingManager extends ChangeNotifier {
   final Duration slotDuration;
   final int unitGroupSize;
   final BookingService _bookingService;
+  final PaymentService _paymentService;
   final BookingRealtimeService _realtimeService = BookingRealtimeService();
 
   DateTime _selectedDate = DateTime.now();
@@ -106,6 +112,17 @@ class BookingManager extends ChangeNotifier {
 
   bool get hasHeldBookings => _heldBookingsBySlot.isNotEmpty;
   bool get hasAwaitingPaymentBookings => awaitingPaymentBookings.isNotEmpty;
+
+  DateTime? get awaitingPaymentExpiresAt {
+    DateTime? earliest;
+    for (final booking in awaitingPaymentBookings) {
+      final expiresAt = booking.updatedAt.add(_awaitingPaymentTimeout);
+      if (earliest == null || expiresAt.isBefore(earliest)) {
+        earliest = expiresAt;
+      }
+    }
+    return earliest;
+  }
 
   Duration get totalSelectedDuration {
     var totalMinutes = 0;
@@ -194,8 +211,8 @@ class BookingManager extends ChangeNotifier {
         courtId: detailData.court.id,
         date: _selectedDate,
       );
-      _loadedBookings = bookings;
-      _updateCache(bookings, _selectedDate);
+      _loadedBookings = await _expireOverdueAwaitingPayments(bookings);
+      _updateCache(_loadedBookings, _selectedDate);
       _syncSelectedSlotsWithBookings();
       _isLoading = false;
       notifyListeners();
@@ -205,6 +222,39 @@ class BookingManager extends ChangeNotifier {
       _friendlyErrorMessage = _describeFriendlyError(error);
       notifyListeners();
     }
+  }
+
+  Future<List<CourtBooking>> _expireOverdueAwaitingPayments(
+    List<CourtBooking> bookings,
+  ) async {
+    if (_currentUserId == null || _currentUserId!.isEmpty) {
+      return bookings;
+    }
+    final now = DateTime.now().toUtc();
+    final expiryThreshold = now.subtract(_awaitingPaymentTimeout);
+    final overdue = bookings.where((booking) {
+      return booking.status == BookingStatus.awaitingPayment &&
+          booking.userId == _currentUserId &&
+          booking.updatedAt.isBefore(expiryThreshold);
+    }).toList(growable: false);
+
+    if (overdue.isEmpty) {
+      return bookings;
+    }
+
+    final updated = List<CourtBooking>.from(bookings);
+    for (final booking in overdue) {
+      try {
+        final expired = await _bookingService.markAsExpired(booking.id);
+        final index = updated.indexWhere((item) => item.id == booking.id);
+        if (index >= 0) {
+          updated[index] = expired;
+        }
+      } catch (_) {
+        // Ignore failures and keep existing status.
+      }
+    }
+    return updated;
   }
 
   Future<void> refreshBookings() => loadBookings(forceRefresh: true);
@@ -380,7 +430,11 @@ class BookingManager extends ChangeNotifier {
     }
   }
 
-  Future<void> confirmPaymentBookings() async {
+  Future<void> confirmPaymentBookings({
+    String provider = 'manual',
+    String status = 'succeeded',
+    String? transactionRef,
+  }) async {
     final bookingsToConfirm = awaitingPaymentBookings.toList();
     if (bookingsToConfirm.isEmpty) {
       return;
@@ -394,10 +448,25 @@ class BookingManager extends ChangeNotifier {
 
     try {
       for (final booking in bookingsToConfirm) {
+        String? paymentId;
         try {
+          final amountMinor = _calculateBookingAmount(booking);
+          final payment = await _paymentService.createPayment(
+            bookingId: booking.id,
+            amountMinor: amountMinor,
+            currency: 'VND',
+            provider: provider,
+            status: status,
+            transactionRef: transactionRef,
+          );
+          paymentId = payment.id;
+
           final updated = await _bookingService.markAsConfirmed(booking.id);
           confirmedBookings.add(updated);
         } catch (_) {
+          if (paymentId != null) {
+            unawaited(_paymentService.deletePayment(paymentId!).catchError((_) {}));
+          }
           failedBookings.add(booking);
         }
       }
@@ -427,21 +496,36 @@ class BookingManager extends ChangeNotifier {
     }
   }
 
-  Future<void> cancelHeldBookings() async {
-    if (_heldBookingsBySlot.isEmpty) {
-      _selectedSlots.clear();
-      notifyListeners();
+  int _calculateBookingAmount(CourtBooking booking) {
+    final slots = booking.splitToSlots(slotDuration);
+    var total = 0.0;
+    for (final slot in slots) {
+      total += calculateSlotPrice(detailData, slot, slotDuration);
+    }
+    return total.round();
+  }
+
+  int calculateTotalAmount(List<CourtBooking> bookings) {
+    var total = 0;
+    for (final booking in bookings) {
+      total += _calculateBookingAmount(booking);
+    }
+    return total;
+  }
+
+  int calculateBookingAmount(CourtBooking booking) {
+    return _calculateBookingAmount(booking);
+  }
+
+  Future<void> cancelAwaitingPaymentBookings() async {
+    final bookingsToCancel = awaitingPaymentBookings.toList();
+    if (bookingsToCancel.isEmpty) {
       return;
     }
 
-    final bookingsToCancel = _heldBookingsBySlot.values.toList();
-    _heldBookingsBySlot.clear();
-    _selectedSlots.clear();
-    notifyListeners();
-
     for (final booking in bookingsToCancel) {
       try {
-        await _bookingService.releaseBooking(booking.id);
+        await _bookingService.cancelBooking(booking.id);
       } catch (_) {
         // swallow errors to avoid blocking cancellation
       }

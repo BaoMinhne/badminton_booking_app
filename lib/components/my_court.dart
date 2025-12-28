@@ -1,8 +1,10 @@
 import 'package:badminton_booking_app/models/court.dart';
-import 'package:badminton_booking_app/services/court_service.dart';
 import 'package:badminton_booking_app/pages/court/booking_page.dart';
 import 'package:badminton_booking_app/pages/court/court_detail.dart';
+import 'package:badminton_booking_app/pages/court/favorite_court_manager.dart';
+import 'package:badminton_booking_app/services/court_service.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class MyCourt extends StatefulWidget {
   const MyCourt({super.key, required this.court});
@@ -14,12 +16,11 @@ class MyCourt extends StatefulWidget {
 }
 
 class _MyCourtState extends State<MyCourt> {
-  bool _isFavorite = false;
+  Future<void> _toggleFavorite() async {
+    final favoriteManager = context.read<FavoriteCourtManager?>();
+    if (favoriteManager == null) return;
 
-  void _toggleFavorite() {
-    setState(() {
-      _isFavorite = !_isFavorite;
-    });
+    await favoriteManager.toggleFavorite(widget.court);
   }
 
   @override
@@ -27,6 +28,8 @@ class _MyCourtState extends State<MyCourt> {
     final screenWidth = MediaQuery.of(context).size.width;
     final colorSchema = Theme.of(context).colorScheme;
     final court = widget.court;
+    final isFavorite =
+        context.watch<FavoriteCourtManager?>()?.isFavorite(court.id) ?? false;
     final courtName = court.name.isNotEmpty ? court.name : 'Sân không tên';
     final location =
         court.location.isNotEmpty ? court.location : 'Địa chỉ chưa cập nhật';
@@ -78,10 +81,8 @@ class _MyCourtState extends State<MyCourt> {
                             borderRadius: BorderRadius.circular(50),
                           ),
                           child: Icon(
-                            _isFavorite
-                                ? Icons.favorite
-                                : Icons.favorite_border,
-                            color: _isFavorite ? Colors.red : Colors.black54,
+                            isFavorite ? Icons.favorite : Icons.favorite_border,
+                            color: isFavorite ? Colors.red : Colors.black54,
                             size: 28,
                           ),
                         ),

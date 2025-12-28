@@ -37,7 +37,7 @@ class RecruitmentService {
                 expand: 'author,court',
               );
 
-      final applicantsMap = await _fetchApplicantsMap(
+      final applicantsMap = await fetchApplicantsMap(
         pocketBase: pocketBase,
         recruitmentIds: result.items.map((e) => e.id).toList(growable: false),
       );
@@ -97,7 +97,7 @@ class RecruitmentService {
           .collection(recruitmentPostsCollection)
           .getOne(recruitmentId, expand: 'author,court');
 
-      final applicantsMap = await _fetchApplicantsMap(
+      final applicantsMap = await fetchApplicantsMap(
         pocketBase: pocketBase,
         recruitmentIds: [recruitmentId],
       );
@@ -317,7 +317,7 @@ class RecruitmentService {
     }
   }
 
-  Future<Map<String, List<RecordModel>>> _fetchApplicantsMap({
+  Future<Map<String, List<RecordModel>>> fetchApplicantsMap({
     required PocketBase pocketBase,
     required List<String> recruitmentIds,
   }) async {

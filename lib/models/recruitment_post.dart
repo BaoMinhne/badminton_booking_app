@@ -40,7 +40,7 @@ class RecruitmentPost {
     final loggedInUserId = currentUserId ?? pocketBase.authStore.record?.id;
     final isOwner = authorId == loggedInUserId;
     final authorName = isOwner
-        ? 'Bạn'
+        ? 'You'
         : _sanitizeName(
               (authorData?['username'] as String?) ??
                   (authorData?['email'] as String?),

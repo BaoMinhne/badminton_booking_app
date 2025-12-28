@@ -1,6 +1,7 @@
 import 'package:badminton_booking_app/models/booking.dart';
 import 'package:badminton_booking_app/models/court_detail.dart';
 import 'package:badminton_booking_app/pages/court/booking_manager.dart';
+import 'package:badminton_booking_app/pages/court/payment_sheet_page.dart';
 import 'package:badminton_booking_app/utils/booking_helpers.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -25,14 +26,14 @@ class _PaymentPageState extends State<PaymentPage> {
 
     final totalDuration = _totalDuration(slots);
     final durationLabel = totalDuration.inMinutes == 0
-        ? '0 phút'
-        : '${totalDuration.inMinutes ~/ 60}h ${totalDuration.inMinutes % 60}p';
+        ? '0 min'
+        : '${totalDuration.inMinutes ~/ 60}h ${totalDuration.inMinutes % 60}m';
     final totalPrice = _totalPrice(provider, slots);
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Thanh toán'),
+        title: const Text('Payment'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -69,7 +70,7 @@ class _PaymentPageState extends State<PaymentPage> {
                         width: 22,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('Thanh toán ngay'),
+                    : const Text('Pay now'),
               ),
             ),
             const SizedBox(height: 16),
@@ -210,7 +211,7 @@ class _PaymentPageState extends State<PaymentPage> {
             children: [
               const Icon(Icons.timer_outlined),
               const SizedBox(width: 8),
-              Text('Tổng thời lượng: $durationLabel'),
+              Text('Total duration: $durationLabel'),
             ],
           ),
           const SizedBox(height: 8),
@@ -240,7 +241,7 @@ class _PaymentPageState extends State<PaymentPage> {
         children: const [
           Icon(Icons.inbox_outlined, size: 48),
           SizedBox(height: 12),
-          Text('Chưa có lượt đặt sân nào chờ thanh toán.'),
+          Text('No pending court bookings to pay.'),
         ],
       ),
     );
@@ -248,18 +249,24 @@ class _PaymentPageState extends State<PaymentPage> {
 
   Future<void> _handlePayment(BuildContext context) async {
     setState(() => _isProcessingPayment = true);
-
     try {
-      await context.read<BookingManager>().confirmPaymentBookings();
-      if (!mounted) return;
-      await _showPaymentSuccess(context);
-      if (!mounted) return;
-      Navigator.of(context).pop(true);
-    } on BookingManagerException catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
+      final provider = context.read<BookingManager>();
+      final bookings = provider.awaitingPaymentBookings.toList();
+      final result = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => ChangeNotifierProvider.value(
+            value: provider,
+            child: PaymentSheetPage(bookings: bookings),
+          ),
+        ),
       );
+
+      if (!mounted) return;
+      if (result == true) {
+        await _showPaymentSuccess(context);
+        if (!mounted) return;
+        Navigator.of(context).pop(true);
+      }
     } finally {
       if (!mounted) return;
       setState(() => _isProcessingPayment = false);
@@ -270,14 +277,14 @@ class _PaymentPageState extends State<PaymentPage> {
     return showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Thanh toán thành công'),
+        title: const Text('Payment submitted'),
         content: const Text(
-          'Chúng tôi đã ghi nhận giao dịch của bạn. Chúc bạn có buổi chơi vui vẻ!',
+          'We are confirming your payment. Your booking will update shortly.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Hoàn tất'),
+            child: const Text('Done'),
           ),
         ],
       ),
@@ -287,12 +294,12 @@ class _PaymentPageState extends State<PaymentPage> {
   String _resolveCourtLabel(BookingManager provider, String courtUnitId) {
     final units = provider.detailData.units;
     if (units.isEmpty) {
-      return 'Sân';
+      return 'Court';
     }
     final unit = units.firstWhere(
       (item) => item.id == courtUnitId,
       orElse: () => units.first,
     );
-    return unit.label.isEmpty ? 'Sân' : unit.label;
+    return unit.label.isEmpty ? 'Court' : unit.label;
   }
 }

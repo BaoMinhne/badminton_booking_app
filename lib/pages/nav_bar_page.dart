@@ -4,19 +4,24 @@ import 'package:badminton_booking_app/pages/home/home_page.dart';
 import 'package:badminton_booking_app/pages/user/profile_page.dart';
 import 'package:badminton_booking_app/pages/social/social_page.dart';
 import 'package:badminton_booking_app/pages/user/user_manager.dart';
+import 'package:badminton_booking_app/pages/user/onboarding_page.dart';
+import 'package:badminton_booking_app/models/user_details.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class NavBarPage extends StatefulWidget {
   const NavBarPage({super.key});
 
   @override
-  State<NavBarPage> createState() => _NavBarPageState();
+  State<NavBarPage> createState() => NavBarPageState();
 }
 
-class _NavBarPageState extends State<NavBarPage> {
+class NavBarPageState extends State<NavBarPage> {
   int _index = 0;
+  bool _checkingOnboarding = false;
+  final GlobalKey<SocialPageState> _socialPageKey = GlobalKey<SocialPageState>();
 
   late final List<Widget> _pages;
 
@@ -25,14 +30,14 @@ class _NavBarPageState extends State<NavBarPage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.read<UserManager>().loadMe(); // nạp cache lần đầu
+      _loadAndCheckOnboarding();
     });
 
     _pages = [
-      HomePage(),
-      SocialPage(),
-      CourtPage(),
-      ProfilePage(),
+      const HomePage(),
+      SocialPage(key: _socialPageKey),
+      const CourtPage(),
+      const ProfilePage(),
     ];
   }
 
@@ -60,5 +65,76 @@ class _NavBarPageState extends State<NavBarPage> {
         ],
       ),
     );
+  }
+
+  void setIndex(int newIndex) {
+    if (newIndex == _index) return;
+    setState(() => _index = newIndex.clamp(0, _pages.length - 1));
+  }
+
+  void openSocialTab(int tabIndex) {
+    final int safeIndex = tabIndex.clamp(0, 3).toInt();
+    _socialPageKey.currentState?.jumpToTab(safeIndex);
+    setState(() => _index = 1);
+  }
+
+  Future<void> _loadAndCheckOnboarding() async {
+    final userManager = context.read<UserManager>();
+    await userManager.loadMe();
+    if (!mounted) return;
+    await _checkOnboarding(userManager);
+  }
+
+  Future<void> _checkOnboarding(UserManager userManager) async {
+    if (_checkingOnboarding) return;
+    _checkingOnboarding = true;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = await userManager.getCurrentUserId();
+      if (userId == null) return;
+
+      UserDetails? details = userManager.myDetails;
+      details ??= await userManager.getByUserId(userId);
+      if (details == null) return;
+
+      final hasCompleted =
+          prefs.getBool('onboarded_${details.userId}') ?? false;
+      final needsOnboarding =
+          !hasCompleted || _isProfileIncomplete(details);
+
+      if (needsOnboarding) {
+        final completed = await Navigator.of(context).push<bool>(
+          MaterialPageRoute(
+            builder: (_) => OnboardingPage(initialDetails: details!),
+          ),
+        );
+
+        if (completed == true) {
+          await userManager.refreshMyDetails();
+          await prefs.setBool('onboarded_${details.userId}', true);
+        }
+      }
+    } catch (_) {
+      // Bỏ qua lỗi onboarding để không chặn luồng chính
+    } finally {
+      _checkingOnboarding = false;
+    }
+  }
+
+  bool _isProfileIncomplete(UserDetails? details) {
+    if (details == null) return true;
+
+    bool isNullOrEmpty(String? value) => value == null || value.trim().isEmpty;
+
+    return isNullOrEmpty(details.fullname) ||
+        isNullOrEmpty(details.level) ||
+        details.matchTypes.isEmpty ||
+        details.playStyleTags.isEmpty ||
+        isNullOrEmpty(details.preferredRoleDoubles) ||
+        isNullOrEmpty(details.intensity) ||
+        details.experienceYears == null ||
+        details.playsPerWeek == null ||
+        isNullOrEmpty(details.gender) ||
+        details.birthday == null;
   }
 }

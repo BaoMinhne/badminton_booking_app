@@ -8,7 +8,7 @@ class CreatePostBar extends StatelessWidget {
     this.onPickPhoto,
     this.onInviteFriends,
     this.avatarImageProvider,
-    this.hintText = 'Bạn đang nghĩ gì thế?',
+    this.hintText = "What's on your mind?",
     this.backgroundColor,
     this.primaryColor,
     this.elevation = 1.0,
@@ -89,7 +89,7 @@ class CreatePostBar extends StatelessWidget {
                   Expanded(
                     child: _Action(
                       icon: Icons.photo_library_outlined,
-                      label: 'Ảnh',
+                      label: 'Photo',
                       onTap: onPickPhoto,
                       activeColor: basePrimary,
                     ),
@@ -98,7 +98,7 @@ class CreatePostBar extends StatelessWidget {
                   Expanded(
                     child: _Action(
                       icon: Icons.person_add_alt_1_outlined,
-                      label: 'Mời bạn bè',
+                      label: 'Invite friends',
                       onTap: onInviteFriends,
                       activeColor: basePrimary,
                     ),

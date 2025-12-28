@@ -63,6 +63,9 @@ class _SignUpPageState extends State<SignUpPage> {
             phone,
             username,
           );
+
+      if (!mounted) return;
+      Navigator.of(context).popUntil((route) => route.isFirst);
     } catch (e, st) {
       log('signup error: $e', stackTrace: st);
       if (!mounted) return;

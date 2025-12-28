@@ -1,0 +1,68 @@
+import 'package:pocketbase/pocketbase.dart';
+
+import '../models/court_review.dart';
+import 'pocketbase_client.dart';
+
+class ReviewService {
+  static const String collection = 'court_ratings';
+  UnsubscribeFunc? _unsubscribe;
+
+  Future<List<CourtReview>> fetchReviews(String courtId) async {
+    final pb = await getPocketbaseInstance();
+    final result = await pb.collection(collection).getList(
+          page: 1,
+          perPage: 200,
+          filter: "court_id='$courtId'",
+          sort: '-created',
+          expand: 'user_id',
+        );
+    return result.items
+        .map((record) => CourtReview.fromRecord(record, pb))
+        .toList();
+  }
+
+  Future<CourtReview> submitReview({
+    required String courtId,
+    required int stars,
+    required String comment,
+  }) async {
+    final pb = await getPocketbaseInstance();
+    final userId = pb.authStore.record?.id;
+    if (userId == null || userId.isEmpty) {
+      throw StateError('Bạn cần đăng nhập để đánh giá sân.');
+    }
+    final record = await pb.collection(collection).create(body: {
+      'court_id': courtId,
+      'user_id': userId,
+      'rating': stars,
+      'comment': comment,
+    });
+    return CourtReview.fromRecord(record, pb);
+  }
+
+  Future<void> subscribeToReviews({
+    required String courtId,
+    required void Function(RecordSubscriptionEvent event) onChange,
+  }) async {
+    final pb = await getPocketbaseInstance();
+    await unsubscribe();
+    final escapedCourtId = courtId.replaceAll("'", "\\'");
+    _unsubscribe = await pb.collection(collection).subscribe(
+          '*',
+          onChange,
+          filter: "court_id='$escapedCourtId'",
+        );
+  }
+
+  Future<void> unsubscribe() async {
+    final unsub = _unsubscribe;
+    _unsubscribe = null;
+    if (unsub != null) {
+      await unsub();
+    }
+  }
+
+  Future<void> dispose() async {
+    await unsubscribe();
+  }
+}

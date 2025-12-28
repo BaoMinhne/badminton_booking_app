@@ -47,7 +47,8 @@ class ChatService {
     final result = await pb.collection(chatsCollection).getList(
           filter: "user_a = '$currentUserId' || user_b = '$currentUserId'",
           sort: '-last_message_at,-updated',
-          expand: 'user_a,user_b,last_sender',
+          expand:
+              'user_a,user_b,last_sender,user_a.user_details_via_user_id,user_b.user_details_via_user_id',
         );
 
     return result.items
@@ -126,7 +127,7 @@ class ChatService {
       record,
       pb: pb,
       currentUserId: currentUserId,
-      authorName: 'Bạn',
+      authorName: 'You',
     );
   }
 

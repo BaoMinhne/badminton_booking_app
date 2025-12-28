@@ -126,7 +126,7 @@ class RecruitmentFormManager with ChangeNotifier {
   Future<RecruitmentPost> submit() async {
     if (_hasBookedCourt && _selectedCourt == null) {
       throw RecruitmentServiceException(
-        'Bạn chưa có sân trong ngày đã chọn. Vui lòng chọn lại thời gian hoặc tắt tùy chọn đã đặt sân.',
+        'You have no booked courts on the selected date. Please adjust the time or disable the pre-booked court option.',
       );
     }
 
@@ -159,16 +159,20 @@ class RecruitmentFormManager with ChangeNotifier {
 
     try {
       final bookings = await _service.listMyBookingsForDate(_selectedDateTime);
+      final now = DateTime.now();
       _bookedCourts = bookings
+          .where((view) => view.endTime.isAfter(now))
           .map((view) => BookedCourtOption(bookingView: view))
           .toList(growable: false);
 
       if (_bookedCourts.isEmpty) {
         _selectedCourt = null;
         _courtMessage =
-            'Bạn chưa có sân nào trong ngày ${_formatDate(_selectedDateTime)}';
+            'You have no courts booked on ${_formatDate(_selectedDateTime)}';
       } else {
-        _selectedCourt ??= _bookedCourts.first;
+        final stillValid = _selectedCourt != null &&
+            _bookedCourts.any((court) => court.id == _selectedCourt!.id);
+        _selectedCourt = stillValid ? _selectedCourt : _bookedCourts.first;
       }
     } on RecruitmentServiceException catch (error) {
       _bookedCourts = const [];

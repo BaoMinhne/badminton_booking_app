@@ -103,11 +103,6 @@ class AuthService {
       // ============================
       await _ensureUserDetailsRecord(pb, userRecord.id);
 
-      // ============================
-      // 6) Gửi email verify
-      // ============================
-      await pb.collection('users').requestVerification(email);
-
       return User.fromJson(userRecord.toJson());
     } catch (error) {
       if (error is ClientException) {

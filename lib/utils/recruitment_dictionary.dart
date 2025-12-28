@@ -2,29 +2,29 @@ class RecruitmentDictionary {
   RecruitmentDictionary._();
 
   static const Map<String, String> playStyleLabels = {
-    'singles': 'Đánh đơn',
-    'doubles': 'Đánh đôi',
-    'mixed': 'Linh hoạt',
+    'singles': 'Singles',
+    'doubles': 'Doubles',
+    'mixed': 'Flexible',
   };
 
   static const Map<String, String> skillLevelLabels = {
-    'Beginner': 'Mới chơi',
-    'Lower Intermediate': 'Trung bình yếu',
-    'Intermediate': 'Trung bình',
-    'Upper Intermediate': 'Trung bình khá',
-    'Advanced': 'Nâng cao',
+    'Beginner': 'Beginner',
+    'Lower Intermediate': 'Lower intermediate',
+    'Intermediate': 'Intermediate',
+    'Upper Intermediate': 'Upper intermediate',
+    'Advanced': 'Advanced',
   };
 
   static String playStyleLabelFromValue(String? value) {
     if (value == null) {
-      return 'Không xác định';
+      return 'Unknown';
     }
     return playStyleLabels[value] ?? value;
   }
 
   static String skillLabelFromValue(dynamic value) {
     if (value == null) {
-      return 'Không xác định';
+      return 'Unknown';
     }
     final key = value is String ? value : value.toString();
     return skillLevelLabels[key] ?? key;

@@ -57,7 +57,9 @@ class BookingService {
 
     final escapedUserId = _escapeFilterValue(userId);
     final filterBuffer = StringBuffer("user_id='$escapedUserId'");
-    filterBuffer.write(" && (status='confirmed' || status='confirm')");
+    filterBuffer.write(
+      " && (status='held' || status='awaiting_payment' || status='confirmed')",
+    );
 
     if (startTimeInclusive != null) {
       final normalizedStart = startTimeInclusive.toUtc().toIso8601String();
@@ -96,7 +98,7 @@ class BookingService {
     required String userId,
     required DateTime startTime,
     required DateTime endTime,
-    Duration holdDuration = const Duration(minutes: 15),
+    Duration holdDuration = const Duration(seconds: 15),
   }) async {
     final pb = await getPocketbaseInstance();
 
@@ -176,6 +178,41 @@ class BookingService {
     } catch (_) {
       throw BookingServiceException(
           'Không thể xác nhận đặt sân. Vui lòng thử lại.');
+    }
+  }
+
+  Future<CourtBooking> cancelBooking(String bookingId) async {
+    final pb = await getPocketbaseInstance();
+    try {
+      final record = await pb.collection(collection).update(bookingId, body: {
+        'status': 'cancelled',
+        'locked_until': null,
+      });
+      return CourtBooking.fromRecord(record);
+    } on ClientException catch (error) {
+      throw BookingServiceException(_mapClientException(error));
+    } catch (_) {
+      throw BookingServiceException(
+        'Không thể huỷ booking. Vui lòng thử lại.',
+      );
+    }
+  }
+
+  /// Hết hạn booking nếu quá hạn thanh toán.
+  Future<CourtBooking> markAsExpired(String bookingId) async {
+    final pb = await getPocketbaseInstance();
+    try {
+      final record = await pb.collection(collection).update(bookingId, body: {
+        'status': 'expired',
+        'locked_until': null,
+      });
+      return CourtBooking.fromRecord(record);
+    } on ClientException catch (error) {
+      throw BookingServiceException(_mapClientException(error));
+    } catch (_) {
+      throw BookingServiceException(
+        'Không thể cập nhật booking hết hạn. Vui lòng thử lại.',
+      );
     }
   }
 

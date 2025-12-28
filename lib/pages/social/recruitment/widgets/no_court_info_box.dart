@@ -24,7 +24,7 @@ class NoCourtInfoBox extends StatelessWidget {
           const SizedBox(width: 16),
           Expanded(
             child: Text(
-              'Bạn chưa đặt sân — hãy nhập số lượng thành viên bạn muốn tuyển và mô tả yêu cầu để mọi người cùng tham gia.',
+              'You have not booked a court — enter how many members you need and describe the requirements so others can join.',
               style: textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
             ),
           ),

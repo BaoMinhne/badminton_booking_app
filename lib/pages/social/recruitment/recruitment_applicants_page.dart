@@ -97,8 +97,6 @@ class _RecruitmentApplicantsPageState extends State<RecruitmentApplicantsPage> {
   }
 
   Future<void> _handleCloseRecruitment() async {
-    if (!_post.isActive) return;
-
     DateTime? expiresAt;
 
     if (!_post.hasCourt) {
@@ -109,7 +107,7 @@ class _RecruitmentApplicantsPageState extends State<RecruitmentApplicantsPage> {
       final picked = await showTimePicker(
         context: context,
         initialTime: initialTime,
-        helpText: 'Chọn giờ đóng bài',
+        helpText: 'Select closing time',
       );
 
       if (picked == null) {
@@ -144,7 +142,7 @@ class _RecruitmentApplicantsPageState extends State<RecruitmentApplicantsPage> {
       });
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã đóng bài tuyển.')),
+        const SnackBar(content: Text('Recruitment post closed.')),
       );
     } catch (error) {
       if (!mounted) return;
@@ -162,21 +160,25 @@ class _RecruitmentApplicantsPageState extends State<RecruitmentApplicantsPage> {
   @override
   Widget build(BuildContext context) {
     final canManage = _post.isOwner;
+    final canClose = canManage;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Yêu cầu tham gia'),
+        title: const Text('Join requests'),
         actions: [
-          if (canManage && _post.isActive)
-            TextButton.icon(
-              onPressed: _isClosing ? null : _handleCloseRecruitment,
-              icon: _isClosing
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.lock_outline),
-              label: const Text('Đóng bài'),
+          if (canManage)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: TextButton.icon(
+                onPressed: canClose && !_isClosing ? _handleCloseRecruitment : null,
+                icon: _isClosing
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(canClose ? Icons.lock_outline : Icons.lock),
+                label: Text(canClose ? 'Close post' : 'Closed'),
+              ),
             ),
         ],
       ),
@@ -194,7 +196,7 @@ class _RecruitmentApplicantsPageState extends State<RecruitmentApplicantsPage> {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(16),
-          child: Text('Bạn không có quyền quản lý bài tuyển này.'),
+          child: Text('You do not have permission to manage this recruitment.'),
         ),
       );
     }
@@ -214,7 +216,7 @@ class _RecruitmentApplicantsPageState extends State<RecruitmentApplicantsPage> {
               const SizedBox(height: 12),
               ElevatedButton(
                 onPressed: _loadData,
-                child: const Text('Thử lại'),
+                child: const Text('Try again'),
               ),
             ],
           ),
@@ -226,7 +228,7 @@ class _RecruitmentApplicantsPageState extends State<RecruitmentApplicantsPage> {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(16),
-          child: Text('Chưa có yêu cầu tham gia nào.'),
+          child: Text('No join requests yet.'),
         ),
       );
     }
@@ -286,11 +288,11 @@ class _ApplicantTile extends StatelessWidget {
   String _statusLabel() {
     switch (applicant.status) {
       case 'accepted':
-        return 'Đã duyệt';
+        return 'Approved';
       case 'rejected':
-        return 'Đã từ chối';
+        return 'Rejected';
       default:
-        return 'Chờ duyệt';
+        return 'Pending';
     }
   }
 
@@ -300,7 +302,7 @@ class _ApplicantTile extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     final playStyles = applicant.playStyles.join(', ');
 
-    // Màu trạng thái rõ ràng + đậm đà
+    // Vibrant status colors
     final Color statusBgColor;
     final Color statusTextColor;
     final IconData? statusIcon;
@@ -338,7 +340,7 @@ class _ApplicantTile extends StatelessWidget {
               : cs.outline.withOpacity(0.45),
           width: applicant.status == 'rejected'
               ? 1.8
-              : 1.4, // Viền đậm hơn khi bị từ chối
+              : 1.4, // Slightly thicker border when rejected
         ),
         boxShadow: [
           BoxShadow(
@@ -391,7 +393,7 @@ class _ApplicantTile extends StatelessWidget {
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          // Label trạng thái: ĐẬM, RÕ, CÓ ICON
+                          // Status label with bold text and icon
                           Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 14, vertical: 8),
@@ -439,12 +441,12 @@ class _ApplicantTile extends StatelessWidget {
 
             const SizedBox(height: 16),
 
-            // Thông tin trình độ & lối đánh – phối màu đẹp, dễ nhìn
+            // Player details – skill level & play style
             if (applicant.level != null && applicant.level!.isNotEmpty)
               _infoRow(
                 icon: Icons.trending_up_rounded,
                 color: Colors.deepPurple.shade600,
-                label: 'Trình độ',
+                label: 'Skill level',
                 value: applicant.level!,
                 textTheme: textTheme,
               ),
@@ -456,14 +458,14 @@ class _ApplicantTile extends StatelessWidget {
               _infoRow(
                 icon: Icons.sports_tennis_rounded,
                 color: Colors.teal.shade600,
-                label: 'Lối đánh',
+                label: 'Play style',
                 value: playStyles,
                 textTheme: textTheme,
               ),
 
             const SizedBox(height: 20),
 
-            // Nút hành động – đẹp, rõ chức năng
+            // Action buttons
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: _buildActions(context).map((widget) {
@@ -472,7 +474,7 @@ class _ApplicantTile extends StatelessWidget {
                       ? (widget.child as Text).data ?? ''
                       : '';
 
-                  if (text.contains('Chấp nhận') || text.contains('Đồng ý')) {
+                  if (text.contains('Accept') || text.contains('Agree')) {
                     return Padding(
                       padding: const EdgeInsets.only(left: 10),
                       child: FilledButton.icon(
@@ -494,7 +496,7 @@ class _ApplicantTile extends StatelessWidget {
                     );
                   }
 
-                  if (text.contains('Từ chối') || text.contains('Hủy')) {
+                  if (text.contains('Reject') || text.contains('Cancel')) {
                     return Padding(
                       padding: const EdgeInsets.only(left: 10),
                       child: OutlinedButton.icon(
@@ -527,7 +529,7 @@ class _ApplicantTile extends StatelessWidget {
     );
   }
 
-// Helper: Dòng thông tin đẹp + màu sắc hài hòa
+// Helper: Info row with balanced colors
   Widget _infoRow({
     required IconData icon,
     required Color color,
@@ -572,7 +574,7 @@ class _ApplicantTile extends StatelessWidget {
     if (applicant.status != 'pending') {
       return [
         Text(
-          applicant.status == 'accepted' ? 'Đã chấp nhận' : 'Đã từ chối',
+          applicant.status == 'accepted' ? 'Accepted' : 'Rejected',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
@@ -584,7 +586,7 @@ class _ApplicantTile extends StatelessWidget {
       TextButton.icon(
         onPressed: isUpdating ? null : onReject,
         icon: const Icon(Icons.close, color: Colors.red),
-        label: const Text('Từ chối'),
+        label: const Text('Reject'),
       ),
       const SizedBox(width: 8),
       FilledButton.icon(
@@ -596,7 +598,7 @@ class _ApplicantTile extends StatelessWidget {
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
             : const Icon(Icons.check_circle_outline),
-        label: const Text('Chấp nhận'),
+        label: const Text('Accept'),
       ),
     ];
   }

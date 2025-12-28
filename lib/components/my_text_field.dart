@@ -12,6 +12,7 @@ class MyTextfield extends StatelessWidget {
   final VoidCallback? onTap;
   final bool isReadOnly;
   final String? Function(String?)? validator;
+  final ValueChanged<String>? onChanged;
 
   const MyTextfield({
     super.key,
@@ -26,6 +27,7 @@ class MyTextfield extends StatelessWidget {
     this.onTap,
     this.isReadOnly = false,
     this.validator,
+    this.onChanged,
   });
 
   @override
@@ -35,6 +37,7 @@ class MyTextfield extends StatelessWidget {
 
     return TextFormField(
       onTap: onTap,
+      onChanged: onChanged,
       controller: controller,
       obscureText: obscureText,
       keyboardType: keyboardType,

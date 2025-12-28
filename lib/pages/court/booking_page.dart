@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:badminton_booking_app/components/my_court_time.dart';
 import 'package:badminton_booking_app/models/booking.dart';
 import 'package:badminton_booking_app/models/court_detail.dart';
@@ -46,6 +48,30 @@ class _BookingPageView extends StatefulWidget {
 
 class _BookingPageViewState extends State<_BookingPageView> {
   String? _lastUserId;
+  Timer? _countdownTimer;
+  DateTime? _lastNotifiedExpiryAt;
+  DateTime? _lastNotifiedHoldExpiryAt;
+
+  @override
+  void initState() {
+    super.initState();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) {
+        final provider = context.read<BookingManager>();
+        _maybeNotifyPaymentExpiry(provider);
+        _maybeNotifyHoldExpiry(provider);
+      }
+      if (mounted) {
+        setState(() {});
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _countdownTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   void didChangeDependencies() {
@@ -73,11 +99,11 @@ class _BookingPageViewState extends State<_BookingPageView> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Đặt sân'),
+        title: const Text('Book a court'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            tooltip: 'Tải lại trạng thái đặt sân',
+            tooltip: 'Refresh booking status',
             onPressed: provider.isLoading
                 ? null
                 : () {
@@ -122,7 +148,7 @@ class _BookingPageViewState extends State<_BookingPageView> {
     final activeUnits =
         widget.detailData.units.where((unit) => unit.isActive).toList();
     if (activeUnits.isEmpty) {
-      return const [CourtTimelineRow(id: 'default', label: 'Sân 1')];
+      return const [CourtTimelineRow(id: 'default', label: 'Court 1')];
     }
     final orderMap = <String, int>{};
     for (var i = 0; i < activeUnits.length; i++) {
@@ -155,9 +181,9 @@ class _BookingPageViewState extends State<_BookingPageView> {
     }
     final index = orderMap[unit.id];
     if (index != null) {
-      return 'Sân $index';
+      return 'Court $index';
     }
-    return 'Sân';
+    return 'Court';
   }
 
   Future<void> _handleSlotTap(
@@ -182,7 +208,7 @@ class _BookingPageViewState extends State<_BookingPageView> {
         SnackBar(
           content: Text(error.message),
           action: SnackBarAction(
-            label: 'Tải lại',
+            label: 'Reload',
             onPressed: () {
               provider.refreshBookings();
             },
@@ -200,7 +226,7 @@ class _BookingPageViewState extends State<_BookingPageView> {
     final dateLabel = DateFormat('dd/MM/yyyy').format(provider.selectedDate);
     final totalDuration = provider.totalSelectedDuration;
     final durationLabel = totalDuration.inMinutes == 0
-        ? 'Chưa chọn thời gian'
+        ? 'No time selected'
         : '${totalDuration.inMinutes ~/ 60}h ${totalDuration.inMinutes % 60}p';
 
     return Container(
@@ -338,7 +364,7 @@ class _BookingPageViewState extends State<_BookingPageView> {
 
   String _groupLabel(List<CourtUnit> group, Map<String, int> orderMap) {
     if (group.isEmpty) {
-      return 'Sân';
+      return 'Court';
     }
     final startLabel = _unitLabel(group.first, orderMap);
     if (group.length == 1) {
@@ -357,11 +383,11 @@ class _BookingPageViewState extends State<_BookingPageView> {
         runSpacing: 8,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          _legendItem(Colors.white, 'Có thể đặt'),
-          _legendItem(Color(0xFFD9ECFF), 'Chỗ đang được giữ'),
-          _legendItem(Color(0xFFF9D7F7), 'Chờ thanh toán'),
-          _legendItem(Color(0xFFFFD9D3), 'Người khác đã giữ'),
-          _legendItem(Color(0xFFDCE3FF), 'Đã xác nhận'),
+          _legendItem(Colors.white, 'Available'),
+          _legendItem(Color(0xFFD9ECFF), 'Held'),
+          _legendItem(Color(0xFFF9D7F7), 'Awaiting payment'),
+          _legendItem(Color(0xFFFFD9D3), 'Held by others'),
+          _legendItem(Color(0xFFDCE3FF), 'Confirmed'),
         ],
       ),
     );
@@ -401,7 +427,7 @@ class _BookingPageViewState extends State<_BookingPageView> {
                 color: colorScheme.error, size: 40),
             const SizedBox(height: 12),
             Text(
-              provider.friendlyErrorMessage ?? 'Không thể tải dữ liệu.',
+              provider.friendlyErrorMessage ?? 'Unable to load data.',
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
@@ -409,7 +435,7 @@ class _BookingPageViewState extends State<_BookingPageView> {
               onPressed: () {
                 provider.refreshBookings();
               },
-              child: const Text('Tải lại'),
+              child: const Text('Reload'),
             ),
           ],
         ),
@@ -419,7 +445,11 @@ class _BookingPageViewState extends State<_BookingPageView> {
 
   Widget _buildSummary(BookingManager provider, ColorScheme colorScheme) {
     final holdExpires = provider.holdExpiresAt;
+    final awaitingExpires = provider.awaitingPaymentExpiresAt;
     final totalPrice = provider.totalSelectedPrice;
+
+    _syncExpiryNotificationState(awaitingExpires);
+    _syncHoldExpiryNotificationState(holdExpires);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -437,8 +467,8 @@ class _BookingPageViewState extends State<_BookingPageView> {
               Expanded(
                 child: Text(
                   provider.selectedSlots.isEmpty
-                      ? 'Chọn khung giờ để giữ chỗ tối đa 15 phút.'
-                      : 'Đã chọn ${provider.selectedSlots.length} khung giờ.',
+                      ? 'Select time slots to hold them for up to 15 seconds.'
+                      : 'Selected ${provider.selectedSlots.length} slot(s).',
                 ),
               ),
             ],
@@ -467,7 +497,7 @@ class _BookingPageViewState extends State<_BookingPageView> {
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    'Giữ chỗ hết hạn lúc ${DateFormat('HH:mm').format(holdExpires)}.',
+                    'Hold expires at ${DateFormat('HH:mm').format(holdExpires)}.',
                     style: TextStyle(color: colorScheme.error),
                   ),
                 ),
@@ -482,7 +512,21 @@ class _BookingPageViewState extends State<_BookingPageView> {
                     size: 20, color: colorScheme.primary),
                 const SizedBox(width: 6),
                 Text(
-                  'Có ${provider.awaitingPaymentBookings.length} lượt chờ thanh toán.',
+                  '${provider.awaitingPaymentBookings.length} booking(s) awaiting payment.',
+                  style: TextStyle(color: colorScheme.primary),
+                ),
+              ],
+            ),
+          ],
+          if (awaitingExpires != null) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Icon(Icons.timer_outlined,
+                    size: 20, color: colorScheme.primary),
+                const SizedBox(width: 6),
+                Text(
+                  'Payment time remaining: ${_formatCountdown(awaitingExpires)}',
                   style: TextStyle(color: colorScheme.primary),
                 ),
               ],
@@ -511,14 +555,14 @@ class _BookingPageViewState extends State<_BookingPageView> {
                       ? () async {
                           await _handleSubmitForPayment(context, provider);
                         }
-                      : null,
+                  : null,
               child: provider.isSubmittingHeldBookings
                   ? const SizedBox(
                       height: 22,
                       width: 22,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('Xác nhận'),
+                  : const Text('Confirm'),
             ),
           ),
           const SizedBox(height: 10),
@@ -541,24 +585,26 @@ class _BookingPageViewState extends State<_BookingPageView> {
                       }
                     }
                   : null,
-              child: const Text('Thanh toán'),
+              child: const Text('Pay'),
             ),
           ),
           const SizedBox(height: 8),
           SizedBox(
             width: double.infinity,
             child: TextButton(
-              onPressed: provider.hasHeldBookings
+              onPressed: provider.hasAwaitingPaymentBookings
                   ? () async {
-                      await provider.cancelHeldBookings();
+                      await provider.cancelAwaitingPaymentBookings();
                       if (!mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                            content: Text('Đã huỷ giữ chỗ hiện tại.')),
+                          content:
+                              Text('Awaiting payment bookings have been canceled.'),
+                        ),
                       );
                     }
                   : null,
-              child: const Text('Huỷ giữ chỗ'),
+              child: const Text('Cancel hold'),
             ),
           ),
         ],
@@ -575,7 +621,8 @@ class _BookingPageViewState extends State<_BookingPageView> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Đã chuyển sang trạng thái chờ thanh toán.')),
+          content: Text('Vui lòng thanh toán trong vòng 15 phút.'),
+        ),
       );
     } on BookingManagerException catch (error) {
       if (!mounted) return;
@@ -583,7 +630,7 @@ class _BookingPageViewState extends State<_BookingPageView> {
         SnackBar(
           content: Text(error.message),
           action: SnackBarAction(
-            label: 'Tải lại',
+            label: 'Reload',
             onPressed: () {
               provider.refreshBookings();
             },
@@ -637,5 +684,107 @@ class _BookingPageViewState extends State<_BookingPageView> {
     }
     final start = _resolveStartHour();
     return endHour <= start ? start + 1 : endHour;
+  }
+
+  void _syncExpiryNotificationState(DateTime? awaitingExpires) {
+    if (awaitingExpires == null) {
+      _lastNotifiedExpiryAt = null;
+      return;
+    }
+    if (_lastNotifiedExpiryAt != null &&
+        awaitingExpires.isAfter(_lastNotifiedExpiryAt!)) {
+      _lastNotifiedExpiryAt = null;
+    }
+  }
+
+  void _syncHoldExpiryNotificationState(DateTime? holdExpires) {
+    if (holdExpires == null) {
+      _lastNotifiedHoldExpiryAt = null;
+      return;
+    }
+    if (_lastNotifiedHoldExpiryAt != null &&
+        holdExpires.isAfter(_lastNotifiedHoldExpiryAt!)) {
+      _lastNotifiedHoldExpiryAt = null;
+    }
+  }
+
+  Future<void> _maybeNotifyPaymentExpiry(BookingManager provider) async {
+    final awaitingExpires = provider.awaitingPaymentExpiresAt;
+    if (awaitingExpires == null) {
+      _lastNotifiedExpiryAt = null;
+      return;
+    }
+    if (_lastNotifiedExpiryAt != null &&
+        _lastNotifiedExpiryAt!.isAtSameMomentAs(awaitingExpires)) {
+      return;
+    }
+    final remaining = awaitingExpires.difference(DateTime.now().toUtc());
+    if (remaining.isNegative || remaining == Duration.zero) {
+      _lastNotifiedExpiryAt = awaitingExpires;
+      await provider.refreshBookings();
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Payment expired'),
+          content: const Text(
+            'You did not complete payment within the required time. Your '
+            'booking has been released.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  Future<void> _maybeNotifyHoldExpiry(BookingManager provider) async {
+    final holdExpires = provider.holdExpiresAt;
+    if (holdExpires == null) {
+      _lastNotifiedHoldExpiryAt = null;
+      return;
+    }
+    if (_lastNotifiedHoldExpiryAt != null &&
+        _lastNotifiedHoldExpiryAt!.isAtSameMomentAs(holdExpires)) {
+      return;
+    }
+    final remaining = holdExpires.difference(DateTime.now().toUtc());
+    if (remaining.isNegative || remaining == Duration.zero) {
+      _lastNotifiedHoldExpiryAt = holdExpires;
+      await provider.refreshBookings();
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Hold expired'),
+          content: const Text(
+            'Your held slots have expired because they were not confirmed '
+            'in time.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  String _formatCountdown(DateTime expiresAt) {
+    final remaining = expiresAt.difference(DateTime.now().toUtc());
+    final safe = remaining.isNegative ? Duration.zero : remaining;
+    final minutes = safe.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = safe.inSeconds.remainder(60).toString().padLeft(2, '0');
+    final hours = safe.inHours;
+    if (hours > 0) {
+      return '${hours.toString().padLeft(2, '0')}:$minutes:$seconds';
+    }
+    return '$minutes:$seconds';
   }
 }

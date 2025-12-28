@@ -10,6 +10,10 @@ class Court {
   final String phone;
   final String location;
   final String? description;
+  final double? rating;
+  final double? distanceKm;
+  final int? pricePerHour;
+  final String? nextSlotLabel;
   final int courtQuantity;
   final bool isActive;
   final String ownerId;
@@ -17,6 +21,7 @@ class Court {
   final String? coverImageUrl;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final int bookingCount;
 
   Court({
     required this.id,
@@ -27,11 +32,16 @@ class Court {
     required this.courtQuantity,
     required this.isActive,
     required this.ownerId,
+    this.rating,
+    this.distanceKm,
+    this.pricePerHour,
+    this.nextSlotLabel,
     this.description,
     this.coverImage,
     this.coverImageUrl,
     this.createdAt,
     this.updatedAt,
+    this.bookingCount = 0,
   }) : assert(
           phone.isEmpty || _vnPhoneReg.hasMatch(phone),
           'phone không đúng định dạng VN (0xxxxxxxxx hoặc +84xxxxxxxxx)',
@@ -51,6 +61,10 @@ class Court {
       name: json['name'] as String? ?? '',
       code: json['code'] as String? ?? '',
       phone: normalized,
+      rating: _parseDouble(json['rating']),
+      distanceKm: _parseDouble(json['distance_km']),
+      pricePerHour: _parseInt(json['price_per_hour']),
+      nextSlotLabel: json['next_slot_label'] as String?,
       location: json['location'] as String? ?? '',
       description: json['description'] as String?,
       courtQuantity: _parseInt(json['court_quantity']),
@@ -60,6 +74,7 @@ class Court {
       coverImageUrl: coverImageUrl,
       createdAt: _parseDate(json['created']),
       updatedAt: _parseDate(json['updated']),
+      bookingCount: _parseInt(json['booking_count']),
     );
   }
 
@@ -76,11 +91,16 @@ class Court {
         'code': code,
         'phone': phone, // đã chuẩn hoá
         'location': location,
+        'rating': rating,
+        'distance_km': distanceKm,
+        'price_per_hour': pricePerHour,
+        'next_slot_label': nextSlotLabel,
         'description': description,
         'court_quantity': courtQuantity,
         'is_active': isActive,
         'owner_id': ownerId,
         'cover_image': coverImage,
+        'booking_count': bookingCount,
         'created': createdAt?.toIso8601String(),
         'updated': updatedAt?.toIso8601String(),
       };
@@ -129,6 +149,10 @@ class Court {
     String? code,
     String? phone,
     String? location,
+    double? rating,
+    double? distanceKm,
+    int? pricePerHour,
+    String? nextSlotLabel,
     String? description,
     int? courtQuantity,
     bool? isActive,
@@ -137,6 +161,7 @@ class Court {
     String? coverImageUrl,
     DateTime? createdAt,
     DateTime? updatedAt,
+    int? bookingCount,
   }) {
     final nextPhone = phone ?? this.phone;
     assert(
@@ -149,6 +174,10 @@ class Court {
       code: code ?? this.code,
       phone: _normalizePhone(nextPhone),
       location: location ?? this.location,
+      rating: rating ?? this.rating,
+      distanceKm: distanceKm ?? this.distanceKm,
+      pricePerHour: pricePerHour ?? this.pricePerHour,
+      nextSlotLabel: nextSlotLabel ?? this.nextSlotLabel,
       description: description ?? this.description,
       courtQuantity: courtQuantity ?? this.courtQuantity,
       isActive: isActive ?? this.isActive,
@@ -157,6 +186,7 @@ class Court {
       coverImageUrl: coverImageUrl ?? this.coverImageUrl,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      bookingCount: bookingCount ?? this.bookingCount,
     );
   }
 
@@ -185,6 +215,13 @@ class Court {
     if (value is num) return value.toInt();
     if (value is String) return int.tryParse(value) ?? 0;
     return 0;
+  }
+
+  static double? _parseDouble(dynamic value) {
+    if (value is double) return value;
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
   }
 
   static bool _parseBool(dynamic value) {

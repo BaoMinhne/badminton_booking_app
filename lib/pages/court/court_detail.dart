@@ -1,3 +1,4 @@
+import 'package:badminton_booking_app/models/booking.dart';
 import 'package:badminton_booking_app/models/court.dart';
 import 'package:badminton_booking_app/models/court_detail.dart';
 import 'package:badminton_booking_app/pages/court/booking_page.dart';
@@ -6,6 +7,7 @@ import 'package:badminton_booking_app/pages/court/tabs/image_tab.dart';
 import 'package:badminton_booking_app/pages/court/tabs/review_tab.dart';
 import 'package:badminton_booking_app/pages/court/tabs/rule_tab.dart';
 import 'package:badminton_booking_app/pages/court/tabs/service_tab.dart';
+import 'package:badminton_booking_app/services/booking_service.dart';
 import 'package:badminton_booking_app/services/court_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -31,12 +33,18 @@ class _CourtDetailState extends State<CourtDetail>
   bool _isLoading = false;
   String? _errorMessage;
   late final CourtService _courtService;
+  late final BookingService _bookingService;
+  bool _isAvailabilityLoading = false;
+  String? _availabilityError;
+  int? _availableCourtsNow;
+  DateTime? _availabilitySnapshotAt;
 
   @override
   void initState() {
     super.initState();
     _detailData = CourtDetailData(court: widget.court);
     _courtService = widget.courtService ?? _resolveCourtService();
+    _bookingService = BookingService();
     _loadDetail();
   }
 
@@ -69,12 +77,13 @@ class _CourtDetailState extends State<CourtDetail>
         _detailData = data;
         _isLoading = false;
       });
+      _refreshAvailability();
     } catch (error) {
       if (!mounted) return;
       setState(() {
         _errorMessage = _describeError(
           error,
-          fallback: 'Không thể tải thông tin sân. Vui lòng thử lại.',
+          fallback: 'Unable to load court information. Please try again.',
         );
         _isLoading = false;
       });
@@ -126,10 +135,10 @@ class _CourtDetailState extends State<CourtDetail>
             padding: const EdgeInsets.only(left: 5),
             tabAlignment: TabAlignment.start,
             tabs: const [
-              Tab(text: 'Dịch vụ'),
-              Tab(text: 'Hình ảnh'),
-              Tab(text: 'Điều khoản & quy định'),
-              Tab(text: 'Đánh giá'),
+              Tab(text: 'Services'),
+              Tab(text: 'Photos'),
+              Tab(text: 'Terms & rules'),
+              Tab(text: 'Reviews'),
             ],
           ),
         ),
@@ -155,10 +164,10 @@ class _CourtDetailState extends State<CourtDetail>
                 isLoading: _isLoading,
                 errorMessage: _errorMessage,
                 onRetry: _loadDetail,
-                emptyMessage: 'Sân chưa có hình ảnh.',
+                emptyMessage: 'This court has no photos yet.',
               ),
               Rules(items: _buildDefaultRules()),
-              const ReviewTab(initialReviews: []),
+              ReviewTab(courtId: _detailData.court.id),
             ],
           ),
         ),
@@ -197,7 +206,7 @@ class _CourtDetailState extends State<CourtDetail>
                 ),
               );
             },
-            child: const Text('Đặt lịch'),
+            child: const Text('Book now'),
           ),
         ),
       ],
@@ -211,13 +220,12 @@ class _CourtDetailState extends State<CourtDetail>
     final court = _detailData.court;
     final textTheme = Theme.of(context).textTheme;
     final location =
-        court.location.isNotEmpty ? court.location : 'Địa chỉ đang cập nhật';
-    final code = court.code.isNotEmpty ? court.code : 'Đang cập nhật';
+        court.location.isNotEmpty ? court.location : 'Address updating';
+    final code = court.code.isNotEmpty ? court.code : 'Updating';
     final description = court.description?.trim();
     final openingText = _buildOpeningHoursText(_detailData.openingHours);
-    final unitLabels = _detailData.units
+    final activeUnits = _detailData.units
         .where((unit) => unit.label.trim().isNotEmpty && unit.isActive)
-        .map((unit) => unit.label.trim())
         .toList(growable: false);
 
     final avatarImage = court.coverImageUrl != null &&
@@ -247,14 +255,14 @@ class _CourtDetailState extends State<CourtDetail>
                   radius: 28,
                 ),
                 title: Text(
-                  court.name.isNotEmpty ? court.name : 'Tên sân đang cập nhật',
+                  court.name.isNotEmpty ? court.name : 'Court name updating',
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 subtitle: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 4),
-                    Text('Mã sân: $code'),
+                    Text('Court code: $code'),
                     if (description != null && description.isNotEmpty) ...[
                       const SizedBox(height: 6),
                       Text(
@@ -295,23 +303,12 @@ class _CourtDetailState extends State<CourtDetail>
                   Text(_formatCourtQuantity(court.courtQuantity)),
                 ],
               ),
-              if (unitLabels.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: unitLabels
-                      .map(
-                        (label) => Chip(
-                          label: Text(label),
-                          backgroundColor: cs.primary.withOpacity(0.1),
-                          side: BorderSide(color: cs.primary.withOpacity(0.4)),
-                          labelStyle: TextStyle(color: cs.primary),
-                        ),
-                      )
-                      .toList(growable: false),
-                ),
-              ],
+              const SizedBox(height: 12),
+              _buildAvailabilityStatus(
+                context,
+                cs,
+                activeUnits.length,
+              ),
               if (_isLoading) ...[
                 const SizedBox(height: 16),
                 const LinearProgressIndicator(minHeight: 3),
@@ -321,6 +318,70 @@ class _CourtDetailState extends State<CourtDetail>
         ),
       ),
     );
+  }
+
+  Future<void> _refreshAvailability() async {
+    final activeUnits = _detailData.units.where((unit) => unit.isActive).toList();
+
+    setState(() {
+      _isAvailabilityLoading = true;
+      _availabilityError = null;
+    });
+
+    if (activeUnits.isEmpty) {
+      setState(() {
+        _isAvailabilityLoading = false;
+        _availabilityError = 'No data on active courts yet.';
+      });
+      return;
+    }
+
+    try {
+      final now = DateTime.now();
+      final bookings = await _bookingService.listBookings(
+        courtId: widget.court.id,
+        date: now,
+      );
+
+      final nowUtc = now.toUtc();
+      final blockingUnits = <String>{};
+      for (final booking in bookings) {
+        final overlapsNow =
+            booking.startTime.isBefore(nowUtc) && booking.endTime.isAfter(nowUtc);
+        final isBlockingStatus = booking.status == BookingStatus.confirmed ||
+            booking.status == BookingStatus.awaitingPayment ||
+            booking.isActiveLock;
+
+        if (overlapsNow && isBlockingStatus) {
+          blockingUnits.add(booking.courtUnitId);
+        }
+      }
+
+      final totalActive = activeUnits.length;
+      final available = (totalActive - blockingUnits.length).clamp(0, totalActive);
+
+      if (!mounted) return;
+      setState(() {
+        _availableCourtsNow = available;
+        _availabilitySnapshotAt = DateTime.now();
+        _isAvailabilityLoading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _availabilityError = _describeAvailabilityError(error);
+        _isAvailabilityLoading = false;
+      });
+    }
+  }
+
+  String _describeAvailabilityError(Object error) {
+    if (error is BookingServiceException) {
+      return error.message;
+    }
+    final message = error.toString();
+    if (message.isNotEmpty) return message;
+    return 'Unable to check court availability. Please try again.';
   }
 
   Widget _buildErrorBanner(BuildContext context, ColorScheme cs) {
@@ -335,7 +396,7 @@ class _CourtDetailState extends State<CourtDetail>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Không thể tải đầy đủ thông tin sân.',
+                'Unable to load full court details.',
                 style: Theme.of(context)
                     .textTheme
                     .titleMedium
@@ -356,11 +417,149 @@ class _CourtDetailState extends State<CourtDetail>
                   backgroundColor: cs.onErrorContainer,
                   foregroundColor: cs.errorContainer,
                 ),
-                child: const Text('Thử lại'),
+                child: const Text('Retry'),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildAvailabilityStatus(
+    BuildContext context,
+    ColorScheme cs,
+    int totalActive,
+  ) {
+    final textTheme = Theme.of(context).textTheme;
+
+    if (_isAvailabilityLoading) {
+      return _buildAvailabilityTile(
+        cs: cs,
+        icon: Icons.hourglass_top,
+        iconColor: cs.primary,
+        content: Text(
+          'Checking open courts...',
+          style: textTheme.bodyMedium,
+        ),
+        trailing: const SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+
+    if (_availabilityError != null) {
+      return _buildAvailabilityTile(
+        cs: cs,
+        icon: Icons.error_outline,
+        iconColor: cs.error,
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Unable to check availability',
+              style: textTheme.bodyMedium
+                  ?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              _availabilityError!,
+              style: textTheme.bodySmall,
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton(
+                onPressed: _refreshAvailability,
+                child: const Text('Retry'),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (totalActive == 0) {
+      return _buildAvailabilityTile(
+        cs: cs,
+        icon: Icons.help_outline,
+        iconColor: cs.secondary,
+        content: Text(
+          'No active court data to show availability.',
+          style: textTheme.bodyMedium,
+        ),
+      );
+    }
+
+    final available = (_availableCourtsNow ?? totalActive).clamp(0, totalActive);
+    final snapshot = _availabilitySnapshotAt?.toLocal();
+    final timeLabel = snapshot != null
+        ? 'Updated at ${TimeOfDay.fromDateTime(snapshot).format(context)}'
+        : 'No update time yet';
+    final hasOpenSlots = available > 0;
+
+    final headline = hasOpenSlots
+        ? 'There are $available/$totalActive courts open right now'
+        : 'There are no courts available at this time';
+
+    return _buildAvailabilityTile(
+      cs: cs,
+      icon: hasOpenSlots ? Icons.event_available : Icons.event_busy,
+      iconColor: hasOpenSlots ? cs.primary : cs.error,
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            headline,
+            style:
+                textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            hasOpenSlots
+        ? 'You can pick an open court to book now.'
+        : 'Please try another time or check back later.',
+            style: textTheme.bodySmall,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            timeLabel,
+            style:
+                textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAvailabilityTile({
+    required ColorScheme cs,
+    required IconData icon,
+    required Color iconColor,
+    required Widget content,
+    Widget? trailing,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: cs.surfaceVariant.withOpacity(0.4),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: cs.outlineVariant),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: iconColor),
+          const SizedBox(width: 10),
+          Expanded(child: content),
+          if (trailing != null) ...[
+            const SizedBox(width: 12),
+            trailing,
+          ],
+        ],
       ),
     );
   }
@@ -419,11 +618,11 @@ class _CourtDetailState extends State<CourtDetail>
 
   List<String> _buildDefaultRules() {
     return const [
-      'Đặt cọc trước với khung giờ cao điểm nếu được yêu cầu.',
-      'Hủy lịch trước 6 giờ để được hoàn cọc đầy đủ.',
-      'Mang giày thể thao phù hợp và giữ vệ sinh chung.',
-      'Không hút thuốc và hạn chế đồ uống có cồn trong khu vực sân.',
-      'Tuân thủ hướng dẫn của nhân viên và bảo vệ tài sản chung.',
+      'Place a deposit for peak hours if required.',
+      'Cancel at least 6 hours in advance to receive a full refund.',
+      'Wear appropriate athletic shoes and keep the space clean.',
+      'No smoking and limit alcoholic drinks in the court area.',
+      'Follow staff instructions and take care of shared property.',
     ];
   }
 
@@ -449,11 +648,11 @@ class _CourtDetailState extends State<CourtDetail>
     }
 
     if (cleanOpen.isEmpty) {
-      return 'Đến $cleanClose';
+      return 'Until $cleanClose';
     }
 
     if (cleanClose.isEmpty) {
-      return 'Từ $cleanOpen';
+      return 'From $cleanOpen';
     }
 
     return '$cleanOpen - $cleanClose';
@@ -461,9 +660,9 @@ class _CourtDetailState extends State<CourtDetail>
 
   String _formatCourtQuantity(int quantity) {
     if (quantity > 0) {
-      return '$quantity sân hoạt động';
+      return '$quantity active courts';
     }
-    return 'Đang cập nhật số lượng sân';
+    return 'Updating court count';
   }
 
   Widget _circleBtn({

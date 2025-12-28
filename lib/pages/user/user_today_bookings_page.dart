@@ -27,7 +27,7 @@ class _UserTodayBookingsPageState extends State<UserTodayBookingsPage> {
     final userManager = context.read<UserManager>();
     final userId = await userManager.getCurrentUserId();
     if (userId == null || userId.isEmpty) {
-      throw BookingServiceException('Không tìm thấy thông tin người dùng.');
+      throw BookingServiceException('User information not found.');
     }
 
     final now = DateTime.now();
@@ -53,7 +53,7 @@ class _UserTodayBookingsPageState extends State<UserTodayBookingsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Lịch hôm nay'),
+        title: const Text("Today's bookings"),
       ),
       body: FutureBuilder<List<UserBookingView>>(
         future: _todayFuture,
@@ -98,7 +98,7 @@ class _UserTodayBookingsPageState extends State<UserTodayBookingsPage> {
           SizedBox(height: 12),
           Center(
             child: Text(
-              'Bạn chưa có lịch nào trong hôm nay.',
+              'You have no bookings today.',
               style: TextStyle(fontSize: 16, color: Colors.black54),
             ),
           ),
@@ -127,7 +127,7 @@ class _UserTodayBookingsPageState extends State<UserTodayBookingsPage> {
           const SizedBox(height: 8),
           const Center(
             child: Text(
-              'Kéo xuống để thử tải lại.',
+              'Pull down to try again.',
               style: TextStyle(color: Colors.black45),
             ),
           ),

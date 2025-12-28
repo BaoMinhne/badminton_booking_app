@@ -4,6 +4,8 @@ import 'package:badminton_booking_app/pages/social/chat/chat_page.dart';
 import 'package:badminton_booking_app/pages/social/chat/widgets/chat_header.dart';
 import 'package:badminton_booking_app/pages/social/chat/widgets/chat_section_header.dart';
 import 'package:badminton_booking_app/pages/social/chat/widgets/contact_list_tile.dart';
+import 'package:badminton_booking_app/models/friend_search_result.dart';
+import 'package:badminton_booking_app/pages/user/user_public_profile_page.dart';
 import 'package:badminton_booking_app/services/chat_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -27,12 +29,12 @@ class _ChatHomePageState extends State<ChatHomePage> {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
-    return TabBar(
-      tabs: const [
-        Tab(text: 'Đoạn chat'),
-        Tab(text: 'Bạn bè'),
-        Tab(text: 'Lời mời'),
-      ],
+      return TabBar(
+        tabs: const [
+          Tab(text: 'Chats'),
+          Tab(text: 'Friends'),
+          Tab(text: 'Requests'),
+        ],
       // Chữ tab đang chọn
       labelStyle: tt.titleSmall?.copyWith(
         fontWeight: FontWeight.w700,
@@ -60,7 +62,7 @@ class _ChatHomePageState extends State<ChatHomePage> {
       child: Scaffold(
         backgroundColor: const Color(0xFFF4F6FB),
         appBar: ChatHeader(
-          title: 'Danh sách trò chuyện',
+          title: 'Conversation list',
           onAddFriend: () {
             Navigator.of(context).push(
               MaterialPageRoute(
@@ -73,7 +75,7 @@ class _ChatHomePageState extends State<ChatHomePage> {
           }, // hoặc null nếu chưa dùng
           bottom: _buildTabs(context), // TabBar hiển thị ngay dưới title
         ),
-        floatingActionButton: FloatingActionButton.extended(
+          floatingActionButton: FloatingActionButton.extended(
           onPressed: () {
             Navigator.of(context).push(
               MaterialPageRoute(
@@ -84,9 +86,9 @@ class _ChatHomePageState extends State<ChatHomePage> {
               ),
             );
           },
-          icon: const Icon(Icons.person_add_alt),
-          label: const Text('Thêm bạn bè'),
-        ),
+            icon: const Icon(Icons.person_add_alt),
+            label: const Text('Add friend'),
+          ),
         body: TabBarView(
           children: [
             _buildActiveChatList(context),
@@ -113,10 +115,10 @@ class _ChatHomePageState extends State<ChatHomePage> {
           children: [
             Text(manager.error!, style: theme.textTheme.bodyMedium),
             const SizedBox(height: 12),
-            FilledButton(
-              onPressed: manager.loadChats,
-              child: const Text('Thử lại'),
-            ),
+              FilledButton(
+                onPressed: manager.loadChats,
+                child: const Text('Retry'),
+              ),
           ],
         ),
       );
@@ -132,16 +134,16 @@ class _ChatHomePageState extends State<ChatHomePage> {
             Icon(Icons.chat_bubble_outline,
                 size: 56, color: theme.colorScheme.primary),
             const SizedBox(height: 12),
-            Text(
-              'Chưa có cuộc trò chuyện',
+              Text(
+                'No conversations yet',
               textAlign: TextAlign.center,
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 8),
-            Text(
-              'Hãy bắt đầu trò chuyện với bạn bè để xuất hiện tại đây.',
+              Text(
+                'Start chatting with your friends to see them here.',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium,
             ),
@@ -160,8 +162,8 @@ class _ChatHomePageState extends State<ChatHomePage> {
             return const Padding(
               padding: EdgeInsets.only(bottom: 12),
               child: ChatSectionHeader(
-                title: 'Đang trò chuyện',
-                subtitle: 'Danh sách những người bạn đang nhắn tin gần đây',
+                title: 'Active chats',
+                subtitle: 'People you messaged recently',
               ),
             );
           }
@@ -194,10 +196,10 @@ class _ChatHomePageState extends State<ChatHomePage> {
           children: [
             Text(manager.error!, style: theme.textTheme.bodyMedium),
             const SizedBox(height: 12),
-            FilledButton(
-              onPressed: manager.loadFriends,
-              child: const Text('Thử lại'),
-            ),
+              FilledButton(
+                onPressed: manager.loadFriends,
+                child: const Text('Retry'),
+              ),
           ],
         ),
       );
@@ -212,16 +214,16 @@ class _ChatHomePageState extends State<ChatHomePage> {
             const SizedBox(height: 40),
             Icon(Icons.groups_outlined, size: 56, color: cs.primary),
             const SizedBox(height: 12),
-            Text(
-              'Chưa có bạn bè',
+              Text(
+                'No friends yet',
               textAlign: TextAlign.center,
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 8),
-            Text(
-              'Hãy gửi lời mời kết bạn để kết nối với người khác.',
+              Text(
+                'Send a friend request to connect with others.',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium,
             ),
@@ -229,7 +231,7 @@ class _ChatHomePageState extends State<ChatHomePage> {
         ),
       );
     }
-
+    final friends = manager.friends;
     final friendsContacts = manager.friends
         .map(
           (result) => ChatContact(
@@ -257,8 +259,8 @@ class _ChatHomePageState extends State<ChatHomePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const ChatSectionHeader(
-                    title: 'Tất cả bạn bè',
-                    subtitle: 'Bấm vào biểu tượng chat để mở cuộc trò chuyện',
+                    title: 'All friends',
+                    subtitle: 'Tap the chat icon to open a conversation',
                   ),
                   const SizedBox(height: 12),
                   Container(
@@ -273,7 +275,7 @@ class _ChatHomePageState extends State<ChatHomePage> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            'Tìm kiếm bạn bè nhanh chóng',
+                            'Search your friends quickly',
                             style: theme.textTheme.bodyMedium
                                 ?.copyWith(color: cs.primary),
                           ),
@@ -287,11 +289,12 @@ class _ChatHomePageState extends State<ChatHomePage> {
           }
 
           final contact = friendsContacts[index - 1];
+          final friendResult = friends[index - 1];
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: ContactListTile.friend(
               contact: contact,
-              onTap: () => _openChat(context, contact),
+              onTap: () => _openFriendProfile(context, friendResult),
               onChatPressed: () => _openChat(context, contact),
             ),
           );
@@ -315,10 +318,10 @@ class _ChatHomePageState extends State<ChatHomePage> {
           children: [
             Text(manager.error!, style: theme.textTheme.bodyMedium),
             const SizedBox(height: 12),
-            FilledButton(
-              onPressed: manager.loadIncomingRequests,
-              child: const Text('Thử lại'),
-            ),
+              FilledButton(
+                onPressed: manager.loadIncomingRequests,
+                child: const Text('Retry'),
+              ),
           ],
         ),
       );
@@ -334,16 +337,16 @@ class _ChatHomePageState extends State<ChatHomePage> {
             Icon(Icons.people_outline,
                 size: 56, color: theme.colorScheme.primary),
             const SizedBox(height: 12),
-            Text(
-              'Chưa có lời mời kết bạn',
+              Text(
+                'No friend requests yet',
               textAlign: TextAlign.center,
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 8),
-            Text(
-              'Khi có người gửi lời mời, bạn sẽ thấy tại đây.',
+              Text(
+                'When someone sends you a request, it will appear here.',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium,
             ),
@@ -361,10 +364,10 @@ class _ChatHomePageState extends State<ChatHomePage> {
           if (index == 0) {
             return const Padding(
               padding: EdgeInsets.only(bottom: 12),
-              child: ChatSectionHeader(
-                title: 'Lời mời kết bạn',
-                subtitle: 'Chấp nhận hoặc từ chối lời mời từ người khác',
-              ),
+                child: ChatSectionHeader(
+                  title: 'Friend requests',
+                  subtitle: 'Accept or decline requests from others',
+                ),
             );
           }
 
@@ -391,11 +394,11 @@ class _ChatHomePageState extends State<ChatHomePage> {
     try {
       await manager.accept(request.id);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(
-                  'Bạn và ${request.from.displayName} đã trở thành bạn bè.')),
-        );
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content:
+                    Text('You and ${request.from.displayName} are now friends.')),
+          );
       }
     } catch (err) {
       if (mounted) {
@@ -412,9 +415,9 @@ class _ChatHomePageState extends State<ChatHomePage> {
   ) async {
     final confirmed = await _showConfirmDialog(
       context,
-      title: 'Từ chối lời mời?',
-      message:
-          'Bạn có chắc muốn từ chối lời mời từ ${request.from.displayName}?',
+        title: 'Decline request?',
+        message:
+            'Are you sure you want to decline the request from ${request.from.displayName}?',
     );
 
     if (!confirmed) return;
@@ -423,11 +426,11 @@ class _ChatHomePageState extends State<ChatHomePage> {
     try {
       await manager.reject(request.id);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content:
-                  Text('Đã từ chối lời mời của ${request.from.displayName}.')),
-        );
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text(
+                    'Declined the request from ${request.from.displayName}.')),
+          );
       }
     } catch (err) {
       if (mounted) {
@@ -449,19 +452,27 @@ class _ChatHomePageState extends State<ChatHomePage> {
         title: Text(title),
         content: Text(message),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Quay lại'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Xác nhận'),
-          ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Back'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Confirm'),
+            ),
         ],
       ),
     );
 
     return result ?? false;
+  }
+
+  void _openFriendProfile(BuildContext context, FriendSearchResult result) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => UserPublicProfilePage(result: result),
+      ),
+    );
   }
 
   void _openChat(BuildContext context, ChatContact contact) {
@@ -475,7 +486,7 @@ class _ChatHomePageState extends State<ChatHomePage> {
         final targetUserId = contact.userId ?? contact.id;
 
         if (targetUserId == null) {
-          throw Exception('Không xác định được người nhận tin nhắn.');
+          throw Exception('Cannot determine the chat recipient.');
         }
 
         // 2. Chỉ coi contact.id là roomId nếu nó khác userId
@@ -542,7 +553,7 @@ class _FriendRequestTile extends StatelessWidget {
       subtitleParts.add(request.from.subtitle);
     }
 
-    subtitleParts.add('Gửi ${request.timeLabel}');
+    subtitleParts.add('Sent ${request.timeLabel}');
 
     return Container(
       decoration: BoxDecoration(
@@ -602,7 +613,7 @@ class _FriendRequestTile extends StatelessWidget {
                     Expanded(
                       child: FilledButton(
                         onPressed: isProcessing ? null : onAccept,
-                        child: const Text('Xác nhận'),
+                        child: const Text('Confirm'),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -613,7 +624,7 @@ class _FriendRequestTile extends StatelessWidget {
                           foregroundColor: cs.onSurface,
                           side: BorderSide(color: cs.outlineVariant),
                         ),
-                        child: const Text('Xóa'),
+                        child: const Text('Remove'),
                       ),
                     ),
                   ],

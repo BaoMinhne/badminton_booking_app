@@ -1,57 +1,18 @@
 import 'package:flutter/material.dart';
 
-class Review {
-  final String id;
-  final String userName;
-  final double stars; // 1..5
-  final String comment;
-  final DateTime createdAt;
-  int likes;
-  bool likedByMe;
-
-  Review({
-    required this.id,
-    required this.userName,
-    required this.stars,
-    required this.comment,
-    required this.createdAt,
-    this.likes = 0,
-    this.likedByMe = false,
-  });
-}
-
-final List<Review> kSampleReviews = [
-  Review(
-    id: 'r1',
-    userName: 'Hữu Minh',
-    stars: 5,
-    comment:
-        'Sân sạch, đèn sáng, vạch rõ. Chủ sân hỗ trợ nhiệt tình. Giờ cao điểm hơi đông nhưng đặt trước là ổn.',
-    createdAt: DateTime.now().subtract(const Duration(days: 1, hours: 3)),
-    likes: 2,
-  ),
-  Review(
-    id: 'r2',
-    userName: 'Ngọc Anh',
-    stars: 4,
-    comment:
-        'Giá hợp lý. Nếu có thêm quạt ở sân số 3 thì tuyệt. Nói chung đáng quay lại.',
-    createdAt: DateTime.now().subtract(const Duration(days: 4)),
-  ),
-  Review(
-    id: 'r3',
-    userName: 'Quốc Việt',
-    stars: 3,
-    comment:
-        'Hôm mưa sàn hơi trơn, hy vọng sân cải thiện thoát nước. Nhân viên ok.',
-    createdAt: DateTime.now().subtract(const Duration(days: 9)),
-    likes: 1,
-  ),
-];
+import '../../../models/court_review.dart';
+import '../../../services/review_service.dart';
 
 class ReviewTab extends StatefulWidget {
-  final List<Review> initialReviews;
-  const ReviewTab({super.key, this.initialReviews = const []});
+  final String courtId;
+  final List<CourtReview> initialReviews;
+  final ReviewService? reviewService;
+  const ReviewTab({
+    super.key,
+    required this.courtId,
+    this.initialReviews = const [],
+    this.reviewService,
+  });
 
   @override
   State<ReviewTab> createState() => _ReviewTabState();
@@ -60,7 +21,10 @@ class ReviewTab extends StatefulWidget {
 enum _SortBy { newest, highest, lowest, mostLiked }
 
 class _ReviewTabState extends State<ReviewTab> {
-  late List<Review> _reviews;
+  late List<CourtReview> _reviews;
+  late final ReviewService _reviewService;
+  bool _isLoading = false;
+  String? _errorMessage;
   _SortBy _sortBy = _SortBy.newest;
   int _filterStars = 0; // 0: all, 1..5: filter by stars
 
@@ -68,9 +32,50 @@ class _ReviewTabState extends State<ReviewTab> {
   void initState() {
     super.initState();
     _reviews = [...widget.initialReviews];
+    _reviewService = widget.reviewService ?? ReviewService();
+    _loadReviews();
+    _subscribeToReviews();
   }
 
-  void _addReview(Review r) {
+  @override
+  void dispose() {
+    _reviewService.unsubscribe();
+    super.dispose();
+  }
+
+  Future<void> _loadReviews() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      final reviews = await _reviewService.fetchReviews(widget.courtId);
+      if (!mounted) return;
+      setState(() {
+        _reviews = reviews;
+        _isLoading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = error.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _subscribeToReviews() async {
+    try {
+      await _reviewService.subscribeToReviews(
+        courtId: widget.courtId,
+        onChange: (_) => _loadReviews(),
+      );
+    } catch (_) {
+      // Ignore realtime errors to keep UI functional without socket.
+    }
+  }
+
+  void _addReview(CourtReview r) {
     setState(() => _reviews.insert(0, r));
   }
 
@@ -102,8 +107,8 @@ class _ReviewTabState extends State<ReviewTab> {
     return d;
   }
 
-  List<Review> get _visible {
-    List<Review> out = [..._reviews];
+  List<CourtReview> get _visible {
+    List<CourtReview> out = [..._reviews];
     if (_filterStars != 0) {
       out = out.where((e) => e.stars.round() == _filterStars).toList();
     }
@@ -151,7 +156,7 @@ class _ReviewTabState extends State<ReviewTab> {
                 const SizedBox(height: 4),
                 StarRow(rating: _avg, size: 20),
                 const SizedBox(height: 4),
-                Text('${_reviews.length} đánh giá',
+                Text('${_reviews.length} reviews',
                     style: TextStyle(color: cs.onSurface.withOpacity(0.7))),
               ],
             ),
@@ -197,36 +202,37 @@ class _ReviewTabState extends State<ReviewTab> {
       child: Row(
         children: [
           PopupMenuButton<int>(
-            tooltip: 'Lọc theo số sao',
+            tooltip: 'Filter by star rating',
             position: PopupMenuPosition.under,
             onSelected: (v) => setState(() => _filterStars = v),
             itemBuilder: (_) => [
-              const PopupMenuItem(value: 0, child: Text('Tất cả')),
+              const PopupMenuItem(value: 0, child: Text('All')),
               for (int s = 5; s >= 1; s--)
-                PopupMenuItem(value: s, child: Text('$s sao')),
+                PopupMenuItem(value: s, child: Text('$s stars')),
             ],
             child: _FilterChipLike(
-                label: _filterStars == 0 ? 'Tất cả' : '${_filterStars} sao'),
+                label: _filterStars == 0 ? 'All' : '${_filterStars} stars'),
           ),
           const SizedBox(width: 8),
           DropdownButton<_SortBy>(
             value: _sortBy,
             onChanged: (v) => setState(() => _sortBy = v ?? _SortBy.newest),
             items: const [
-              DropdownMenuItem(value: _SortBy.newest, child: Text('Mới nhất')),
+              DropdownMenuItem(value: _SortBy.newest, child: Text('Newest')),
               DropdownMenuItem(
-                  value: _SortBy.highest, child: Text('Sao cao nhất')),
+                  value: _SortBy.highest, child: Text('Highest rating')),
               DropdownMenuItem(
-                  value: _SortBy.lowest, child: Text('Sao thấp nhất')),
+                  value: _SortBy.lowest, child: Text('Lowest rating')),
               DropdownMenuItem(
-                  value: _SortBy.mostLiked, child: Text('Được thích nhiều')),
+                  value: _SortBy.mostLiked, child: Text('Most liked')),
             ],
           ),
           const Spacer(),
           TextButton.icon(
-            onPressed: () => _openWriteReview(context),
+            onPressed:
+                _isLoading ? null : () => _openWriteReview(context, cs),
             icon: const Icon(Icons.edit_outlined),
-            label: const Text('Viết đánh giá'),
+            label: const Text('Write a review'),
           ),
         ],
       ),
@@ -246,9 +252,13 @@ class _ReviewTabState extends State<ReviewTab> {
           SliverFillRemaining(
             hasScrollBody: false,
             child: _EmptyState(
-              message: _reviews.isEmpty
-                  ? 'Chưa có đánh giá. Hãy là người đầu tiên!'
-                  : 'Không có mục nào khớp bộ lọc.',
+              message: _isLoading
+                  ? 'Loading reviews...'
+                  : _errorMessage != null
+                      ? 'Unable to load reviews. Please try again.'
+                      : _reviews.isEmpty
+                          ? 'No reviews yet. Be the first!'
+                          : 'No items match the filter.',
             ),
           )
         else
@@ -278,44 +288,55 @@ class _ReviewTabState extends State<ReviewTab> {
     );
   }
 
-  void _openWriteReview(BuildContext context) async {
-    final r = await showModalBottomSheet<Review>(
+  void _openWriteReview(BuildContext context, ColorScheme cs) async {
+    final draft = await showDialog<_ReviewDraft>(
       context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (_) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: _WriteReviewSheet(),
-      ),
+      builder: (dialogContext) {
+        return Dialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: const _WriteReviewDialog(),
+        );
+      },
     );
 
-    if (r != null) _addReview(r);
+    if (draft == null) return;
+    try {
+      final review = await _reviewService.submitReview(
+        courtId: widget.courtId,
+        stars: draft.stars,
+        comment: draft.comment,
+      );
+      if (!mounted) return;
+      _addReview(review);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    }
   }
 
-  void _report(Review r) {
+  void _report(CourtReview r) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Báo cáo đánh giá'),
+        title: const Text('Report review'),
         content: Text(
-            'Bạn muốn báo cáo đánh giá của "${r.userName}"? Chúng tôi sẽ xem xét.'),
+            'Do you want to report the review from "${r.userName}"? We will review it.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Huỷ')),
+              child: const Text('Cancel')),
           FilledButton(
             onPressed: () {
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Đã gửi báo cáo.')),
+                const SnackBar(content: Text('Report submitted.')),
               );
             },
-            child: const Text('Gửi'),
+            child: const Text('Submit'),
           ),
         ],
       ),
@@ -359,8 +380,15 @@ class StarRow extends StatelessWidget {
   final double rating; // 0..5 (đọc)
   final double size;
   final int maxStars;
+  final Color filledColor;
+  final Color emptyColor;
   const StarRow(
-      {super.key, required this.rating, this.size = 18, this.maxStars = 5});
+      {super.key,
+      required this.rating,
+      this.size = 18,
+      this.maxStars = 5,
+      this.filledColor = Colors.amber,
+      this.emptyColor = const Color(0xFFFFD54F)});
 
   @override
   Widget build(BuildContext context) {
@@ -378,7 +406,12 @@ class StarRow extends StatelessWidget {
         }
         return Padding(
           padding: const EdgeInsets.only(right: 2),
-          child: Icon(icon, size: size),
+          child: Icon(
+            icon,
+            size: size,
+            color:
+                i < full || (i == full && hasHalf) ? filledColor : emptyColor,
+          ),
         );
       }),
     );
@@ -388,7 +421,15 @@ class StarRow extends StatelessWidget {
 class StarPicker extends StatefulWidget {
   final int initial; // 1..5
   final void Function(int) onChanged;
-  const StarPicker({super.key, this.initial = 5, required this.onChanged});
+  final Color filledColor;
+  final Color emptyColor;
+  const StarPicker({
+    super.key,
+    this.initial = 5,
+    required this.onChanged,
+    this.filledColor = Colors.amber,
+    this.emptyColor = const Color(0xFFFFD54F),
+  });
 
   @override
   State<StarPicker> createState() => _StarPickerState();
@@ -413,7 +454,10 @@ class _StarPickerState extends State<StarPicker> {
             setState(() => _v = idx);
             widget.onChanged(_v);
           },
-          icon: Icon(filled ? Icons.star : Icons.star_outline),
+          icon: Icon(
+            filled ? Icons.star : Icons.star_outline,
+            color: filled ? widget.filledColor : widget.emptyColor,
+          ),
         );
       }),
     );
@@ -422,7 +466,7 @@ class _StarPickerState extends State<StarPicker> {
 
 // ===================== REVIEW CARD =====================
 class ReviewCard extends StatefulWidget {
-  final Review review;
+  final CourtReview review;
   final VoidCallback onLike;
   final VoidCallback onReport;
   const ReviewCard({
@@ -494,28 +538,10 @@ class _ReviewCardState extends State<ReviewCard> {
               if (isLong)
                 TextButton(
                   onPressed: () => setState(() => _expanded = !_expanded),
-                  child: Text(_expanded ? 'Thu gọn' : 'Xem thêm'),
+                  child: Text(_expanded ? 'Collapse' : 'See more'),
                 ),
 
-              // hành động
-              Row(
-                children: [
-                  IconButton(
-                    onPressed: widget.onLike,
-                    icon: Icon(
-                      r.likedByMe ? Icons.favorite : Icons.favorite_border,
-                      color: r.likedByMe ? cs.primary : null,
-                    ),
-                  ),
-                  Text('${r.likes}'),
-                  const SizedBox(width: 8),
-                  TextButton.icon(
-                    onPressed: widget.onReport,
-                    icon: const Icon(Icons.flag_outlined, size: 18),
-                    label: const Text('Báo cáo'),
-                  ),
-                ],
-              ),
+              // hành động đã ẩn theo yêu cầu
             ],
           ),
         ),
@@ -525,19 +551,19 @@ class _ReviewCardState extends State<ReviewCard> {
 }
 
 // ===================== WRITE REVIEW SHEET =====================
-class _WriteReviewSheet extends StatefulWidget {
+class _WriteReviewDialog extends StatefulWidget {
+  const _WriteReviewDialog();
+
   @override
-  State<_WriteReviewSheet> createState() => _WriteReviewSheetState();
+  State<_WriteReviewDialog> createState() => _WriteReviewDialogState();
 }
 
-class _WriteReviewSheetState extends State<_WriteReviewSheet> {
+class _WriteReviewDialogState extends State<_WriteReviewDialog> {
   int _stars = 5;
-  final _name = TextEditingController();
   final _comment = TextEditingController();
 
   @override
   void dispose() {
-    _name.dispose();
     _comment.dispose();
     super.dispose();
   }
@@ -546,88 +572,85 @@ class _WriteReviewSheetState extends State<_WriteReviewSheet> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 44,
-            height: 4,
-            decoration: BoxDecoration(
-              color: cs.outlineVariant,
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-          const SizedBox(height: 12),
-          const Text('Viết đánh giá',
-              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
-          const SizedBox(height: 12),
-          Align(
-              alignment: Alignment.centerLeft,
-              child: Text('Chấm sao', style: TextStyle(color: cs.onSurface))),
-          StarPicker(
-            initial: 5,
-            onChanged: (v) => _stars = v,
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _name,
-            decoration: const InputDecoration(
-              labelText: 'Tên hiển thị',
-              hintText: 'VD: Minh Nguyễn',
-            ),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _comment,
-            minLines: 3,
-            maxLines: 6,
-            decoration: const InputDecoration(
-              labelText: 'Nội dung đánh giá',
-              hintText: 'Chia sẻ trải nghiệm của bạn…',
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          16,
+          20,
+          16 + MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Write a review',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                IconButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Huỷ'),
+                  icon: const Icon(Icons.close),
                 ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text('Rate', style: TextStyle(color: cs.onSurface)),
+            StarPicker(
+              initial: 5,
+              onChanged: (v) => _stars = v,
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _comment,
+              minLines: 3,
+              maxLines: 6,
+              decoration: const InputDecoration(
+                labelText: 'Review content',
+                hintText: 'Share your experience…',
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton(
-                  onPressed: () {
-                    final name = _name.text.trim().isEmpty
-                        ? 'Người dùng'
-                        : _name.text.trim();
-                    final cmt = _comment.text.trim();
-                    if (cmt.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Vui lòng nhập nội dung đánh giá.')),
-                      );
-                      return;
-                    }
-                    final r = Review(
-                      id: DateTime.now().millisecondsSinceEpoch.toString(),
-                      userName: name,
-                      stars: _stars.toDouble(),
-                      comment: cmt,
-                      createdAt: DateTime.now(),
-                    );
-                    Navigator.pop(context, r);
-                  },
-                  child: const Text('Gửi đánh giá'),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel'),
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-        ],
+                const SizedBox(width: 12),
+                Expanded(
+                    child: FilledButton(
+                      onPressed: () {
+                        final cmt = _comment.text.trim();
+                        if (cmt.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Please enter your review content.'),
+                            ),
+                          );
+                          return;
+                        }
+                        Navigator.pop(
+                          context,
+                          _ReviewDraft(
+                            stars: _stars,
+                            comment: cmt,
+                          ),
+                        );
+                      },
+                      child: const Text('Submit review'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -658,14 +681,24 @@ class _FilterChipLike extends StatelessWidget {
   }
 }
 
+class _ReviewDraft {
+  final int stars;
+  final String comment;
+
+  const _ReviewDraft({
+    required this.stars,
+    required this.comment,
+  });
+}
+
 String timeAgo(DateTime dt) {
   final now = DateTime.now();
   final diff = now.difference(dt);
-  if (diff.inMinutes < 1) return 'vừa xong';
-  if (diff.inMinutes < 60) return '${diff.inMinutes} phút trước';
-  if (diff.inHours < 24) return '${diff.inHours} giờ trước';
-  if (diff.inDays < 7) return '${diff.inDays} ngày trước';
+  if (diff.inMinutes < 1) return 'just now';
+  if (diff.inMinutes < 60) return '${diff.inMinutes} minutes ago';
+  if (diff.inHours < 24) return '${diff.inHours} hours ago';
+  if (diff.inDays < 7) return '${diff.inDays} days ago';
   final weeks = (diff.inDays / 7).floor();
-  if (weeks < 5) return '$weeks tuần trước';
+  if (weeks < 5) return '$weeks weeks ago';
   return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
 }

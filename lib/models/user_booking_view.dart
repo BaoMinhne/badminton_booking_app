@@ -70,6 +70,15 @@ class UserBookingView {
   final String? courtLocation;
   final String? courtCoverImageUrl;
   final String? courtUnitLabel;
+
+  String get id => booking.id;
+  String get courtId => booking.courtId;
+  String get courtUnitId => booking.courtUnitId;
+  DateTime get startTime => booking.startTime;
+  DateTime get endTime => booking.endTime;
+  BookingStatus get status => booking.status;
+  DateTime? get lockedUntil => booking.lockedUntil;
+  String? get note => booking.note;
 }
 
 RecordModel? _resolveExpandedRecord(dynamic expanded) {

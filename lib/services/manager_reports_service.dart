@@ -73,7 +73,7 @@ class ManagerReportsService {
     if (record == null) {
       throw ClientException(
         statusCode: 401,
-        response: {'message': 'Bạn cần đăng nhập để xem báo cáo.'},
+        response: {'message': 'You need to log in to view reports.'},
       );
     }
 
@@ -117,42 +117,42 @@ class ManagerReportsService {
     final previousStart = _resolveRangeStart(rangeStart.subtract(const Duration(seconds: 1)), range);
     final previousEnd = rangeStart;
 
-    final paymentToday = await _sumPayments(
+    final paymentToday = await _sumPaymentsForRange(
       pb: pb,
       courtIds: courtIds,
       start: _startOfDayUtc(now),
       end: _startOfDayUtc(now).add(const Duration(days: 1)),
     );
 
-    final paymentYesterday = await _sumPayments(
+    final paymentYesterday = await _sumPaymentsForRange(
       pb: pb,
       courtIds: courtIds,
       start: _startOfDayUtc(now.subtract(const Duration(days: 1))),
       end: _startOfDayUtc(now),
     );
 
-    final paymentWeek = await _sumPayments(
+    final paymentWeek = await _sumPaymentsForRange(
       pb: pb,
       courtIds: courtIds,
       start: _startOfDayUtc(now.subtract(const Duration(days: 6))),
       end: _startOfDayUtc(now).add(const Duration(days: 1)),
     );
 
-    final paymentPrevWeek = await _sumPayments(
+    final paymentPrevWeek = await _sumPaymentsForRange(
       pb: pb,
       courtIds: courtIds,
       start: _startOfDayUtc(now.subtract(const Duration(days: 13))),
       end: _startOfDayUtc(now.subtract(const Duration(days: 6))),
     );
 
-    final paymentMonth = await _sumPayments(
+    final paymentMonth = await _sumPaymentsForRange(
       pb: pb,
       courtIds: courtIds,
       start: _startOfDayUtc(now.subtract(const Duration(days: 29))),
       end: _startOfDayUtc(now).add(const Duration(days: 1)),
     );
 
-    final paymentPrevMonth = await _sumPayments(
+    final paymentPrevMonth = await _sumPaymentsForRange(
       pb: pb,
       courtIds: courtIds,
       start: _startOfDayUtc(now.subtract(const Duration(days: 59))),
@@ -217,33 +217,36 @@ class ManagerReportsService {
     );
   }
 
-  Future<int> _sumPayments({
+  Future<int> _sumPaymentsForRange({
     required PocketBase pb,
     required List<String> courtIds,
     required DateTime start,
     required DateTime end,
   }) async {
-    final filter =
-        "(status='succeeded' || status='success') && created >= '${start.toUtc().toIso8601String()}' && created < '${end.toUtc().toIso8601String()}'";
+    final bookings = await _listBookingsInRange(
+      pb: pb,
+      courtIds: courtIds,
+      start: start,
+      end: end,
+    );
+    final bookingIds = bookings.map((booking) => booking.id).toList();
+    return _sumPaymentsForBookings(pb: pb, bookingIds: bookingIds);
+  }
+
+  Future<int> _sumPaymentsForBookings({
+    required PocketBase pb,
+    required List<String> bookingIds,
+  }) async {
+    if (bookingIds.isEmpty) return 0;
+    final filter = "status='succeeded' && (${_buildOrFilter('booking_id', bookingIds)})";
 
     try {
       final payments = await pb.collection('payment').getList(
             perPage: 200,
             filter: filter,
-            expand: 'booking_id',
           );
 
       return payments.items.fold<int>(0, (sum, record) {
-        final booking = _asRecordModel(record.expand?['booking_id']);
-        if (booking == null) {
-          return sum;
-        }
-
-        final courtId = booking.data['court_id'] as String?;
-        if (courtId == null || !courtIds.contains(courtId)) {
-          return sum;
-        }
-
         final raw = record.data['amount_minor'];
         return sum + _parseMinorUnit(raw);
       });
@@ -332,7 +335,7 @@ class ManagerReportsService {
     final unitCourt = <String, String>{};
     for (final record in courtUnitsResult.items) {
       final unit = CourtUnit.fromRecord(record);
-      unitLabels[record.id] = unit.label.isEmpty ? 'Sân' : unit.label;
+      unitLabels[record.id] = unit.label.isEmpty ? 'Court' : unit.label;
       unitCourt[record.id] = (record.data['court_id'] as String?) ?? '';
     }
 
@@ -371,8 +374,8 @@ class ManagerReportsService {
         orElse: () => const MapEntry('', ''),
       );
       final label = matchingUnit.key.isNotEmpty
-          ? (unitLabels[matchingUnit.key] ?? 'Sân')
-          : 'Sân';
+          ? (unitLabels[matchingUnit.key] ?? 'Court')
+          : 'Court';
       results.add(CourtOccupancy(label, rate));
     }
 
@@ -386,7 +389,7 @@ class ManagerReportsService {
     required DateTime end,
     required ReportRange range,
   }) async {
-    final payments = await _sumPayments(
+    final payments = await _sumPaymentsForRange(
       pb: pb,
       courtIds: courtIds,
       start: start,
@@ -407,7 +410,7 @@ class ManagerReportsService {
     for (var i = 0; i < buckets; i++) {
       final bucketStart = cursor;
       final bucketEnd = cursor.add(Duration(days: step));
-      final value = await _sumPayments(
+      final value = await _sumPaymentsForRange(
         pb: pb,
         courtIds: courtIds,
         start: bucketStart,
@@ -441,8 +444,8 @@ class ManagerReportsService {
           final booking = CourtBooking.fromRecord(record);
           final userRecord = _asRecordModel(record.expand?['user_id']);
           final courtUnit = _asRecordModel(record.expand?['court_unit_id']);
-          final name = _extractUserName(userRecord) ?? 'Khách lẻ';
-          final courtLabel = _extractCourtLabel(courtUnit) ?? 'Sân';
+          final name = _extractUserName(userRecord) ?? 'Walk-in';
+          final courtLabel = _extractCourtLabel(courtUnit) ?? 'Court';
           final startTime = booking.startTime.toLocal();
           final endTime = booking.endTime.toLocal();
           return ReportBookingRow(

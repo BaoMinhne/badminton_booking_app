@@ -5,8 +5,8 @@ import '../auth/auth_manager.dart';
 import '../../utils/dialog_utils.dart';
 import 'manager_dashboard_page.dart';
 import 'manager_schedule_page.dart';
-import 'manager_offline_booking_page.dart';
 import 'manager_court_page.dart';
+import 'manager_reviews_page.dart';
 import 'manager_reports_page.dart';
 
 class ManagerNavPage extends StatefulWidget {
@@ -24,8 +24,8 @@ class _ManagerNavPageState extends State<ManagerNavPage> {
   Future<void> _handleLogout(BuildContext context) async {
     final confirm = await showConfirmDialog(
       context,
-      'Bạn có chắc chắn muốn đăng xuất?',
-      title: 'Đăng xuất',
+      'Are you sure you want to log out?',
+      title: 'Log out',
     );
 
     if (!confirm) return;
@@ -35,7 +35,7 @@ class _ManagerNavPageState extends State<ManagerNavPage> {
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Đăng xuất thất bại: $error')),
+        SnackBar(content: Text('Log out failed: $error')),
       );
     }
   }
@@ -50,22 +50,22 @@ class _ManagerNavPageState extends State<ManagerNavPage> {
         builder: (context) => const ManagerDashboardPage(),
       ),
       _ManagerTab(
-        label: 'Lịch',
+        label: 'Schedule',
         icon: Icons.calendar_month_outlined,
         builder: (context) => const ManagerSchedulePage(),
       ),
       _ManagerTab(
-        label: 'Booking offline',
-        icon: Icons.phone_forwarded_outlined,
-        builder: (context) => const ManagerOfflineBookingPage(),
-      ),
-      _ManagerTab(
-        label: 'Sân & dịch vụ',
+        label: 'Courts & Services',
         icon: Icons.sports_tennis_outlined,
         builder: (context) => const ManagerCourtPage(),
       ),
       _ManagerTab(
-        label: 'Báo cáo',
+        label: 'Reviews',
+        icon: Icons.rate_review_outlined,
+        builder: (context) => const ManagerReviewsPage(),
+      ),
+      _ManagerTab(
+        label: 'Reports',
         icon: Icons.show_chart_outlined,
         builder: (context) => const ManagerReportsPage(),
       ),
@@ -82,7 +82,7 @@ class _ManagerNavPageState extends State<ManagerNavPage> {
         title: Text(currentTab.label),
         actions: [
           IconButton(
-            tooltip: 'Làm mới',
+            tooltip: 'Refresh',
             icon: const Icon(Icons.refresh_outlined),
             onPressed: () {
               setState(() {});
@@ -131,7 +131,7 @@ class _ManagerNavPageState extends State<ManagerNavPage> {
                 ),
                 const NavigationDrawerDestination(
                   icon: Icon(Icons.logout),
-                  label: Text('Đăng xuất'),
+                  label: Text('Log out'),
                 ),
               ],
             ),
@@ -177,7 +177,7 @@ class _DrawerList extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Text(
-            'Chủ sân',
+            'Court Owner',
             style: Theme.of(context).textTheme.titleMedium,
           ),
         ),
@@ -200,7 +200,7 @@ class _DrawerList extends StatelessWidget {
         const Divider(),
         ListTile(
           leading: const Icon(Icons.logout),
-          title: const Text('Đăng xuất'),
+          title: const Text('Log out'),
           onTap: onLogout,
         ),
       ],

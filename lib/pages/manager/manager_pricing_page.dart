@@ -61,7 +61,7 @@ class _ManagerPricingPageState extends State<ManagerPricingPage> {
         onSaved: (updated) {
           Navigator.of(context).pop();
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Đã cập nhật giá giờ chơi.')),
+            const SnackBar(content: Text('Hourly pricing updated.')),
           );
           _updateCached(updated);
           _refresh();
@@ -77,7 +77,7 @@ class _ManagerPricingPageState extends State<ManagerPricingPage> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Giá giờ chơi'),
+            const Text('Hourly pricing'),
             Text(
               widget.court.name,
               style: Theme.of(context)
@@ -113,7 +113,7 @@ class _ManagerPricingPageState extends State<ManagerPricingPage> {
                   FilledButton.icon(
                     onPressed: _refresh,
                     icon: const Icon(Icons.refresh_outlined),
-                    label: const Text('Thử lại'),
+                    label: const Text('Retry'),
                   ),
                 ],
               ),
@@ -131,7 +131,7 @@ class _ManagerPricingPageState extends State<ManagerPricingPage> {
                 children: const [
                   SizedBox(height: 40),
                   Center(
-                    child: Text('Chưa có bảng giá cho sân này.'),
+                    child: Text('No pricing available for this court.'),
                   ),
                 ],
               ),
@@ -176,7 +176,7 @@ class _PricingTile extends StatelessWidget {
     final timeRange = _buildTimeRange();
     final priceLabel = pricing.pricePerHour != null
         ? formatter.format(pricing.pricePerHour)
-        : (pricing.priceLabel ?? 'Chưa có giá');
+        : (pricing.priceLabel ?? 'No price yet');
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8),
@@ -184,7 +184,7 @@ class _PricingTile extends StatelessWidget {
         contentPadding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
         title: Text(timeRange),
         subtitle: Text(
-          'Giá / giờ',
+          'Price / hour',
           style: TextStyle(color: cs.onSurfaceVariant),
         ),
         trailing: Wrap(
@@ -195,7 +195,7 @@ class _PricingTile extends StatelessWidget {
               backgroundColor: cs.primaryContainer.withOpacity(0.35),
             ),
             IconButton(
-              tooltip: 'Chỉnh sửa giá',
+              tooltip: 'Edit price',
               icon: const Icon(Icons.edit_outlined),
               onPressed: onEdit,
             ),
@@ -210,10 +210,10 @@ class _PricingTile extends StatelessWidget {
     final to = pricing.timeTo?.trim();
 
     if ((from == null || from.isEmpty) && (to == null || to.isEmpty)) {
-      return 'Khung giờ chưa xác định';
+      return 'Time range not set';
     }
 
-    if (from == null || from.isEmpty) return 'Trước $to';
+    if (from == null || from.isEmpty) return 'Before $to';
     if (to == null || to.isEmpty) return 'Sau $from';
     return '$from - $to';
   }
@@ -328,7 +328,7 @@ class _EditPricingSheetState extends State<_EditPricingSheet> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              'Chỉnh sửa giá giờ chơi',
+                              'Edit hourly pricing',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w800,
@@ -359,13 +359,13 @@ class _EditPricingSheetState extends State<_EditPricingSheet> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Giá / giờ (VND)', style: Theme.of(context).textTheme.titleSmall),
+                          Text('Price / hour (VND)', style: Theme.of(context).textTheme.titleSmall),
                           const SizedBox(height: 8),
                           TextFormField(
                             controller: _priceCtrl,
                             keyboardType: TextInputType.number,
                             decoration: InputDecoration(
-                              hintText: 'Ví dụ: 180000',
+                              hintText: 'Example: 180000',
                               prefixIcon: const Icon(Icons.attach_money_outlined),
                               filled: true,
                               isDense: true,
@@ -376,13 +376,13 @@ class _EditPricingSheetState extends State<_EditPricingSheet> {
                             ),
                             validator: (value) {
                               if (value == null || value.trim().isEmpty) {
-                                return 'Vui lòng nhập giá';
+                                return 'Please enter a price';
                               }
                               final parsed = int.tryParse(
                                 value.replaceAll(RegExp(r'[^0-9]'), ''),
                               );
                               if (parsed == null || parsed <= 0) {
-                                return 'Giá phải là số dương';
+                                return 'Price must be positive';
                               }
                               return null;
                             },
@@ -399,7 +399,7 @@ class _EditPricingSheetState extends State<_EditPricingSheet> {
                                       child: CircularProgressIndicator(strokeWidth: 2),
                                     )
                                   : const Icon(Icons.save_outlined),
-                              label: const Text('Lưu giá giờ chơi'),
+                              label: const Text('Save hourly pricing'),
                             ),
                           ),
                         ],
@@ -420,9 +420,9 @@ class _EditPricingSheetState extends State<_EditPricingSheet> {
     final to = pricing.timeTo?.trim();
 
     if ((from == null || from.isEmpty) && (to == null || to.isEmpty)) {
-      return 'Khung giờ chưa xác định';
+      return 'Time range not set';
     }
-    if (from == null || from.isEmpty) return 'Trước $to';
+    if (from == null || from.isEmpty) return 'Before $to';
     if (to == null || to.isEmpty) return 'Sau $from';
     return '$from - $to';
   }

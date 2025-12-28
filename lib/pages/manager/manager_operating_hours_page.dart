@@ -6,28 +6,28 @@ class ManagerOperatingHoursPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final weekly = [
-      _OperatingHour(day: 'Thứ 2', open: '06:00', close: '22:00'),
-      _OperatingHour(day: 'Thứ 3', open: '06:00', close: '22:00'),
-      _OperatingHour(day: 'Thứ 4', open: '06:00', close: '22:00'),
-      _OperatingHour(day: 'Thứ 5', open: '06:00', close: '22:00'),
-      _OperatingHour(day: 'Thứ 6', open: '06:00', close: '22:00'),
-      _OperatingHour(day: 'Thứ 7', open: '06:00', close: '23:00'),
-      _OperatingHour(day: 'Chủ nhật', open: '07:00', close: '23:00'),
+      _OperatingHour(day: 'Monday', open: '06:00', close: '22:00'),
+      _OperatingHour(day: 'Tuesday', open: '06:00', close: '22:00'),
+      _OperatingHour(day: 'Wednesday', open: '06:00', close: '22:00'),
+      _OperatingHour(day: 'Thursday', open: '06:00', close: '22:00'),
+      _OperatingHour(day: 'Friday', open: '06:00', close: '22:00'),
+      _OperatingHour(day: 'Saturday', open: '06:00', close: '23:00'),
+      _OperatingHour(day: 'Sunday', open: '07:00', close: '23:00'),
     ];
 
     final closures = [
-      _ClosureRange(label: 'Nghỉ lễ 2/9', range: '01/09 - 02/09'),
-      _ClosureRange(label: 'Bảo trì điện', range: '15/10 (cả ngày)'),
+      _ClosureRange(label: 'Holiday break 2/9', range: '01/09 - 02/09'),
+      _ClosureRange(label: 'Electrical maintenance', range: '15/10 (all day)'),
     ];
 
     final specialSlots = [
-      _SpecialSlot(label: 'Giải phong trào CLB', time: 'Sân 3 • 10:00 - 12:00 • 12/10'),
-      _SpecialSlot(label: 'Thuê dài hạn', time: 'Sân 1 • Thứ 3 & 5 • 18:00 - 20:00'),
+      _SpecialSlot(label: 'Club tournament', time: 'Court 3 • 10:00 - 12:00 • 12/10'),
+      _SpecialSlot(label: 'Long-term rental', time: 'Court 1 • Tue & Thu • 18:00 - 20:00'),
     ];
 
     return ListView(
       children: [
-        const Text('Giờ mở cửa 7 ngày', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const Text('Weekly opening hours', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
         Card(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -57,12 +57,12 @@ class ManagerOperatingHoursPage extends StatelessWidget {
                 Row(
                   children: [
                     const Expanded(
-                      child: Text('Ngày nghỉ / đóng cửa', style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: Text('Closures / holidays', style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
                     TextButton.icon(
                       onPressed: () {},
                       icon: const Icon(Icons.add_circle_outline),
-                      label: const Text('Thêm ngày nghỉ'),
+                      label: const Text('Add closure'),
                     )
                   ],
                 ),
@@ -96,12 +96,12 @@ class ManagerOperatingHoursPage extends StatelessWidget {
                 Row(
                   children: [
                     const Expanded(
-                      child: Text('Khung giờ đặc biệt', style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: Text('Special time slots', style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
                     TextButton.icon(
                       onPressed: () {},
                       icon: const Icon(Icons.add_alert_outlined),
-                      label: const Text('Thêm khung giờ'),
+                      label: const Text('Add time slot'),
                     )
                   ],
                 ),

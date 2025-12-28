@@ -86,7 +86,7 @@ class _CourtServicesPageState extends State<CourtServicesPage> {
 
     if (available.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tất cả dịch vụ trong danh mục đã được thêm.')),
+        const SnackBar(content: Text('All catalog services have already been added.')),
       );
       return;
     }
@@ -100,7 +100,7 @@ class _CourtServicesPageState extends State<CourtServicesPage> {
         onSaved: (created) {
           Navigator.of(context).pop();
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Đã thêm dịch vụ.')),
+            const SnackBar(content: Text('Service added.')),
           );
           _addCachedService(created);
           _refresh();
@@ -118,7 +118,7 @@ class _CourtServicesPageState extends State<CourtServicesPage> {
         onSaved: (updated) {
           Navigator.of(context).pop();
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Đã cập nhật dịch vụ.')),
+            const SnackBar(content: Text('Service updated.')),
           );
           _updateCachedService(updated);
           _refresh();
@@ -131,7 +131,7 @@ class _CourtServicesPageState extends State<CourtServicesPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dịch vụ bổ sung'),
+        title: const Text('Additional services'),
       ),
       body: FutureBuilder<_ServiceData>(
         future: _future,
@@ -152,7 +152,7 @@ class _CourtServicesPageState extends State<CourtServicesPage> {
                   FilledButton.icon(
                     onPressed: _refresh,
                     icon: const Icon(Icons.refresh_outlined),
-                    label: const Text('Thử lại'),
+                  label: const Text('Retry'),
                   ),
                 ],
               ),
@@ -173,7 +173,7 @@ class _CourtServicesPageState extends State<CourtServicesPage> {
                   children: [
                     const Expanded(
                       child: Text(
-                        'Dịch vụ đang cung cấp',
+                        'Services offered',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
@@ -185,7 +185,7 @@ class _CourtServicesPageState extends State<CourtServicesPage> {
                           ? null
                           : () => _showAddService(services, catalog),
                       icon: const Icon(Icons.add_outlined),
-                      label: const Text('Thêm dịch vụ'),
+                      label: const Text('Add service'),
                     ),
                   ],
                 ),
@@ -198,7 +198,7 @@ class _CourtServicesPageState extends State<CourtServicesPage> {
                       color: Theme.of(context).colorScheme.surfaceVariant,
                     ),
                     child: const Text(
-                      'Chưa có dịch vụ nào. Hãy thêm từ danh mục có sẵn.',
+                      'No services yet. Add from the catalog.',
                     ),
                   )
                 else
@@ -227,7 +227,7 @@ class _ServiceTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final priceText = item.price != null
         ? '${item.price!.toString()}đ${item.unit != null ? '/${item.unit}' : ''}'
-        : (item.priceLabel ?? 'Đang cập nhật');
+        : (item.priceLabel ?? 'Updating');
 
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
@@ -260,13 +260,13 @@ class _ServiceTile extends StatelessWidget {
                   color: item.isActive ? Colors.green : Colors.grey,
                 ),
                 const SizedBox(width: 6),
-                Text(item.isActive ? 'Đang bật' : 'Đang tắt'),
+                Text(item.isActive ? 'Enabled' : 'Disabled'),
               ],
             ),
           ],
         ),
         trailing: IconButton(
-          tooltip: 'Chỉnh sửa',
+          tooltip: 'Edit',
           icon: const Icon(Icons.edit_outlined),
           onPressed: onEdit,
         ),
@@ -356,7 +356,7 @@ class _AddServiceSheetState extends State<_AddServiceSheet> {
                 children: [
                   const Expanded(
                     child: Text(
-                      'Thêm dịch vụ mới',
+                      'Add new service',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
@@ -372,7 +372,7 @@ class _AddServiceSheetState extends State<_AddServiceSheet> {
               const SizedBox(height: 12),
               DropdownButtonFormField<ServiceCatalogItem>(
                 decoration: const InputDecoration(
-                  labelText: 'Chọn dịch vụ từ danh mục',
+                  labelText: 'Select a service from the catalog',
                   prefixIcon: Icon(Icons.list_alt_outlined),
                 ),
                 items: widget.catalog
@@ -388,7 +388,7 @@ class _AddServiceSheetState extends State<_AddServiceSheet> {
                 onChanged: (value) => setState(() => _selected = value),
                 validator: (value) {
                   if (value == null) {
-                    return 'Vui lòng chọn dịch vụ';
+                    return 'Please select a service';
                   }
                   return null;
                 },
@@ -397,18 +397,18 @@ class _AddServiceSheetState extends State<_AddServiceSheet> {
               TextFormField(
                 controller: _priceCtrl,
                 decoration: InputDecoration(
-                  labelText: 'Giá (đơn vị: ${_selected?.unit ?? 'đ'})',
-                  hintText: 'Ví dụ: 50000',
+                  labelText: 'Price (unit: ${_selected?.unit ?? 'đ'})',
+                  hintText: 'Example: 50000',
                   prefixIcon: const Icon(Icons.payments_outlined),
                 ),
                 keyboardType: TextInputType.number,
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Vui lòng nhập giá';
+                    return 'Please enter a price';
                   }
                   final parsed = int.tryParse(value.trim());
                   if (parsed == null || parsed < 0) {
-                    return 'Giá không hợp lệ';
+                    return 'Invalid price';
                   }
                   return null;
                 },
@@ -417,7 +417,7 @@ class _AddServiceSheetState extends State<_AddServiceSheet> {
               TextFormField(
                 controller: _noteCtrl,
                 decoration: const InputDecoration(
-                  labelText: 'Ghi chú (không bắt buộc)',
+                  labelText: 'Note (optional)',
                   prefixIcon: Icon(Icons.note_alt_outlined),
                 ),
                 maxLines: 2,
@@ -434,7 +434,7 @@ class _AddServiceSheetState extends State<_AddServiceSheet> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.save_outlined),
-                  label: const Text('Lưu dịch vụ'),
+                  label: const Text('Save service'),
                 ),
               ),
             ],
@@ -532,7 +532,7 @@ class _EditServiceSheetState extends State<_EditServiceSheet> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Chỉnh sửa giá dịch vụ',
+                          'Edit service price',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w700,
@@ -553,17 +553,17 @@ class _EditServiceSheetState extends State<_EditServiceSheet> {
               TextFormField(
                 controller: _priceCtrl,
                 decoration: InputDecoration(
-                  labelText: 'Giá (đơn vị: ${widget.item.unit ?? 'đ'})',
+                  labelText: 'Price (unit: ${widget.item.unit ?? 'đ'})',
                   prefixIcon: const Icon(Icons.payments_outlined),
                 ),
                 keyboardType: TextInputType.number,
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Vui lòng nhập giá';
+                    return 'Please enter a price';
                   }
                   final parsed = int.tryParse(value.trim());
                   if (parsed == null || parsed < 0) {
-                    return 'Giá không hợp lệ';
+                    return 'Invalid price';
                   }
                   return null;
                 },
@@ -572,7 +572,7 @@ class _EditServiceSheetState extends State<_EditServiceSheet> {
               TextFormField(
                 controller: _noteCtrl,
                 decoration: const InputDecoration(
-                  labelText: 'Ghi chú (không bắt buộc)',
+                  labelText: 'Note (optional)',
                   prefixIcon: Icon(Icons.note_alt_outlined),
                 ),
                 maxLines: 2,
@@ -581,7 +581,7 @@ class _EditServiceSheetState extends State<_EditServiceSheet> {
               SwitchListTile.adaptive(
                 value: _isActive,
                 onChanged: (value) => setState(() => _isActive = value),
-                title: const Text('Hiển thị dịch vụ cho người dùng'),
+                title: const Text('Show service to customers'),
                 secondary: Icon(
                   _isActive
                       ? Icons.visibility_outlined
@@ -600,7 +600,7 @@ class _EditServiceSheetState extends State<_EditServiceSheet> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.save_outlined),
-                  label: const Text('Lưu thay đổi'),
+                  label: const Text('Save changes'),
                 ),
               ),
             ],

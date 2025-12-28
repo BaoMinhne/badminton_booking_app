@@ -58,7 +58,7 @@ class _ManagerReportsPageState extends State<ManagerReportsPage> {
       final message = error.response['message'];
       if (message is String && message.isNotEmpty) return message;
     }
-    return 'Không thể tải dữ liệu báo cáo. Vui lòng thử lại sau.';
+    return 'Unable to load report data. Please try again later.';
   }
 
   @override
@@ -76,7 +76,7 @@ class _ManagerReportsPageState extends State<ManagerReportsPage> {
             const SizedBox(height: 12),
             FilledButton(
               onPressed: () => _loadRange(_selectedRange),
-              child: const Text('Thử lại'),
+              child: const Text('Retry'),
             )
           ],
         ),
@@ -92,33 +92,33 @@ class _ManagerReportsPageState extends State<ManagerReportsPage> {
     final kpiCards = [
       _ReportCard(
         icon: Icons.attach_money,
-        title: 'Doanh thu hôm nay',
+        title: 'Today revenue',
         value: _currencyFormat.format(snapshot.todayRevenueMinor),
-        note: _buildChangeNote(snapshot.todayRevenueChange, 'so với hôm qua'),
+        note: _buildChangeNote(snapshot.todayRevenueChange, 'vs yesterday'),
       ),
       _ReportCard(
         icon: Icons.calendar_today,
-        title: 'Tuần này',
+        title: 'This week',
         value: _currencyFormat.format(snapshot.weekRevenueMinor),
         note: _buildChangeNote(snapshot.weekRevenueChange, 'WoW'),
       ),
       _ReportCard(
         icon: Icons.calendar_month,
-        title: 'Tháng này',
+        title: 'This month',
         value: _currencyFormat.format(snapshot.monthRevenueMinor),
         note: _buildChangeNote(snapshot.monthRevenueChange, 'MoM'),
       ),
       _ReportCard(
         icon: Icons.pie_chart,
-        title: 'Tỷ lệ lấp đầy',
+        title: 'Occupancy rate',
         value: '${(snapshot.occupancyRate * 100).toStringAsFixed(0)}%',
-        note: _buildChangeNote(snapshot.occupancyChange, 'Sân 2 cao nhất'),
+        note: _buildChangeNote(snapshot.occupancyChange, 'Court 2 highest'),
       ),
     ];
 
     return ListView(
       padding: const EdgeInsets.symmetric(
-        horizontal: 0, // hoặc 4
+        horizontal: 0, // or 4
         vertical: 16,
       ),
       children: [
@@ -162,8 +162,8 @@ class _ManagerReportsPageState extends State<ManagerReportsPage> {
                   Expanded(
                     flex: 3,
                     child: _ChartCard(
-                      title: 'Doanh thu theo thời gian',
-                      subtitle: 'Biểu đồ đường thể hiện xu hướng doanh thu',
+                      title: 'Revenue over time',
+                      subtitle: 'Line chart showing revenue trend',
                       child: _RevenueLineChart(points: snapshot.revenueTrend),
                     ),
                   ),
@@ -171,8 +171,8 @@ class _ManagerReportsPageState extends State<ManagerReportsPage> {
                   Expanded(
                     flex: 2,
                     child: _ChartCard(
-                      title: 'Tỷ lệ lấp đầy theo sân',
-                      subtitle: 'So sánh nhanh giữa các sân',
+                      title: 'Occupancy by court',
+                      subtitle: 'Quick comparison across courts',
                       child:
                           _OccupancyBarChart(points: snapshot.occupancyByCourt),
                     ),
@@ -185,14 +185,14 @@ class _ManagerReportsPageState extends State<ManagerReportsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _ChartCard(
-                  title: 'Doanh thu theo thời gian',
-                  subtitle: 'Biểu đồ đường thể hiện xu hướng doanh thu',
+                  title: 'Revenue over time',
+                  subtitle: 'Line chart showing revenue trend',
                   child: _RevenueLineChart(points: snapshot.revenueTrend),
                 ),
                 const SizedBox(height: 16),
                 _ChartCard(
-                  title: 'Tỷ lệ lấp đầy theo sân',
-                  subtitle: 'So sánh nhanh giữa các sân',
+                  title: 'Occupancy by court',
+                  subtitle: 'Quick comparison across courts',
                   child: _OccupancyBarChart(points: snapshot.occupancyByCourt),
                 ),
               ],
@@ -261,7 +261,7 @@ class _BookingsCard extends StatelessWidget {
             Row(
               children: [
                 const Expanded(
-                  child: Text('Danh sách booking đã thanh toán',
+                  child: Text('Paid bookings list',
                       style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
                 OutlinedButton.icon(
@@ -431,7 +431,7 @@ class _RevenueLineChart extends StatelessWidget {
                     '${points[spot.spotIndex].label}\n',
                     const TextStyle(fontWeight: FontWeight.bold),
                     children: [
-                      TextSpan(text: '${spot.y.toStringAsFixed(1)} triệu')
+                  TextSpan(text: '${spot.y.toStringAsFixed(1)}M')
                     ],
                   ),
                 )
@@ -621,11 +621,11 @@ extension on ReportRange {
   String get label {
     switch (this) {
       case ReportRange.today:
-        return 'Hôm nay';
+        return 'Today';
       case ReportRange.week:
-        return '7 ngày';
+        return '7 days';
       case ReportRange.month:
-        return '30 ngày';
+        return '30 days';
     }
   }
 }

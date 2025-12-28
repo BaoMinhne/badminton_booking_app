@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -13,8 +15,10 @@ class ManagerDashboardPage extends StatefulWidget {
 
 class _ManagerDashboardPageState extends State<ManagerDashboardPage> {
   final _service = ManagerDashboardService();
+  final _realtimeService = ManagerDashboardRealtimeService();
   late Future<ManagerDashboardData> _future;
   DateTime _selectedDate = DateTime.now();
+  bool _isRealtimeRefreshing = false;
 
   @override
   void initState() {
@@ -22,9 +26,16 @@ class _ManagerDashboardPageState extends State<ManagerDashboardPage> {
     _future = _load();
   }
 
-  Future<ManagerDashboardData> _load() {
+  Future<ManagerDashboardData> _load() async {
     final date = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
-    return _service.fetchDashboardData(date);
+    final data = await _service.fetchDashboardData(date);
+    await _realtimeService.subscribe(
+      date: date,
+      courtIds: data.today.courtIds,
+      bookingIds: data.today.bookingIds,
+      onChange: _handleRealtimeChange,
+    );
+    return data;
   }
 
   Future<void> _refresh() async {
@@ -33,6 +44,18 @@ class _ManagerDashboardPageState extends State<ManagerDashboardPage> {
       _future = future;
     });
     await future;
+  }
+
+  void _handleRealtimeChange() {
+    if (!mounted || _isRealtimeRefreshing) return;
+    _isRealtimeRefreshing = true;
+    unawaited(
+      _refresh().whenComplete(() {
+        if (mounted) {
+          _isRealtimeRefreshing = false;
+        }
+      }),
+    );
   }
 
   void _changeDay(int delta) {
@@ -60,6 +83,12 @@ class _ManagerDashboardPageState extends State<ManagerDashboardPage> {
   }
 
   @override
+  void dispose() {
+    unawaited(_realtimeService.dispose());
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return FutureBuilder<ManagerDashboardData>(
       future: _future,
@@ -83,7 +112,7 @@ class _ManagerDashboardPageState extends State<ManagerDashboardPage> {
                 FilledButton.icon(
                   onPressed: _refresh,
                   icon: const Icon(Icons.refresh_outlined),
-                  label: const Text('Thử lại'),
+                  label: const Text('Retry'),
                 ),
               ],
             ),
@@ -93,7 +122,7 @@ class _ManagerDashboardPageState extends State<ManagerDashboardPage> {
         final data = snapshot.data;
         if (data == null || !data.hasCourts) {
           return const Center(
-            child: Text('Bạn chưa có sân nào để hiển thị thống kê.'),
+            child: Text('You do not have any courts to display statistics.'),
           );
         }
 
@@ -108,12 +137,12 @@ class _ManagerDashboardPageState extends State<ManagerDashboardPage> {
 
         final kpiCards = [
           _KpiCard(
-            title: 'Doanh thu hôm nay',
+            title: 'Today revenue',
             value: currencyFormat.format(today.revenueMinor),
             trend: _buildTrend(today.revenueMinor, previous?.revenueMinor),
           ),
           _KpiCard(
-            title: 'Tỷ lệ lấp đầy',
+            title: 'Occupancy rate',
             value: '${(today.occupancyRate * 100).toStringAsFixed(0)}%',
             trend: _buildTrend(
               (today.occupancyRate * 100).round(),
@@ -121,7 +150,7 @@ class _ManagerDashboardPageState extends State<ManagerDashboardPage> {
             ),
           ),
           _KpiCard(
-            title: 'Booking đã thanh toán',
+            title: 'Paid bookings',
             value: '${today.confirmedBookingCount}',
             trend: _buildTrend(
               today.confirmedBookingCount,
@@ -129,7 +158,7 @@ class _ManagerDashboardPageState extends State<ManagerDashboardPage> {
             ),
           ),
           _KpiCard(
-            title: 'Booking chờ thanh toán',
+            title: 'Awaiting payment',
             value: '${today.awaitingPaymentCount}',
             trend: _buildTrend(
               today.awaitingPaymentCount,
@@ -163,7 +192,7 @@ class _ManagerDashboardPageState extends State<ManagerDashboardPage> {
                       IconButton(
                         icon: const Icon(Icons.chevron_left),
                         onPressed: () => _changeDay(-1),
-                        tooltip: 'Ngày trước',
+                        tooltip: 'Previous day',
                       ),
                       Expanded(
                         child: OutlinedButton.icon(
@@ -175,7 +204,7 @@ class _ManagerDashboardPageState extends State<ManagerDashboardPage> {
                       IconButton(
                         icon: const Icon(Icons.chevron_right),
                         onPressed: () => _changeDay(1),
-                        tooltip: 'Ngày tiếp theo',
+                        tooltip: 'Next day',
                       ),
                       const SizedBox(width: 4),
                       TextButton(
@@ -185,13 +214,13 @@ class _ManagerDashboardPageState extends State<ManagerDashboardPage> {
                             _future = _load();
                           });
                         },
-                        child: const Text('Hôm nay'),
+                        child: const Text('Today'),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    'Tổng quan nhanh',
+                    'Quick overview',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 12),
@@ -206,15 +235,15 @@ class _ManagerDashboardPageState extends State<ManagerDashboardPage> {
                   ),
                   const SizedBox(height: 16),
                   _SectionCard(
-                    title: 'Lịch hôm nay',
-                    actionText: 'Xem chi tiết',
+                    title: 'Today schedule',
+                    actionText: 'View details',
                     onAction: _refresh,
                     child: Column(
                       children: scheduleItems.isEmpty
                           ? const [
                               Padding(
                                 padding: EdgeInsets.symmetric(vertical: 12),
-                                child: Text('Chưa có lịch nào cho hôm nay'),
+                                child: Text('No schedule for today yet'),
                               )
                             ]
                           : scheduleItems
@@ -233,8 +262,8 @@ class _ManagerDashboardPageState extends State<ManagerDashboardPage> {
                   ),
                   const SizedBox(height: 16),
                   _SectionCard(
-                    title: 'Thông báo vận hành',
-                    actionText: 'Quản lý slot',
+                    title: 'Operations notices',
+                    actionText: 'Manage slots',
                     onAction: _refresh,
                     child: Column(
                       children: blockedNotices.isEmpty
@@ -242,8 +271,8 @@ class _ManagerDashboardPageState extends State<ManagerDashboardPage> {
                               ListTile(
                                 contentPadding: EdgeInsets.zero,
                                 leading: Icon(Icons.analytics_outlined),
-                                title: Text('Chưa có slot bị block hôm nay'),
-                                subtitle: Text('Các slot block sẽ hiển thị kèm lý do'),
+                                title: Text('No blocked slots today'),
+                                subtitle: Text('Blocked slots will include a reason'),
                               ),
                             ]
                           : blockedNotices
@@ -262,7 +291,7 @@ class _ManagerDashboardPageState extends State<ManagerDashboardPage> {
                                       subtitle: Text(
                                         item.note?.isNotEmpty == true
                                             ? item.note!
-                                            : 'Ẩn với người dùng, chỉ hiển thị ở manager view',
+                                            : 'Hidden from customers, shown only in manager view',
                                       ),
                                     ),
                                     const Divider(height: 1),
@@ -301,13 +330,13 @@ class _ManagerDashboardPageState extends State<ManagerDashboardPage> {
       case BookingStatus.confirmed:
         return 'Online';
       case BookingStatus.awaitingPayment:
-        return 'Chờ thanh toán';
+        return 'Awaiting payment';
       case BookingStatus.held:
         return 'Blocked';
       case BookingStatus.cancelled:
-        return 'Đã hủy';
+        return 'Cancelled';
       case BookingStatus.expired:
-        return 'Hết hạn';
+        return 'Expired';
     }
   }
 

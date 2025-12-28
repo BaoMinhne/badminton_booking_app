@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -14,17 +16,17 @@ class ManagerSchedulePage extends StatefulWidget {
 
 class _ManagerSchedulePageState extends State<ManagerSchedulePage> {
   final _service = ManagerScheduleService();
+  final _realtimeService = ManagerScheduleRealtimeService();
 
   late Future<ManagerScheduleData> _future;
   ManagerScheduleData? _latestData;
   bool _tableView = true;
   DateTime _selectedDate = DateTime.now();
+  bool _isRealtimeRefreshing = false;
   String _selectedCourt = 'all';
   Set<BookingStatus> _statusFilters = {
-    BookingStatus.held,
     BookingStatus.awaitingPayment,
     BookingStatus.confirmed,
-    BookingStatus.cancelled,
   };
 
   @override
@@ -40,6 +42,11 @@ class _ManagerSchedulePageState extends State<ManagerSchedulePage> {
       _selectedDate.day,
     );
     final data = await _service.fetchSchedule(normalized);
+    await _realtimeService.subscribe(
+      date: normalized,
+      courtIds: data.courtIds,
+      onChange: _handleRealtimeChange,
+    );
     _latestData = data;
     return data;
   }
@@ -77,13 +84,19 @@ class _ManagerSchedulePageState extends State<ManagerSchedulePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Lọc trạng thái',
+                    'Filter status',
                     style: TextStyle(fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 4),
-                  const Text('Chọn những trạng thái muốn hiển thị trong lịch.'),
+                  const Text('Choose which statuses to show in the schedule.'),
                   const SizedBox(height: 12),
-                  ...statuses.map((status) {
+                  ...statuses
+                      .where(
+                        (status) =>
+                            status == BookingStatus.awaitingPayment ||
+                            status == BookingStatus.confirmed,
+                      )
+                      .map((status) {
                     final checked = current.contains(status);
                     return CheckboxListTile(
                       value: checked,
@@ -110,17 +123,17 @@ class _ManagerSchedulePageState extends State<ManagerSchedulePage> {
                             () => current.addAll(BookingStatus.values),
                           );
                         },
-                        child: const Text('Chọn tất cả'),
+                        child: const Text('Select all'),
                       ),
                       const Spacer(),
                       TextButton(
                         onPressed: () => Navigator.pop(context),
-                        child: const Text('Huỷ'),
+                        child: const Text('Cancel'),
                       ),
                       const SizedBox(width: 8),
                       FilledButton(
                         onPressed: () => Navigator.pop(context, current),
-                        child: const Text('Áp dụng'),
+                        child: const Text('Apply'),
                       )
                     ],
                   )
@@ -135,6 +148,30 @@ class _ManagerSchedulePageState extends State<ManagerSchedulePage> {
     if (result != null) {
       setState(() => _statusFilters = result);
     }
+  }
+
+  void _handleRealtimeChange() {
+    if (!mounted || _isRealtimeRefreshing) return;
+    _isRealtimeRefreshing = true;
+    unawaited(
+      _loadAndCacheSchedule().then((freshData) {
+        if (!mounted) return;
+        setState(() {
+          _latestData = freshData;
+          _future = Future.value(freshData);
+        });
+      }).whenComplete(() {
+        if (mounted) {
+          _isRealtimeRefreshing = false;
+        }
+      }),
+    );
+  }
+
+  @override
+  void dispose() {
+    unawaited(_realtimeService.dispose());
+    super.dispose();
   }
 
   @override
@@ -154,7 +191,7 @@ class _ManagerSchedulePageState extends State<ManagerSchedulePage> {
                 const Icon(Icons.error_outline, color: Colors.red),
                 const SizedBox(height: 8),
                 Text(
-                  'Không thể tải lịch: ${snapshot.error}',
+                  'Unable to load schedule: ${snapshot.error}',
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 12),
@@ -162,7 +199,7 @@ class _ManagerSchedulePageState extends State<ManagerSchedulePage> {
                   onPressed: () =>
                       setState(() => _future = _loadAndCacheSchedule()),
                   icon: const Icon(Icons.refresh_outlined),
-                  label: const Text('Thử lại'),
+                  label: const Text('Retry'),
                 )
               ],
             ),
@@ -172,7 +209,7 @@ class _ManagerSchedulePageState extends State<ManagerSchedulePage> {
         final data = snapshot.data;
         if (data == null || !data.hasCourts) {
           return const Center(
-            child: Text('Bạn chưa có sân nào để hiển thị lịch.'),
+            child: Text('You do not have any courts to display the schedule.'),
           );
         }
 
@@ -204,7 +241,7 @@ class _ManagerSchedulePageState extends State<ManagerSchedulePage> {
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 ChoiceChip(
-                  label: const Text('Bảng'),
+                  label: const Text('Table'),
                   selected: _tableView,
                   onSelected: (_) => setState(() => _tableView = true),
                 ),
@@ -232,7 +269,7 @@ class _ManagerSchedulePageState extends State<ManagerSchedulePage> {
                   items: [
                     const DropdownMenuItem(
                       value: 'all',
-                      child: Text('Tất cả'),
+                    child: Text('All'),
                     ),
                     ...data.courts
                         .map(
@@ -250,14 +287,14 @@ class _ManagerSchedulePageState extends State<ManagerSchedulePage> {
                 FilledButton.icon(
                   onPressed: _openFilterSheet,
                   icon: const Icon(Icons.tune),
-                  label: const Text('Lọc'),
+                  label: const Text('Filter'),
                 ),
               ],
             ),
             const SizedBox(height: 16),
             Expanded(
               child: filteredItems.isEmpty
-                  ? const Center(child: Text('Không có lịch trong ngày.'))
+                  ? const Center(child: Text('No schedule for this day.'))
                   : _tableView
                       ? _ScheduleTable(
                           items: filteredItems,
@@ -270,7 +307,6 @@ class _ManagerSchedulePageState extends State<ManagerSchedulePage> {
                           formatRange: _formatRange,
                           statusColor: _statusColor,
                           statusText: _statusText,
-                          onAction: _showComingSoon,
                           onCancelBooking: _confirmCancelBooking,
                         ),
             ),
@@ -303,22 +339,16 @@ class _ManagerSchedulePageState extends State<ManagerSchedulePage> {
   String _statusText(BookingStatus status) {
     switch (status) {
       case BookingStatus.held:
-        return 'Giữ chỗ';
+        return 'Held';
       case BookingStatus.awaitingPayment:
-        return 'Chờ thanh toán';
+        return 'Awaiting payment';
       case BookingStatus.confirmed:
-        return 'Đã thanh toán';
+        return 'Confirmed';
       case BookingStatus.cancelled:
-        return 'Đã huỷ';
+        return 'Cancelled';
       case BookingStatus.expired:
-        return 'Hết hạn';
+        return 'Expired';
     }
-  }
-
-  void _showComingSoon(String action) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$action đang được phát triển.')),
-    );
   }
 
   Future<void> _confirmCancelBooking(ScheduleItem item) async {
@@ -326,19 +356,19 @@ class _ManagerSchedulePageState extends State<ManagerSchedulePage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Huỷ booking'),
+          title: const Text('Cancel booking'),
           content: Text(
-            'Bạn có chắc muốn huỷ booking của ${item.customerName}?\n'
-            'Thời gian: ${_formatRange(item.startTime, item.endTime)}',
+            'Are you sure you want to cancel the booking for ${item.customerName}?\n'
+            'Time: ${_formatRange(item.startTime, item.endTime)}',
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Đóng'),
+              child: const Text('Close'),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Huỷ booking'),
+              child: const Text('Cancel booking'),
             ),
           ],
         );
@@ -351,7 +381,7 @@ class _ManagerSchedulePageState extends State<ManagerSchedulePage> {
       await _service.cancelBooking(item.id);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã huỷ booking thành công.')),
+        const SnackBar(content: Text('Booking cancelled successfully.')),
       );
       _applyLocalCancellation(item.id);
       _refreshScheduleSilently();
@@ -376,6 +406,7 @@ class _ManagerSchedulePageState extends State<ManagerSchedulePage> {
         .toList();
 
     final updatedData = ManagerScheduleData(
+      courtIds: cached.courtIds,
       courts: cached.courts,
       items: updatedItems,
     );
@@ -423,11 +454,11 @@ class _ScheduleTable extends StatelessWidget {
               child: SingleChildScrollView(
                 child: DataTable(
                   columns: const [
-                    DataColumn(label: Text('Sân')),
-                    DataColumn(label: Text('Giờ')),
-                    DataColumn(label: Text('Khách')),
-                    DataColumn(label: Text('SĐT')),
-                    DataColumn(label: Text('Trạng thái')),
+                    DataColumn(label: Text('Court')),
+                    DataColumn(label: Text('Time')),
+                    DataColumn(label: Text('Customer')),
+                    DataColumn(label: Text('Phone')),
+                    DataColumn(label: Text('Status')),
                   ],
                   rows: items
                       .map(
@@ -467,7 +498,6 @@ class _TimelineView extends StatelessWidget {
     required this.formatRange,
     required this.statusColor,
     required this.statusText,
-    required this.onAction,
     required this.onCancelBooking,
   });
 
@@ -475,7 +505,6 @@ class _TimelineView extends StatelessWidget {
   final String Function(DateTime start, DateTime end) formatRange;
   final Color Function(BookingStatus status) statusColor;
   final String Function(BookingStatus status) statusText;
-  final void Function(String action) onAction;
   final Future<void> Function(ScheduleItem item) onCancelBooking;
 
   @override
@@ -545,33 +574,22 @@ class _TimelineView extends StatelessWidget {
                     if (item.note != null && item.note!.isNotEmpty) ...[
                       const SizedBox(height: 6),
                       Text(
-                        'Ghi chú: ${item.note}',
+                        'Note: ${item.note}',
                         style: const TextStyle(color: Colors.black54),
                       ),
                     ],
                     const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      children: [
-                        _ActionChip(
-                          icon: Icons.swap_horiz,
-                          label: 'Đổi giờ/sân',
-                          onPressed: () => onAction('Đổi giờ/sân'),
-                        ),
-                        _ActionChip(
-                          icon: Icons.cancel_outlined,
-                          label: 'Hủy booking',
-                          onPressed: item.status == BookingStatus.cancelled
-                              ? null
-                              : () => onCancelBooking(item),
-                        ),
-                        _ActionChip(
-                          icon: Icons.phone_forwarded_outlined,
-                          label: 'Liên hệ',
-                          onPressed: () => onAction('Liên hệ khách'),
-                        ),
-                      ],
-                    ),
+                    if (item.status == BookingStatus.awaitingPayment)
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          _ActionChip(
+                            icon: Icons.cancel_outlined,
+                            label: 'Cancel booking',
+                            onPressed: () => onCancelBooking(item),
+                          ),
+                        ],
+                      ),
                   ],
                 ),
               )

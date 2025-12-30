@@ -39,10 +39,31 @@ class StripeBookingPayment {
   }
 }
 
+class StripeServicePayment {
+  const StripeServicePayment({
+    required this.serviceId,
+    required this.quantity,
+    required this.amountMinor,
+  });
+
+  final String serviceId;
+  final int quantity;
+  final int amountMinor;
+
+  Map<String, dynamic> toJson() {
+    return {
+      'service_id': serviceId,
+      'quantity': quantity,
+      'amount_minor': amountMinor,
+    };
+  }
+}
+
 class StripePaymentService {
   Future<StripePaymentIntent> createPaymentIntent({
     required String currency,
     required List<StripeBookingPayment> bookings,
+    List<StripeServicePayment> services = const [],
   }) async {
     final endpoint = dotenv.env['STRIPE_PAYMENT_INTENT_URL'];
     if (endpoint == null || endpoint.isEmpty) {
@@ -59,6 +80,8 @@ class StripePaymentService {
         body: jsonEncode({
           'currency': currency,
           'bookings': bookings.map((booking) => booking.toJson()).toList(),
+          if (services.isNotEmpty)
+            'services': services.map((service) => service.toJson()).toList(),
         }),
       );
 

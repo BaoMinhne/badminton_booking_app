@@ -39,8 +39,11 @@ class _PaymentSheetPageState extends State<PaymentSheetPage> {
       final provider = context.read<BookingManager>();
       final bookings = widget.bookings;
       final amountMinor = provider.calculateTotalAmount(bookings);
-      if (bookings.isEmpty || amountMinor <= 0) {
-        throw BookingManagerException('No pending bookings to pay.');
+      final serviceCharges = provider.selectedServiceCharges;
+      if ((bookings.isEmpty && serviceCharges.isEmpty) || amountMinor <= 0) {
+        throw BookingManagerException(
+          'No pending bookings or services to pay.',
+        );
       }
 
       final intent = await _stripePaymentService.createPaymentIntent(
@@ -50,6 +53,15 @@ class _PaymentSheetPageState extends State<PaymentSheetPage> {
               (booking) => StripeBookingPayment(
                 bookingId: booking.id,
                 amountMinor: provider.calculateBookingAmount(booking),
+              ),
+            )
+            .toList(),
+        services: serviceCharges
+            .map(
+              (service) => StripeServicePayment(
+                serviceId: service.serviceId,
+                quantity: service.quantity,
+                amountMinor: service.totalAmount,
               ),
             )
             .toList(),
@@ -68,6 +80,7 @@ class _PaymentSheetPageState extends State<PaymentSheetPage> {
       );
 
       await provider.loadBookings(forceRefresh: true);
+      provider.clearSelectedServices();
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } on StripePaymentException catch (error) {

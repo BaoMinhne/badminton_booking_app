@@ -12,6 +12,20 @@ import 'package:badminton_booking_app/services/booking_service.dart';
 import 'package:badminton_booking_app/utils/booking_helpers.dart';
 import 'package:badminton_booking_app/services/payment_service.dart';
 
+class SelectedServiceCharge {
+  const SelectedServiceCharge({
+    required this.serviceId,
+    required this.quantity,
+    required this.unitPrice,
+  });
+
+  final String serviceId;
+  final int quantity;
+  final int unitPrice;
+
+  int get totalAmount => quantity * unitPrice;
+}
+
 class BookingManager extends ChangeNotifier {
   static const Duration _awaitingPaymentTimeout = Duration(seconds: 15);
 
@@ -51,6 +65,7 @@ class BookingManager extends ChangeNotifier {
   final Map<SelectedSlot, CourtBooking> _heldBookingsBySlot =
       <SelectedSlot, CourtBooking>{};
   final Set<SelectedSlot> _slotsInProgress = <SelectedSlot>{};
+  final Map<String, int> _selectedServiceQuantities = <String, int>{};
 
   final Map<String, _BookingCacheEntry> _bookingCacheByKey =
       <String, _BookingCacheEntry>{};
@@ -112,6 +127,7 @@ class BookingManager extends ChangeNotifier {
 
   bool get hasHeldBookings => _heldBookingsBySlot.isNotEmpty;
   bool get hasAwaitingPaymentBookings => awaitingPaymentBookings.isNotEmpty;
+  bool get hasSelectedServices => _selectedServiceQuantities.isNotEmpty;
 
   DateTime? get awaitingPaymentExpiresAt {
     DateTime? earliest;
@@ -137,6 +153,7 @@ class BookingManager extends ChangeNotifier {
     for (final slot in _selectedSlots) {
       totalPrice += calculateSlotPrice(detailData, slot, slotDuration);
     }
+    totalPrice += totalSelectedServicePrice;
     return totalPrice;
   }
 
@@ -159,6 +176,7 @@ class BookingManager extends ChangeNotifier {
       return;
     }
     _currentUserId = userId;
+    _selectedServiceQuantities.clear();
     _syncSelectedSlotsWithBookings();
     notifyListeners();
     unawaited(loadBookings(forceRefresh: true));
@@ -505,7 +523,90 @@ class BookingManager extends ChangeNotifier {
     return total.round();
   }
 
+  int calculateServiceAmount() {
+    var total = 0;
+    final services = _mapPayableServicesById();
+    for (final entry in _selectedServiceQuantities.entries) {
+      final service = services[entry.key];
+      if (service == null || entry.value <= 0 || service.price == null) {
+        continue;
+      }
+      total += service.price! * entry.value;
+    }
+    return total;
+  }
+
+  double get totalSelectedServicePrice => calculateServiceAmount().toDouble();
+
+  List<SelectedServiceCharge> get selectedServiceCharges {
+    final services = _mapPayableServicesById();
+    final result = <SelectedServiceCharge>[];
+    for (final entry in _selectedServiceQuantities.entries) {
+      final service = services[entry.key];
+      if (service == null || entry.value <= 0 || service.price == null) {
+        continue;
+      }
+      result.add(
+        SelectedServiceCharge(
+          serviceId: entry.key,
+          quantity: entry.value,
+          unitPrice: service.price!,
+        ),
+      );
+    }
+    return result;
+  }
+
+  List<CourtServiceItem> get payableServices {
+    return detailData.services
+        .where((service) => service.isActive && service.price != null)
+        .toList(growable: false);
+  }
+
+  int serviceQuantity(String serviceId) {
+    return _selectedServiceQuantities[serviceId] ?? 0;
+  }
+
+  void incrementService(String serviceId) {
+    _updateServiceQuantity(serviceId, serviceQuantity(serviceId) + 1);
+  }
+
+  void decrementService(String serviceId) {
+    _updateServiceQuantity(serviceId, serviceQuantity(serviceId) - 1);
+  }
+
+  void _updateServiceQuantity(String serviceId, int quantity) {
+    final services = _mapPayableServicesById();
+    if (!services.containsKey(serviceId)) {
+      return;
+    }
+    if (quantity <= 0) {
+      _selectedServiceQuantities.remove(serviceId);
+    } else {
+      _selectedServiceQuantities[serviceId] = quantity;
+    }
+    notifyListeners();
+  }
+
+  void clearSelectedServices() {
+    if (_selectedServiceQuantities.isEmpty) {
+      return;
+    }
+    _selectedServiceQuantities.clear();
+    notifyListeners();
+  }
+
+  Map<String, CourtServiceItem> _mapPayableServicesById() {
+    return {
+      for (final service in payableServices) service.id: service,
+    };
+  }
+
   int calculateTotalAmount(List<CourtBooking> bookings) {
+    return calculateBookingsAmount(bookings) + calculateServiceAmount();
+  }
+
+  int calculateBookingsAmount(List<CourtBooking> bookings) {
     var total = 0;
     for (final booking in bookings) {
       total += _calculateBookingAmount(booking);

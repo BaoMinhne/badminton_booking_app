@@ -28,7 +28,9 @@ class _PaymentPageState extends State<PaymentPage> {
     final durationLabel = totalDuration.inMinutes == 0
         ? '0 min'
         : '${totalDuration.inMinutes ~/ 60}h ${totalDuration.inMinutes % 60}m';
-    final totalPrice = _totalPrice(provider, slots);
+    final bookingTotal = _totalBookingPrice(provider, slots);
+    final serviceTotal = provider.totalSelectedServicePrice;
+    final totalPrice = bookingTotal + serviceTotal;
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -56,7 +58,17 @@ class _PaymentPageState extends State<PaymentPage> {
                     ),
             ),
             const SizedBox(height: 12),
-            _buildTotalRow(colorScheme, durationLabel, totalPrice),
+            if (provider.payableServices.isNotEmpty) ...[
+              _buildServiceSelector(colorScheme, provider),
+              const SizedBox(height: 12),
+            ],
+            _buildTotalRow(
+              colorScheme,
+              durationLabel,
+              bookingTotal,
+              serviceTotal,
+              totalPrice,
+            ),
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
@@ -102,13 +114,74 @@ class _PaymentPageState extends State<PaymentPage> {
     return Duration(minutes: minutes);
   }
 
-  double _totalPrice(BookingManager provider, List<SelectedSlot> slots) {
+  double _totalBookingPrice(
+      BookingManager provider, List<SelectedSlot> slots) {
     var total = 0.0;
     for (final slot in slots) {
       total +=
           calculateSlotPrice(provider.detailData, slot, provider.slotDuration);
     }
     return total;
+  }
+
+  Widget _buildServiceSelector(
+    ColorScheme colorScheme,
+    BookingManager provider,
+  ) {
+    final services = provider.payableServices;
+    if (services.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.add_shopping_cart_outlined, color: colorScheme.primary),
+              const SizedBox(width: 8),
+              Text(
+                'Add-on services',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...services.map(
+            (service) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _ServiceRow(
+                service: service,
+                quantity: provider.serviceQuantity(service.id),
+                onIncrement: () => provider.incrementService(service.id),
+                onDecrement: () => provider.decrementService(service.id),
+              ),
+            ),
+          ),
+          if (provider.totalSelectedServicePrice > 0)
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                'Service subtotal: ${formatCurrency(provider.totalSelectedServicePrice)}',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: colorScheme.primary,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   Widget _buildCourtInfoCard(CourtDetailData detail, ColorScheme colorScheme) {
@@ -197,7 +270,12 @@ class _PaymentPageState extends State<PaymentPage> {
   }
 
   Widget _buildTotalRow(
-      ColorScheme colorScheme, String durationLabel, double totalPrice) {
+    ColorScheme colorScheme,
+    String durationLabel,
+    double bookingTotal,
+    double serviceTotal,
+    double totalPrice,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -215,6 +293,36 @@ class _PaymentPageState extends State<PaymentPage> {
             ],
           ),
           const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(Icons.sports_tennis_outlined,
+                  color: colorScheme.onSurfaceVariant),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Court fee',
+                  style: TextStyle(color: colorScheme.onSurfaceVariant),
+                ),
+              ),
+              Text(formatCurrency(bookingTotal)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Icon(Icons.room_service_outlined,
+                  color: colorScheme.onSurfaceVariant),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Services',
+                  style: TextStyle(color: colorScheme.onSurfaceVariant),
+                ),
+              ),
+              Text(formatCurrency(serviceTotal)),
+            ],
+          ),
+          const Divider(height: 20),
           Row(
             children: [
               Icon(Icons.payments_outlined, color: colorScheme.primary),
@@ -301,5 +409,86 @@ class _PaymentPageState extends State<PaymentPage> {
       orElse: () => units.first,
     );
     return unit.label.isEmpty ? 'Court' : unit.label;
+  }
+}
+
+class _ServiceRow extends StatelessWidget {
+  const _ServiceRow({
+    required this.service,
+    required this.quantity,
+    required this.onIncrement,
+    required this.onDecrement,
+  });
+
+  final CourtServiceItem service;
+  final int quantity;
+  final VoidCallback onIncrement;
+  final VoidCallback onDecrement;
+
+  String get _priceLabel {
+    if (service.price != null) {
+      final unitSuffix = service.unit != null && service.unit!.trim().isNotEmpty
+          ? ' / ${service.unit}'
+          : '';
+      return '${formatCurrency(service.price!)}$unitSuffix';
+    }
+    return service.priceLabel?.isNotEmpty == true
+        ? service.priceLabel!
+        : 'Contact court';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(Icons.checklist_rtl, color: colorScheme.primary),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                service.name,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                _priceLabel,
+                style: TextStyle(color: colorScheme.onSurfaceVariant),
+              ),
+              if (service.note != null && service.note!.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  service.note!,
+                  style: TextStyle(
+                    color: colorScheme.onSurfaceVariant,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.remove_circle_outline),
+              onPressed: quantity > 0 ? onDecrement : null,
+            ),
+            Text(
+              '$quantity',
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            IconButton(
+              icon: const Icon(Icons.add_circle_outline),
+              onPressed: onIncrement,
+            ),
+          ],
+        ),
+      ],
+    );
   }
 }
